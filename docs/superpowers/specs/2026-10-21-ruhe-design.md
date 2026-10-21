@@ -102,6 +102,8 @@ Unten eine feste Leiste mit fünf Reitern. Die Android-Zurück-Geste schließt z
 - Optionaler Hintergrundklang (einer der 8 Klänge).
 - Die zuletzt gewählten Einstellungen werden gemerkt.
 
+*Ergänzung vom 21.10.2026 (Meilenstein 3):* Ist die Datei einer geführten Meditation noch ein Platzhalter (leise Töne statt Sprache), steht neben ihr in der Liste der Chip „Vorabversion“. Das Manifest führt dafür das Feld `placeholder`.
+
 ### 3.3 Atmen
 
 Sechs Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird der laufende Atemzyklus noch zu Ende geführt.
@@ -280,6 +282,8 @@ Atme ein … und lass den Atem ganz von allein wieder gehen.
 
 **API-Schlüssel:** wird aus der Umgebungsvariable `ELEVENLABS_API_KEY` gelesen, nie in Dateien geschrieben.
 
+*Ergänzung vom 21.10.2026 (Meilenstein 3):* Vertont wird über den ElevenLabs-Connector in einer Claude-Sitzung, nicht über ein Skript, das die API aufruft. Das Skript `scripts/meditations.mjs` (Logik in `scripts/lib/`) ersetzt `voice.mjs` und `placeholders.mjs` aus §8 und hat die Befehle `estimate [id]` (Zeichen, geschätzte Länge und Stilleanteil statt Credits), `split [id]` (Abschnittslisten nach `audio-work/sections/`, nicht eingecheckt), `placeholders`, `assemble <id>` (Klangschale, Abschnitte und Pausen; `loudnorm` in zwei Durchgängen) und `manifest`. `cast` und `build` entfallen. Es gibt keinen API-Schlüssel (`ELEVENLABS_API_KEY` entfällt) und keinen Zugriff auf `api.elevenlabs.io`. Die Stimme steht in `audio-work/voice.json`: Susanne K („Calm Meditation Guide“), Modell `eleven_v4` (statt `eleven_multilingual_v2`), Präfix `[softly] [slowly]`; je Abschnitt eine Aufnahme. Der Abschnitt-Cache `audio-work/cache/<hash>.mp3` bleibt eingecheckt und ist wie beschrieben nach dem Hash aus Stimme, Modell, Einstellungen und eigenem Text benannt, sodass nur fehlende Hashes vertont werden.
+
 ### 5.3 Klang-Skript `scripts/sounds.mjs`
 
 - Definitionen in `content/sounds.json`: id, Titel, Datei und der ElevenLabs-Prompt der Aufnahme.
@@ -348,6 +352,8 @@ type Session = {
 - Standard-Hintergrundklang für den Timer (Standard: keiner)
 - Vorlauf beim Timer: an/aus (Standard: an)
 
+*Ergänzung vom 21.10.2026 (Meilenstein 3):* Neue Einstellung `guidedSound` (Standard: keiner): der zuletzt gewählte Hintergrundklang der geführten Meditation. Er wird im Player gewählt und gilt beim nächsten Start wieder; der „Standard-Hintergrundklang“ unter „Ich“ gilt weiter nur für den Timer. Die Balance (`voiceBalance`) wirkt im Player sofort und wird beim Loslassen des Reglers gespeichert.
+
 ### 6.5 Offline (Service Worker)
 
 - **Vorab gespeichert (Precache):** App-Grundgerüst, Schriften, Icons, die 8 Loops und die Klangschale (≈ 3 MB). Damit laufen Timer, Atmen und Klänge sofort offline.
@@ -356,6 +362,8 @@ type Session = {
 - **Offline-Status** je Meditation wird über den Cache abgefragt (✓ in der Liste). Offline und nicht gespeichert: Eintrag ausgegraut mit Hinweis „Nicht offline verfügbar“.
 - Beim ersten Speichern einer Meditation bittet die App um dauerhaften Speicher (`navigator.storage.persist()`).
 - **Updates:** Neue Versionen werden im Hintergrund geladen. Danach erscheint der Hinweis „Neue Version – tippen zum Aktualisieren“, aber nie während einer laufenden Sitzung.
+
+*Ergänzung vom 21.10.2026 (Meilenstein 3):* Die Meditationen werden unter einer versionierten Adresse abgespielt und gecacht: `audio/meditations/<id>.mp3?v=<Version>`, wobei die Version aus den ersten 10 Hex-Zeichen des SHA-256 der Datei besteht (Feld `version` im Manifest). Eine neu aufgenommene Meditation hat so eine neue Adresse, und Geräte spielen nicht die alte Kopie aus dem Cache. „Alle offline speichern“ entfernt zuerst die veralteten Einträge aus `ruhe-meditations`. Als gespeichert gilt nur Audio (Content-Type `audio/*`); die Startseite, die ein Server statt einer fehlenden Datei liefern kann, zählt nicht. Eine Datei, die sich nicht laden lässt, bricht den Lauf nicht ab: Sie wird übersprungen und in der Meldung gezählt. Ein voller Speicher beendet den Lauf, schon Gespeichertes bleibt.
 
 ### 6.6 Web-App-Manifest
 
@@ -474,6 +482,8 @@ Jede Datei unter `src/lib/` hat eine klar umrissene Aufgabe und ist ohne UI test
 | 2 | Meditations-Timer, Atemübungen, Statistik, Einstellungen, Backup | Erste echte Meditationen mit Timer und Atmen |
 | 3 | Geführte Meditationen: Player, Offline-Speicher, Platzhalter-Audio, Vertonungs-Skript (ohne API getestet), die 9 Texte | Texte gegenlesen und freigeben |
 | 4 | *Neue Session mit ElevenLabs-Zugang:* Stimm-Casting, Vertonung der 9 Meditationen (die 8 Loops und der Klangschalen-Schlag sind seit 21.10.2026 fertig) | Fertige App, komplette Checkliste |
+
+*Ergänzung vom 21.10.2026 (Meilenstein 3):* Meilenstein 4 (Vertonung) ist in Meilenstein 3 aufgegangen. Weil der Connector vertont (§5.2), braucht es keine neue Session mit API-Zugang; nach Freigabe der Texte und der Stimmwahl werden die 9 Meditationen im selben Meilenstein vertont, bis dahin spielen Platzhalter. Die Vorbedingung „Vor Meilenstein 4“ in §12 (Freischaltung von `api.elevenlabs.io`, Schlüssel) entfällt damit. Abgenommen wird mit der „Handy-Checkliste Meilenstein 3“ im README.
 
 Für jeden Meilenstein entsteht ein eigener Implementierungsplan, beginnend mit Meilenstein 1. Ergibt der Härtetest in Meilenstein 1, dass Plan B (4.6) nötig ist, wird das vor Meilenstein 2 umgesetzt.
 
