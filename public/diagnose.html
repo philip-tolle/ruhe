@@ -33,6 +33,10 @@
   <p>Ein ganz normales Audio-Element spielt eine Rausch-Datei in Schleife.</p>
   <button id="c">Start C</button><div class="status" id="sc"></div></div>
 
+<div class="weg"><h2>Weg D – wie A, plus stiller Anker</h2>
+  <p>Klang wie Weg A, dazu ein lautloses Audio-Element, damit Android die Seite als Medienwiedergabe behandelt. <b>Test:</b> Start D, Bildschirm sperren, 3 Minuten warten. Läuft der Ton durch? Gibt es auf dem Sperrbildschirm eine Steuerung „Ruhe – Diagnose“ mit Pause/Play?</p>
+  <button id="d">Start D</button><div class="status" id="sd"></div></div>
+
 <pre id="info">Geräte-Infos erscheinen nach dem ersten Start.</pre>
 
 <script>
@@ -98,9 +102,31 @@
       await el.play()
       return () => { el.pause(); URL.revokeObjectURL(el.src) }
     },
+    async d() {
+      const c = ensureCtx()
+      // Anker: 30 s nahezu lautlos (Rauschen bei etwa −80 dB), in Schleife; liefert keinen hörbaren Ton.
+      const quiet = new Float32Array(8000 * 30).map(() => (Math.random() * 2 - 1) * 1e-4)
+      const anchor = new Audio(URL.createObjectURL(wavBlob(quiet, 8000))); anchor.loop = true
+      const playing = anchor.play()
+      await Promise.all([c.resume(), playing])
+      const { src, out } = noiseSource(c); out.connect(c.destination); src.start()
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: 'Ruhe – Diagnose', artist: 'Weg D', album: 'Ruhe' })
+        navigator.mediaSession.playbackState = 'playing'
+        navigator.mediaSession.setActionHandler('pause', () => { anchor.pause(); c.suspend(); navigator.mediaSession.playbackState = 'paused' })
+        navigator.mediaSession.setActionHandler('play', () => { anchor.play(); c.resume(); navigator.mediaSession.playbackState = 'playing' })
+      }
+      // Gesperrter Bildschirm: Zeitstempel der Audio-Uhr zeigen, ob sie weiterlief.
+      const t0 = c.currentTime
+      const tick = setInterval(() => { document.getElementById('sd').textContent = `Läuft … Audio-Uhr: ${Math.round(c.currentTime - t0)} s, Anker ${anchor.paused ? 'pausiert' : 'aktiv'}` }, 1000)
+      return () => {
+        clearInterval(tick); src.stop(); out.disconnect(); anchor.pause(); URL.revokeObjectURL(anchor.src)
+        if ('mediaSession' in navigator) { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none' }
+      }
+    },
   }
 
-  for (const id of ['a', 'b', 'c']) {
+  for (const id of ['a', 'b', 'c', 'd']) {
     const btn = document.getElementById(id), st = document.getElementById('s' + id)
     btn.addEventListener('click', async () => {
       if (running === id) { stopFn(); running = null; btn.textContent = 'Start ' + id.toUpperCase(); btn.classList.remove('aus'); st.textContent = 'Gestoppt.'; return }
