@@ -40,7 +40,7 @@ Befehle
                     (public/audio/meditations/<id>.mp3, MP3 mono 16 kbit/s)
   assemble <id>     setzt Schale, vertonte Abschnitte aus audio-work/cache und Pausen zur fertigen
                     MP3 zusammen (mono 64 kbit/s, −19 LUFS, zwei Durchgänge); nimmt die id aus
-                    placeholders.json
+                    placeholders.json, sobald die Datei an ihrem Platz liegt
   manifest          schreibt src/content/meditations.json
 
 Optionen (Standardwerte im Repo; vor allem für Tests)
@@ -50,7 +50,8 @@ Optionen (Standardwerte im Repo; vor allem für Tests)
   --manifest <Datei>    Manifest                    (src/content/meditations.json)
   --cache <Ordner>      vertonte Abschnitte         (<work>/cache)
   --voice <Datei>       Stimme                      (<work>/voice.json)
-  --out <Datei>         nur assemble: Zieldatei; dann bleibt placeholders.json unverändert
+  --out <Datei>         nur assemble: Zieldatei; placeholders.json ändert sich nur, wenn sie
+                        <audio>/<id>.mp3 ist
 `
 
 /** Fehler, die der Nutzer beheben kann: nur die Meldung wird ausgegeben. */
@@ -298,7 +299,10 @@ function cmdAssemble(id) {
   }
 
   const timeline = planTimeline(m.segments, files.map(probeDuration), probeDuration(paths.bowl))
-  const out = options.out ? resolve(options.out) : join(paths.audio, `${id}.mp3`)
+  const defaultOut = join(paths.audio, `${id}.mp3`)
+  const out = options.out ? resolve(options.out) : defaultOut
+  // Nur die Datei an ihrem Platz ersetzt den Platzhalter – egal, wie der Pfad angegeben wurde.
+  const replacesPlaceholder = out === defaultOut
   const part = `${out}.part`
   mkdirSync(dirname(out), { recursive: true })
   const mix = { bowlFile: paths.bowl, sectionFiles: files, timeline }
@@ -307,13 +311,24 @@ function cmdAssemble(id) {
     const measured = measureLoudness(buildMeasureArgs(mix))
     console.log(`${id}: Lautheit vor der Normalisierung ${measured.input_i} LUFS, True Peak ${measured.input_tp} dB`)
     runFfmpeg(buildAssembleArgs({ ...mix, outFile: part, measured }))
-    renameSync(part, out)
   } catch (err) {
     rmSync(part, { force: true })
     throw err
   }
 
-  if (!options.out) writePlaceholders(readPlaceholders().filter((other) => other !== id))
+  // Die Liste kommt vor dem Umbenennen dran: Bricht der Lauf dazwischen ab, bleibt höchstens ein
+  // Platzhalter ohne Eintrag stehen (ein neuer `assemble` behebt das) – nie eine vertonte Datei,
+  // die als Platzhalter gilt und vom nächsten `placeholders` überschrieben würde.
+  const listed = readPlaceholders()
+  const unlist = replacesPlaceholder && listed.includes(id)
+  try {
+    if (unlist) writePlaceholders(listed.filter((other) => other !== id))
+    renameSync(part, out)
+  } catch (err) {
+    rmSync(part, { force: true })
+    if (unlist) writePlaceholders(listed)
+    throw err
+  }
   const actual = probeDuration(out)
   console.log(`${id}: ${clock(actual)} (${actual.toFixed(1)} s, erwartet ${timeline.totalSeconds.toFixed(1)} s), ${kilobytes(statSync(out).size)} → ${out}`)
   if (Math.abs(actual - timeline.totalSeconds) > 1) console.error(`Warnung: Die Länge weicht um mehr als 1 s vom Zeitplan ab.`)

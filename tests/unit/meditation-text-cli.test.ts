@@ -274,6 +274,36 @@ describe('assemble', () => {
     },
   )
 
+  it('behandelt --out mit dem Standardpfad wie ohne --out: id aus der Liste, echte Datei bleibt vor `placeholders` geschützt', () => {
+    const { ws } = prepared('assemble-out-default')
+    // gleicher Pfad wie <audio>/<id>.mp3, nur anders geschrieben
+    const sameFile = `${ws.audio}/../audio/probe-assemble.mp3`
+    const r = cli(ws, ['assemble', 'probe-assemble', '--out', sameFile])
+    expect(r.status).toBe(0)
+    const voiced = join(ws.audio, 'probe-assemble.mp3')
+    expect(existsSync(voiced)).toBe(true)
+    expect(placeholderList(ws)).toEqual(['anderer-platzhalter'])
+
+    // Der nächste `placeholders`-Lauf darf die vertonte Datei nicht überschreiben.
+    const before = readFileSync(voiced)
+    const again = cli(ws, ['placeholders'])
+    expect(again.status).toBe(0)
+    expect(again.out).toContain('echte Datei')
+    expect(readFileSync(voiced).equals(before)).toBe(true)
+  })
+
+  it('lässt die Platzhalterliste unverändert, wenn die fertige Datei nicht an ihren Platz kommt', () => {
+    const { ws } = prepared('assemble-rename-fails')
+    // An der Zieldatei steht ein nicht leeres Verzeichnis: ffmpeg gelingt, das Umbenennen nicht.
+    const blocked = join(ws.audio, 'probe-assemble.mp3')
+    mkdirSync(blocked)
+    writeFileSync(join(blocked, 'x'), 'x')
+    const r = cli(ws, ['assemble', 'probe-assemble'])
+    expect(r.status).toBe(1)
+    expect(placeholderList(ws)).toEqual(['anderer-platzhalter', 'probe-assemble'])
+    expect(existsSync(`${blocked}.part`)).toBe(false)
+  })
+
   it('nennt fehlende Abschnitte mit Hash und Textanfang und schreibt nichts', () => {
     const { ws, b } = prepared('assemble-missing')
     rmSync(join(ws.cache, `${b}.mp3`))
