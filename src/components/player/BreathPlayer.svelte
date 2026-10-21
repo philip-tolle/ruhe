@@ -190,6 +190,8 @@
 
   .circle::after {
     inset: 0;
+    /* Ersatz für Browser ohne color-mix(): sonst entfiele der ganze Kreis, nicht nur sein Verlauf. */
+    background: var(--phase-color);
     background: radial-gradient(
       circle at 44% 40%,
       color-mix(in oklab, var(--phase-color), white 40%),
