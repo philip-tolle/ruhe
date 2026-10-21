@@ -123,6 +123,10 @@ export class GuidedRun implements SessionRun {
     this.failed = false
     this.hold()
     this.element.load()
+    // load() verwirft noch nicht zugestellte Ereignisse des Elements, auch ein pause-Ereignis eines
+    // eigenen Anhaltens kurz zuvor (Chromium stellt es dann nie zu). Bliebe es gezählt, schluckte
+    // es die nächste echte Unterbrechung.
+    this.ownPauses = 0
     return this.play()
   }
 

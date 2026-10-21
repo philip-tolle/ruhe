@@ -359,6 +359,24 @@ test('retry after a load error continues at the last position and keeps what was
   expect(seen[0].seconds).toBeLessThanOrEqual(SECONDS + 0.01)
 }, 15000)
 
+test('after a retry in the same task as the error, a pause from outside is still an interruption', async () => {
+  const e = make()
+  await e.startGuided(spec())
+  await heard(e, 0.3)
+  const element = voice()
+  // Fehler und „Erneut versuchen“ in einer Aufgabe: Das pause-Ereignis des eigenen Anhaltens steht noch
+  // aus, und load() verwirft es. Es darf nicht als ausstehend gezählt bleiben.
+  element.dispatchEvent(new Event('error'))
+  await e.retryGuided()
+  await expect.poll(() => element.readyState, { timeout: 3000 }).toBeGreaterThanOrEqual(1)
+  expect(element.paused).toBe(false)
+  await wait(300)
+  expect(e.snapshot().state).toBe('playing')
+
+  element.pause()                            // das System hält die Stimme an (Anruf)
+  await expect.poll(() => e.snapshot().state, { timeout: 3000 }).toBe('paused')
+}, 15000)
+
 test('background plays at the given volume and fades at the end', async () => {
   const ramp = vi.spyOn(AudioParam.prototype, 'linearRampToValueAtTime')
   try {
