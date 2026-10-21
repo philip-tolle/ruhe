@@ -37,7 +37,11 @@ export function createOutput(): Output {
     element,
     async start() {
       // Beide Aufrufe sofort, damit play() noch innerhalb der Nutzergeste geschieht.
-      await Promise.all([ctx.resume(), element.play()])
+      // AbortError: Ein späteres eigenes pause() hat dieses play() abgelöst – kein Fehler.
+      const playing = element.play().catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) throw error
+      })
+      await Promise.all([ctx.resume(), playing])
     },
     async suspend() {
       element.pause()

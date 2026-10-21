@@ -20,6 +20,7 @@ export interface EngineSnapshot {
   errors: SoundId[]
   sleepMinutes: number | null // Auswahl, bleibt über Sitzungen erhalten
   remainingSec: number | null // null wenn idle oder endlos
+  needsTap: boolean // Start scheiterte (z. B. Autoplay-Regel): pausiert, „Weiter“ versucht es neu
 }
 
 export const DEFAULT_VOLUME = 0.7
@@ -49,16 +50,19 @@ export class AudioEngine {
   private readonly makeOutput: () => Output
   private readonly load: Loader
   private readonly listeners = new Set<(s: EngineSnapshot) => void>()
+  // Steuerung aus Benachrichtigung und Sperrbildschirm; Fehler bleiben in der Engine.
   private readonly actions: MediaActions = {
-    play: () => void this.resume(),
-    pause: () => void this.pause(),
-    stop: () => void this.stopAll(),
+    play: () => void this.resume().catch(() => {}),
+    pause: () => void this.pause().catch(() => {}),
+    stop: () => void this.stopAll().catch(() => {}),
   }
 
   private out: Output | null = null
   private bank: NoiseBank | null = null
   private state: EngineState = 'idle'
   private starting: Promise<void> = Promise.resolve()
+  private startPending = false // der aktuelle Start (resume + play) ist noch nicht durch
+  private startFailed = false // der letzte Start wurde abgelehnt
   private readonly active = new Map<SoundId, Channel>() // klingende Klänge
   private readonly pending = new Map<SoundId, number>() // ladende Loops → Nummer des Ladevorgangs
   private readonly errors = new Set<SoundId>()
@@ -163,6 +167,7 @@ export class AudioEngine {
       errors: [...this.errors],
       sleepMinutes: this.sleepMinutes,
       remainingSec: c && this.state !== 'idle' ? Math.max(0, c.t0 + c.end - this.out!.ctx.currentTime) : null,
+      needsTap: this.state === 'paused' && this.startFailed,
     }
   }
 
@@ -189,21 +194,44 @@ export class AudioEngine {
     if (!this.out) {
       this.out = this.makeOutput()
       this.out.element.addEventListener('pause', this.onElementPause)
+      this.out.ctx.addEventListener('statechange', this.onContextStateChange)
     }
     return this.out
   }
 
   // idle/paused → playing: zuerst den Output starten. Ab idle beginnt der Sleep-Countdown.
+  // Scheitert der Start (z. B. play() ohne Nutzergeste abgelehnt), wird daraus eine Pause mit
+  // Hinweis, statt still „playing“ zu bleiben; „Weiter“ startet dann neu.
   private ensurePlaying(): Promise<void> {
     if (this.state === 'playing') return this.starting
     const fromIdle = this.state === 'idle'
     this.state = 'playing'
-    this.starting = this.out!.start()
+    this.startFailed = false
+    this.startPending = true
+    const starting: Promise<void> = this.out!.start().then(
+      () => {
+        if (this.starting === starting) this.startPending = false
+      },
+      (error: unknown) => {
+        if (this.starting === starting) {
+          this.startPending = false
+          if (this.state === 'playing') {
+            this.starting = Promise.resolve()
+            this.state = 'paused'
+            this.startFailed = true
+            void this.suspendOutput() // Audio-Uhr anhalten, damit die Restzeit steht
+            this.emit()
+          }
+        }
+        throw error
+      },
+    )
+    this.starting = starting
     if (fromIdle) {
       this.settle = null
       this.planSleep()
     }
-    return this.starting
+    return starting
   }
 
   // Neue Stimme mit eigenem Gain, der in 1,5 s von 0 auf die Lautstärke steigt.
@@ -339,6 +367,18 @@ export class AudioEngine {
     this.state = 'paused'
     const { ctx } = this.out!
     if (ctx.state !== 'closed') void ctx.suspend()
+    this.emit()
+  }
+
+  // Das System hält die Audio-Uhr selbst an: wie eine Unterbrechung behandeln, sonst bliebe
+  // „playing“ mit stehender Restzeit. Eigenes Anhalten zählt nicht: Dabei ist der Zustand
+  // schon paused/idle, und während eines eigenen Starts gilt der Zwischenstand noch nicht.
+  private readonly onContextStateChange = (): void => {
+    const { ctx } = this.out!
+    if (this.state !== 'playing' || this.startPending) return
+    if (ctx.state === 'running' || ctx.state === 'closed') return
+    this.state = 'paused'
+    void this.suspendOutput() // auch das Medien-Element anhalten; sein pause-Event ist eigenes
     this.emit()
   }
 }

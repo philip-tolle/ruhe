@@ -1,4 +1,4 @@
-import { test, expect, afterEach } from 'vitest'
+import { test, expect, afterEach, vi } from 'vitest'
 import { AudioEngine } from '../../src/lib/audio/engine'
 import { createOutput, type Output } from '../../src/lib/audio/output'
 
@@ -157,4 +157,90 @@ test('stopAll while paused tears down at once', async () => {
   await wait(1200)                           // auch nach Ablauf der Ausklingzeit bleibt es bei einer Stimme
   expect(e.voiceCount()).toBe(1)
   expect(e.snapshot().state).toBe('playing')
+})
+
+test('a failed start pauses with a tap hint, and resume starts again', async () => {
+  let blocked = true                         // play() wird einmal abgelehnt (Autoplay-Regel)
+  engine = new AudioEngine({
+    createOutput: () => {
+      const o = (out = createOutput())
+      const start = o.start
+      o.start = () => {
+        if (!blocked) return start()
+        blocked = false
+        return Promise.reject(new DOMException('blockiert', 'NotAllowedError'))
+      }
+      return o
+    },
+  })
+  const e = engine
+  await expect(e.toggle('regen')).rejects.toThrow('blockiert')
+  expect(e.snapshot()).toMatchObject({ state: 'paused', needsTap: true, volumes: { regen: 0.7 } })
+  expect(out!.element.paused).toBe(true)
+  await expect.poll(() => out!.ctx.state, { timeout: 3000 }).toBe('suspended') // Restzeit steht
+  await e.resume()                           // „Weiter“
+  expect(e.snapshot()).toMatchObject({ state: 'playing', needsTap: false })
+  expect(out!.ctx.state).toBe('running')
+  expect(out!.element.paused).toBe(false)
+})
+
+test('ending a session clears the media session and releases its controls', async () => {
+  const setHandler = vi.spyOn(navigator.mediaSession, 'setActionHandler')
+  try {
+    const e = make()
+    await e.toggle('regen')
+    expect(navigator.mediaSession.metadata?.title).toBe('Regen')
+    expect(navigator.mediaSession.playbackState).toBe('playing')
+    expect(setHandler.mock.calls.map(([action, handler]) => [action, typeof handler]))
+      .toEqual([['play', 'function'], ['pause', 'function'], ['stop', 'function']])
+    setHandler.mockClear()
+    e.setVolume('regen', 0.4)                // weitere Änderung ohne Übergang
+    await e.pause()
+    await e.resume()
+    expect(setHandler).not.toHaveBeenCalled()
+    await e.stopAll()
+    expect(navigator.mediaSession.metadata).toBeNull()
+    expect(navigator.mediaSession.playbackState).toBe('none')
+    expect(setHandler.mock.calls).toEqual([['play', null], ['pause', null], ['stop', null]])
+  } finally {
+    setHandler.mockRestore()
+  }
+})
+
+test('a suspension of the audio context from outside pauses the engine', async () => {
+  const e = make()
+  e.setSleepTimer(30)
+  await e.toggle('wind')
+  await out!.ctx.suspend()                   // simuliert das System
+  await expect.poll(() => e.snapshot().state, { timeout: 3000 }).toBe('paused')
+  expect(out!.element.paused).toBe(true)
+  const frozen = e.snapshot().remainingSec!
+  await wait(300)
+  expect(e.snapshot().remainingSec).toBeCloseTo(frozen, 1)
+  await e.resume()
+  expect(e.snapshot().state).toBe('playing')
+  expect(out!.ctx.state).toBe('running')
+})
+
+test('own pause followed by quick resume is not taken for an interruption', async () => {
+  const e = make()
+  await e.toggle('regen')
+  const paused = e.pause()
+  await e.resume()
+  await paused
+  await wait(300)                            // Ereignisse des eigenen Anhaltens sind jetzt durch
+  expect(e.snapshot().state).toBe('playing')
+  expect(out!.ctx.state).toBe('running')
+  expect(out!.element.paused).toBe(false)
+})
+
+test('pausing right after a start is not a failed start', async () => {
+  const e = make()
+  const started = e.toggle('regen')
+  await e.pause()                            // löst das noch laufende play() ab (AbortError)
+  await expect(started).resolves.toBeUndefined()
+  expect(e.snapshot()).toMatchObject({ state: 'paused', needsTap: false, volumes: { regen: 0.7 } })
+  await e.resume()
+  expect(e.snapshot().state).toBe('playing')
+  expect(out!.element.paused).toBe(false)
 })
