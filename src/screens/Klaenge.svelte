@@ -51,7 +51,7 @@
         <button type="button" class="button" onclick={togglePause}>
           {snap.state === 'playing' ? 'Pause' : 'Weiter'}
         </button>
-        <button type="button" class="button secondary" onclick={() => engine.stopAll().catch(() => {})}>Alle stoppen</button>
+        <button type="button" class="button secondary" onclick={() => engine.stopAll().catch(() => {})}>Stoppen</button>
       </div>
     </div>
   </div>
