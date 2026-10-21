@@ -7,7 +7,15 @@
   import SoundTile from '../components/SoundTile.svelte'
 
   const snap = $derived(audio.snap)
-  const status = $derived(snap.remainingSec !== null ? `Noch ${formatRemaining(snap.remainingSec)}` : 'Läuft endlos')
+  // `remainingSec` ist genau bei „endlos“ null, auch in der Pause: dann gibt es keinen Text,
+  // „Läuft endlos“ wäre neben „Weiter“ falsch.
+  const status = $derived(
+    snap.remainingSec !== null
+      ? `Noch ${formatRemaining(snap.remainingSec)}`
+      : snap.state === 'playing'
+        ? 'Läuft endlos'
+        : null,
+  )
 </script>
 
 <section class="screen">
@@ -28,7 +36,9 @@
 
   {#if snap.state !== 'idle'}
     <div class="card controls">
-      <p class="status">{status}</p>
+      {#if status !== null}
+        <p class="status">{status}</p>
+      {/if}
       <div class="buttons">
         <button type="button" class="button" onclick={togglePause}>
           {snap.state === 'playing' ? 'Pause' : 'Weiter'}

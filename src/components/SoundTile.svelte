@@ -72,7 +72,7 @@
 
 <style>
   .tile {
-    --track: rgb(169 175 203 / 0.55);
+    --track: rgb(169 175 203 / 0.72);
     position: relative;
     display: flex;
     min-height: 120px;

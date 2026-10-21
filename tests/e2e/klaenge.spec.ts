@@ -35,3 +35,20 @@ test('mix sounds, sleep timer and mini player', async ({ page }) => {
   await nav.getByRole('button', { name: 'Heute' }).click()
   await expect(page.getByRole('region', { name: 'Wiedergabe' })).toHaveCount(0)
 })
+
+test('status text does not claim "Läuft endlos" while paused', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Klänge' }).click()
+  await page.getByRole('button', { name: 'Regen' }).click()
+  await expect(page.getByText('Läuft endlos')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await expect(page.getByRole('button', { name: 'Weiter' })).toBeVisible()
+  await expect(page.getByText('Läuft endlos')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await expect(page.getByText('Läuft endlos')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Alle stoppen' }).click()
+  await expect(page.locator('button[aria-pressed="true"]')).toHaveCount(0)
+})
