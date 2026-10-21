@@ -59,7 +59,8 @@
 </div>
 
 <style>
-  /* Chips füllen ihre Zeile; was nicht mehr passt, rutscht in die nächste. */
+  /* Chips füllen ihre Zeile; was nicht mehr passt, rutscht in die nächste. Wer eine kurze Reihe
+     in eine Zeile bringen will, senkt die Mindestbreite mit `--choice-min`. */
   .choices {
     display: flex;
     flex-wrap: wrap;
@@ -68,7 +69,7 @@
 
   button {
     flex: 1 1 auto;
-    min-width: 5.5rem;
+    min-width: var(--choice-min, 5.5rem);
     min-height: 48px;
     padding: 0 16px;
     border: 1px solid var(--surface-border);

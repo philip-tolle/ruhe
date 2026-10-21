@@ -19,8 +19,13 @@
     minutes: (n) => `${n} Min meditiert`,
   }
 
+  const BREATH: Texts = {
+    heading: 'Gut gemacht.',
+    minutes: (n) => `${n} Min geatmet`,
+  }
+
   // Texte je Art der Sitzung; was keine eigenen hat, nimmt die des Timers.
-  const TEXTS: Partial<Record<SessionKind, Texts>> = { timer: TIMER }
+  const TEXTS: Partial<Record<SessionKind, Texts>> = { timer: TIMER, breath: BREATH }
 
   const texts = $derived(TEXTS[kind] ?? TIMER)
   const detail = $derived(

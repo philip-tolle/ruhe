@@ -3,6 +3,7 @@
   import Sky from './components/Sky.svelte'
   import TabBar from './components/TabBar.svelte'
   import UpdateToast from './components/UpdateToast.svelte'
+  import BreathPlayer from './components/player/BreathPlayer.svelte'
   import TimerPlayer from './components/player/TimerPlayer.svelte'
   import Heute from './screens/Heute.svelte'
   import Meditieren from './screens/Meditieren.svelte'
@@ -11,6 +12,7 @@
   import Ich from './screens/Ich.svelte'
   import { audio } from './lib/audio/engine-store.svelte'
   import { pwa } from './lib/pwa/update.svelte'
+  import { playerOpen } from './lib/ui/player-state'
   import { sessionUi } from './lib/ui/session-ui.svelte'
   import type { TabId } from './lib/ui/tabs'
 
@@ -18,11 +20,11 @@
 
   const program = $derived(audio.snap.program)
 
-  // Vollbild-Player des Timers: Laufansicht, solange der Timer läuft; danach sein Abschluss, solange
-  // er offen ist (die End-Schalen klingen dabei noch aus). Darunter ist die App unerreichbar.
-  const timerPlayerVisible = $derived(
-    (program?.kind === 'timer' && !program.ended) || sessionUi.done?.kind === 'timer',
-  )
+  // Vollbild-Player von Timer und Atemübung: Laufansicht, solange das Programm läuft; danach sein
+  // Abschluss, solange er offen ist (die End-Schalen klingen dabei noch aus). Darunter ist die App
+  // unerreichbar.
+  const timerPlayerVisible = $derived(playerOpen('timer'))
+  const breathPlayerVisible = $derived(playerOpen('breath'))
 
   // Solange Klänge laufen oder pausiert sind, liegt über der Reiterleiste eine Wiedergabeleiste:
   // im Klänge-Reiter dessen eigene Steuerung, sonst der Mini-Player (nur ohne Programm; ein Programm
@@ -45,7 +47,7 @@
 
 <Sky />
 
-<div inert={timerPlayerVisible}>
+<div inert={timerPlayerVisible || breathPlayerVisible}>
   <main class:with-player-bar={playbackBarVisible}>
     {#if tab === 'heute'}
       <Heute {onNavigate} />
@@ -73,4 +75,8 @@
 
 {#if timerPlayerVisible}
   <TimerPlayer />
+{/if}
+
+{#if breathPlayerVisible}
+  <BreathPlayer />
 {/if}
