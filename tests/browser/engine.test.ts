@@ -57,6 +57,23 @@ test('sleep countdown keeps running across a switch', async () => {
   expect(e.snapshot().remainingSec).toBeLessThan(899.5) // kein Neustart des Countdowns
 })
 
+test('after a switch the session still ends at the original sleep end', async () => {
+  const e = make()
+  e.setSleepTimer(0.05)                      // 3 s
+  await e.toggle('regen')
+  const end = out!.ctx.currentTime + e.snapshot().remainingSec!
+  let endedAt: number | null = null
+  const off = e.subscribe(s => { if (s.state === 'idle' && endedAt === null) endedAt = out!.ctx.currentTime })
+  await expect.poll(() => out!.ctx.currentTime, { timeout: 3000 }).toBeGreaterThan(end - 2) // etwa 1 s später
+  await e.toggle('meer')
+  await expect.poll(() => endedAt, { timeout: 5000 }).not.toBeNull()
+  off()
+  // Ein neu gestarteter Countdown endete erst rund 1 s später (Audio-Uhr).
+  expect(endedAt!).toBeGreaterThan(end - 0.05)
+  expect(endedAt!).toBeLessThan(end + 0.3)
+  expect(e.voiceCount()).toBe(0)
+})
+
 test('switching while the previous sound still loads discards that load', async () => {
   const finish: (() => void)[] = []
   const e = make((ctx, url) => new Promise(resolve => finish.push(() => resolve(synthetic(ctx, url)))))
@@ -179,7 +196,7 @@ test('setVolume changes only that sound and notifies subscribers', async () => {
   expect(seen.at(-1)).toBe(0.3)
 })
 
-test('switching sounds keeps the output running', async () => {
+test('a new sound right after stopping keeps the output running', async () => {
   const e = make()
   await e.toggle('regen')
   await e.toggle('regen')                    // einziger Klang aus: Engine ist idle
