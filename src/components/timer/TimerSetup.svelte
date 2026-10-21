@@ -1,11 +1,13 @@
 <script lang="ts">
   import ChoiceGroup from '../ChoiceGroup.svelte'
   import Sheet from '../Sheet.svelte'
+  import SoundSelect from '../SoundSelect.svelte'
+  import Switch from '../Switch.svelte'
   import { audio } from '../../lib/audio/engine-store.svelte'
   import { timerProgram } from '../../lib/audio/program'
   import { clampMinutes, INTERVAL_OPTIONS, TIMER_PRESETS, type TimerSettings } from '../../lib/meditation/timer-plan'
   import { intervalLabel, savedTimer } from '../../lib/meditation/timer-view'
-  import { SOUNDS, type SoundId } from '../../lib/sounds/catalog'
+  import type { SoundId } from '../../lib/sounds/catalog'
   import { setLastUsed, stats, updateSettings } from '../../lib/stats/store.svelte'
   import { startSession } from '../../lib/ui/session-ui.svelte'
 
@@ -91,18 +93,10 @@
 
   <div class="field">
     <span class="label" aria-hidden="true">Hintergrundklang</span>
-    <select aria-label="Hintergrundklang" bind:value={sound}>
-      <option value={null}>Keiner</option>
-      {#each SOUNDS as item (item.id)}
-        <option value={item.id}>{item.title}</option>
-      {/each}
-    </select>
+    <SoundSelect label="Hintergrundklang" bind:value={sound} />
   </div>
 
-  <button type="button" class="switch" role="switch" aria-checked={lead} onclick={() => (lead = !lead)}>
-    <span>10 Sekunden ankommen</span>
-    <span class="track" aria-hidden="true"></span>
-  </button>
+  <Switch label="10 Sekunden ankommen" checked={lead} onToggle={() => (lead = !lead)} />
 
   <button type="button" class="button start" disabled={starting} onclick={start}>Starten</button>
 </Sheet>
@@ -128,78 +122,17 @@
     font-weight: 600;
   }
 
-  input,
-  select {
+  input {
+    width: 7rem;
     min-height: 52px;
+    padding: 0 16px;
     border: 1px solid var(--surface-border);
     border-radius: 16px;
     background-color: var(--surface);
     color: var(--text);
     font: inherit;
-    font-weight: 600;
-  }
-
-  input {
-    width: 7rem;
-    padding: 0 16px;
     font-variant-numeric: tabular-nums;
-  }
-
-  /* Eigener Pfeil statt des Systempfeils, damit die Auswahl zu den übrigen Feldern passt. */
-  select {
-    width: 100%;
-    padding: 0 48px 0 16px;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9afcb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-position: right 16px center;
-    background-repeat: no-repeat;
-    background-size: 20px;
-  }
-
-  /* Schalter als ganze Zeile: links der Text, rechts die Spur mit dem Knopf. */
-  .switch {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    min-height: 52px;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--text);
     font-weight: 600;
-    text-align: left;
-  }
-
-  .track {
-    position: relative;
-    flex: none;
-    width: 52px;
-    height: 32px;
-    border: 1px solid var(--surface-border);
-    border-radius: 999px;
-    background: var(--surface);
-  }
-
-  .track::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--text-muted);
-  }
-
-  .switch[aria-checked='true'] .track {
-    border-color: var(--accent);
-    background: var(--accent);
-  }
-
-  .switch[aria-checked='true'] .track::after {
-    background: var(--on-accent);
-    transform: translateX(20px);
   }
 
   .start {
@@ -210,15 +143,5 @@
   .start:disabled {
     opacity: 0.6;
     cursor: default;
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .track,
-    .track::after {
-      transition:
-        background-color 0.25s ease,
-        border-color 0.25s ease,
-        transform 0.25s ease;
-    }
   }
 </style>
