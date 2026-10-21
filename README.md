@@ -38,7 +38,7 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 
 1. Eine Meditation bei gesperrtem Bildschirm bis zum Ende hören: Sie läuft durch, danach erscheint die Sitzung unter „Ich“.
 2. Benachrichtigung bzw. Sperrbildschirm: ±15 s springen, und die angezeigte Position stimmt.
-3. Unter „Ich“ „Alle offline speichern“ (mit Netz), dann Flugmodus: Die Meditation spielt, und Vor- und Zurückspulen geht.
+3. Unter „Ich“ „Alle offline speichern“ (mit Netz), dann Flugmodus: Die Meditation spielt, und Vor- und Zurückspulen geht – und „Bodyscan im Sitzen“ im Flugmodus bis nach Minute 7 hören bzw. dorthin vorspulen.
 4. Im Player einen Hintergrundklang wählen und die Balance Stimme ↔ Hintergrund verschieben: Beides wirkt sofort und gilt beim nächsten Start wieder.
 5. Anruf während der Meditation: Die Wiedergabe pausiert, „Weiter“ setzt an derselben Stelle fort.
 6. Eine Meditation einmal mit Netz abspielen: Danach steht bei ihr unter „Meditieren“ „✓ offline“.

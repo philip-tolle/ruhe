@@ -358,6 +358,76 @@ test('offline at launch, an entry is not held back before the cache has been rea
   await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(1)
 })
 
+test('a saved long meditation plays from the cache past minute 7, online and offline', async ({ page, context }) => {
+  // Aus dem Cache beantwortet der Service Worker jede Range-Anfrage mit einer selbst gebauten 206-Antwort
+  // ohne Adresse. Ohne CORS nähme Chromium nur die erste davon an: Eine Datei über etwa 3,2 MB brach dann
+  // bei 136–150 s mit PIPELINE_ERROR_READ ab, jedes Mal. Die Bodyscan-Datei (10 Minuten, 4,8 MB) muss
+  // darum mehrere Teilstücke aus dem Cache holen.
+  test.setTimeout(240_000)
+  const TITLE = 'Bodyscan im Sitzen'
+  const PAST = 460 // s, gut nach den Abbrüchen und vor dem Ende
+
+  // Die Sprechstimme ist ein `new Audio()` (src/lib/audio/voice.ts); der Test merkt sich jedes Element.
+  await page.addInitScript(() => {
+    const voices: HTMLAudioElement[] = []
+    ;(window as unknown as { __voices: HTMLAudioElement[] }).__voices = voices
+    window.Audio = new Proxy(window.Audio, {
+      construct(target, args: ConstructorParameters<typeof Audio>) {
+        const element = new target(...args)
+        voices.push(element)
+        return element
+      },
+    })
+  })
+
+  // Spielt die Meditation 16-fach schnell, bis sie über `PAST` hinaus ist oder das Element einen Fehler hat.
+  async function playPast() {
+    await entry(page, TITLE).click()
+    const player = page.getByRole('dialog', { name: 'Geführte Meditation' })
+    await expect(player.getByRole('button', { name: '15 Sekunden vor' })).toBeEnabled({ timeout: 30_000 })
+    await page.evaluate(() => {
+      const voice = (window as unknown as { __voices: HTMLAudioElement[] }).__voices.filter((e) => e.src.includes('/audio/meditations/')).at(-1)!
+      voice.defaultPlaybackRate = 16
+      voice.playbackRate = 16
+    })
+    const outcome = await page.waitForFunction(
+      (past) => {
+        const voice = (window as unknown as { __voices: HTMLAudioElement[] }).__voices.filter((e) => e.src.includes('/audio/meditations/')).at(-1)
+        if (!voice) return false
+        if (voice.error) return { at: voice.currentTime, error: `${voice.error.code} ${voice.error.message}` }
+        return voice.currentTime > past ? { at: voice.currentTime, error: null } : false
+      },
+      PAST,
+      { timeout: 120_000, polling: 250 },
+    )
+    const { at, error } = (await outcome.jsonValue()) as { at: number; error: string | null }
+    expect(error, `Fehler am Element bei ${at.toFixed(1)} s`).toBeNull()
+    expect(at).toBeGreaterThan(PAST)
+    await expect(player.getByText('Die Meditation konnte nicht geladen werden.')).toHaveCount(0)
+    await player.getByRole('button', { name: 'Beenden' }).click()
+    await page.getByRole('button', { name: 'Fertig' }).click()
+  }
+
+  // Einmal mit Netz abspielen speichert die Datei.
+  await openMeditieren(page)
+  await entry(page, TITLE).click()
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await expect(entry(page, TITLE)).toContainText('✓ offline', { timeout: 30_000 })
+
+  // Neu laden: Jetzt steuert der Service Worker die Seite, und die Datei kommt aus dem Cache.
+  await page.evaluate(async () => { await navigator.serviceWorker.ready })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Meditieren' }).click()
+  await playPast()
+
+  // Dasselbe ohne Netz.
+  await context.setOffline(true)
+  await expect(entry(page, 'Guten Morgen')).toBeDisabled()
+  await playPast()
+})
+
 test.describe('on a small phone', () => {
   test.use({ viewport: { width: 360, height: 640 } })
 

@@ -20,6 +20,11 @@ export interface StreamedVoice {
 export function createVoice(ctx: AudioContext, url: string): StreamedVoice {
   const element = new Audio()
   element.preload = 'auto'
+  // Vor `src`: Aus dem Cache baut der Service Worker jede Range-Antwort (206) selbst, ohne Adresse.
+  // Ohne CORS nimmt Chromium Daten nur von einer Herkunft an und lehnt schon die zweite davon ab;
+  // eine gespeicherte lange Meditation bräche dann nach gut zwei Minuten ab. Die Datei liegt auf
+  // derselben Herkunft, die MediaElementAudioSourceNode bleibt also hörbar.
+  element.crossOrigin = 'anonymous'
   element.src = url
   return { element, source: ctx.createMediaElementSource(element) }
 }
