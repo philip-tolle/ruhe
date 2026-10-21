@@ -117,20 +117,25 @@ Drei Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird d
 
 ### 3.4 Klänge
 
-**Acht Klänge**, frei kombinierbar, jeder mit eigenem Lautstärkeregler:
+**Acht Klänge**, es läuft immer **einer** zur Zeit:
+
+- **Antippen wechselt:** Tippt man einen anderen Klang an, blendet der bisherige aus (0,8 s) und der neue ein (1,5 s). Tippt man den laufenden Klang an, geht er aus.
+- Der laufende Klang hat einen Lautstärkeregler.
 
 | Klang | Herkunft |
 |---|---|
-| Regen | live erzeugt |
-| Meeresrauschen | live erzeugt |
-| Wind | live erzeugt |
-| Braunes Rauschen | live erzeugt |
+| Regen | ElevenLabs-Loop |
+| Meeresrauschen | ElevenLabs-Loop |
+| Wind | ElevenLabs-Loop |
+| Braunes Rauschen | ElevenLabs-Loop |
 | Wald mit Vögeln | ElevenLabs-Loop |
 | Kaminfeuer | ElevenLabs-Loop |
 | Bach | ElevenLabs-Loop |
 | Klangschalen | ElevenLabs-Loop |
 
-- **Sleep-Timer:** 15 / 30 / 45 / 60 / 90 Min oder endlos. Die letzte Minute wird sanft ausgeblendet, danach stoppt die Wiedergabe.
+*Änderung vom 21.10.2026 (auf Nutzerwunsch):* Ursprünglich waren die Klänge frei kombinierbar, und Regen, Meeresrauschen, Wind und braunes Rauschen wurden live erzeugt. Jetzt sind alle acht echte Aufnahmen (nahtlose 30-s-Schleifen), und Antippen wechselt den Klang, statt ihn dazuzumischen.
+
+- **Sleep-Timer:** 15 / 30 / 45 / 60 / 90 Min oder endlos. Die letzte Minute wird sanft ausgeblendet, danach stoppt die Wiedergabe. Ein Wechsel des Klangs startet den Countdown nicht neu.
 - Klang-Sitzungen zählen **nicht** zur Statistik.
 
 ### 3.5 Ich
@@ -142,8 +147,8 @@ Drei Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird d
 ### 3.6 Player & Mini-Player
 
 - **Vollbild-Player** für geführte Meditationen und den Timer: ruhiger Hintergrund, Titel, verbleibende Zeit, Fortschrittsring, Pause/Fortsetzen, Beenden. Bei geführten Meditationen zusätzlich ±15 s Spulen und optionaler Hintergrundklang mit Lautstärkeregler.
-- **Mini-Player:** Laufen Klänge (ohne Vollbild-Player), bleibt über der Reiterleiste ein schmaler Balken mit Name, Restzeit des Sleep-Timers und Pause.
-- Es läuft immer nur **eine** Sitzung: Startet man eine Meditation, während Klänge laufen, werden die Klänge gestoppt (der Hintergrundklang der Meditation ist davon unabhängig wählbar).
+- **Mini-Player:** Läuft ein Klang (ohne Vollbild-Player), bleibt über der Reiterleiste ein schmaler Balken mit seinem Namen, der Restzeit des Sleep-Timers und Pause.
+- Es läuft immer nur **eine** Sitzung: Startet man eine Meditation, während ein Klang läuft, wird er gestoppt (der Hintergrundklang der Meditation ist davon unabhängig wählbar).
 
 ---
 
@@ -154,8 +159,7 @@ Das Herzstück. Ziel: zuverlässige Wiedergabe bei gesperrtem Bildschirm und sek
 ### 4.1 Aufbau
 
 ```
- Live-Rauschklänge ─┐
- Loops (Opus)  ─────┤
+ Loops (Opus)  ─────┐
  Klangschalen  ─────┼─► Mischpult (Gain je Quelle) ─► Master-Gain ─► Begrenzer ─► Lautsprecher (ctx.destination)
  Stimme (MP3)  ─────┘
    (über MediaElementSource,
@@ -165,6 +169,7 @@ Das Herzstück. Ziel: zuverlässige Wiedergabe bei gesperrtem Bildschirm und sek
 
 - **Ein `AudioContext`** für die ganze App, erzeugt beim ersten Tipp auf „Start“ (Autoplay-Regel des Browsers).
 - **Ein einziger Klang-Ausgang:** Das gemischte Signal geht direkt an den Lautsprecher (`ctx.destination`).
+- **Klänge:** Alle acht sind Loops (siehe 4.4). Von ihnen klingt immer nur einer; nur während eines Wechsels überblenden kurz der alte und der neue.
 - **Lautloser Anker:** Parallel spielt ein verstecktes `<audio>`-Element eine 30 s lange, nahezu stille Aufnahme in Schleife. Dadurch behandelt Android die App als Medienwiedergabe: Ton läuft bei ausgeschaltetem Bildschirm weiter, Titel und Steuerung erscheinen in Benachrichtigung und Sperrbildschirm. Seine `pause`-Ereignisse zeigen Unterbrechungen durch das System an.
 - *Änderung vom 21.10.2026:* Ursprünglich lief die Mischung über einen `MediaStreamAudioDestinationNode` in das `<audio>`-Element. Auf dem Android-Testgerät ruckelte dieser Weg dauerhaft (Diagnose: Weg B ruckelt, Web Audio direkt nicht). Web Audio direkt plus lautloser Anker lief dort bei gesperrtem Bildschirm stabil durch, die Sperrbildschirm-Steuerung funktionierte.
 - **Stimme** wird nicht komplett dekodiert (eine 10-Minuten-Datei wäre > 100 MB im Speicher), sondern über ein `<audio>`-Element gestreamt und per `MediaElementAudioSourceNode` ins Mischpult geführt.
@@ -180,20 +185,13 @@ Normale JavaScript-Timer werden von Android im Hintergrund stark gedrosselt. Des
 - Die Anzeige (Restzeit, Ring) liest bei sichtbarem Bildschirm `audioContext.currentTime` aus; sie steuert nichts.
 - **Pause** hält die Audio-Uhr (`audioContext.suspend()`) und die Stimme gemeinsam an. Alle eingeplanten Ereignisse verschieben sich dadurch automatisch mit.
 
-### 4.3 Live erzeugte Klänge
+### 4.3 Live erzeugte Klänge (entfallen)
 
-Grundlage ist jeweils ein ca. 15 s langer, zufällig erzeugter Rausch-Puffer in Schleife (die Wiederholung von Rauschen ist nicht hörbar). Charakter entsteht durch Filter und langsame Modulation mit Oszillatoren in „krummen“, nicht ganzzahlig verwandten Frequenzen, damit sich kein hörbares Muster wiederholt:
-
-- **Braunes Rauschen:** integriertes weißes Rauschen, Tiefpass.
-- **Regen:** rosa Rauschen mit Bandpass, dazu zufällig verteilte, kurze gefilterte Tropfen-Impulse.
-- **Meeresrauschen:** braunes/rosa Rauschen mit Tiefpass; Lautstärke und Filterfrequenz schwellen in Wellen von ca. 8–12 s an und ab.
-- **Wind:** Rauschen durch Bandpass mit langsam wandernder Mittenfrequenz und Lautstärke.
-
-Feinabstimmung der Rezepte erfolgt nach Gehör während der Umsetzung.
+*Änderung vom 21.10.2026 (auf Nutzerwunsch):* echte Aufnahmen statt Synthese. Regen, Meeresrauschen, Wind und braunes Rauschen sind jetzt wie die übrigen Klänge ElevenLabs-Loops (siehe 3.4 und 4.4). Die live erzeugten Klänge (gefilterte Rausch-Puffer mit langsamer Modulation) und ihr Code sind entfernt.
 
 ### 4.4 Loops & Klangschalen
 
-- ElevenLabs-Loops und die Klangschale liegen als **Ogg/Opus** vor. Chrome dekodiert Opus ohne Lücke am Dateianfang, dadurch laufen `AudioBufferSourceNode`-Schleifen nahtlos (bei MP3 entstünde ein Klick an der Nahtstelle).
+- Alle acht Klänge (ElevenLabs-Loops, je 30 s) und die Klangschale liegen als **Ogg/Opus** vor. Chrome dekodiert Opus ohne Lücke am Dateianfang, dadurch laufen `AudioBufferSourceNode`-Schleifen nahtlos (bei MP3 entstünde ein Klick an der Nahtstelle).
 - Sie werden beim ersten Gebrauch dekodiert und im Speicher gehalten.
 
 ### 4.5 Media Session
@@ -208,7 +206,7 @@ Feinabstimmung der Rezepte erfolgt nach Gehör während der Umsetzung.
 
 **Absicherung:** Meilenstein 1 endet mit einem Härtetest auf dem echten Handy: 60 Min Regen mit Sleep-Timer bei gesperrtem Bildschirm.
 
-**Plan B**, falls der Test scheitert: Die vier Rauschklänge werden per Skript als lange (≈ 5 Min) nahtlose Ogg/Opus-Dateien vorab erzeugt und im Schlafmodus direkt über ein `<audio loop>`-Element abgespielt statt über das Mischpult. Eine Wiederholung nach 5 Minuten ist praktisch nicht hörbar.
+**Plan B**, falls der Test scheitert: Die vier Rauschklänge werden per Skript als lange (≈ 5 Min) nahtlose Ogg/Opus-Dateien vorab erzeugt und im Schlafmodus direkt über ein `<audio loop>`-Element abgespielt statt über das Mischpult. Eine Wiederholung nach 5 Minuten ist praktisch nicht hörbar. (Stand 21.10.2026: Live erzeugte Rauschklänge gibt es nicht mehr, alle Klänge sind Aufnahmen, siehe 4.3.)
 
 *Hinweis aus der Gerätediagnose (21.10.2026):* Ein `<audio loop>`-Element erzeugt auf Android beim Neustart der Schleife einen hörbaren Ruckler. Plan B müsste diese Naht deshalb anders lösen, z. B. durch sehr lange Dateien. Vorrang hat der Weg aus 4.1: Web Audio direkt plus lautloser Anker.
 
@@ -269,19 +267,17 @@ Atme ein … und lass den Atem ganz von allein wieder gehen.
 
 ### 5.3 Klang-Skript `scripts/sounds.mjs`
 
-- Definitionen in `content/sounds.json`: id, Titel, Art (`live` | `loop`), bei Loops der ElevenLabs-Prompt.
-- Erzeugt die 4 Loops über ElevenLabs Sound Effects im Loop-Modus (≈ 20–30 s) sowie einen einzelnen Klangschalen-Schlag.
+- Definitionen in `content/sounds.json`: id, Titel, Datei und der ElevenLabs-Prompt der Aufnahme.
+- Erzeugt die 8 Loops über ElevenLabs Sound Effects im Loop-Modus (30 s) sowie einen einzelnen Klangschalen-Schlag.
 - Ist eine Nahtstelle hörbar, wird sie mit einer kurzen Überblendung geglättet.
-- Ausgabe als Ogg/Opus (Stereo, ≈ 96 kbit/s) nach `public/audio/sounds/`.
+- Ausgabe als Ogg/Opus (Stereo, 48 kHz, ≈ 96 kbit/s, −26 LUFS) nach `public/audio/sounds/`.
+- *Stand 21.10.2026:* Die 8 Loops sind echt und eingecheckt (je 4 Varianten, gewählt nach der saubersten Naht); die Prompts in `content/sounds.json` sind die tatsächlich verwendeten. Offen ist nur noch der Klangschalen-Schlag.
 
 ### 5.4 Platzhalter bis zur Vertonung
 
-`scripts/placeholders.mjs` erzeugt per ffmpeg:
+Ein Platzhalter-Skript erzeugt per ffmpeg für jede Meditation eine Datei in der Ziel-Länge (leise Stille mit synthetischem Glockenton alle 30 s). So sind Player, Offline-Speicher und Statistik vollständig testbar, bevor die Vertonung steht. Die echten Dateien ersetzen die Platzhalter später unter gleichem Namen.
 
-- für jede Meditation eine Datei in der Ziel-Länge (leise Stille mit synthetischem Glockenton alle 30 s),
-- für die 4 Loops und die Klangschale einfache synthetische Ersatzklänge.
-
-So sind Player, Offline-Speicher und Statistik vollständig testbar, bevor ElevenLabs eingerichtet ist. Die echten Dateien ersetzen die Platzhalter später unter gleichem Namen.
+*Änderung vom 21.10.2026:* Die 8 Loops sind jetzt echte Aufnahmen, für sie gibt es keine Platzhalter mehr. Platzhalter ist nur noch der Klangschalen-Schlag (`public/audio/sounds/klangschale.ogg`, synthetisch aus Meilenstein 1). Das bisherige Skript `scripts/placeholders.mjs` (Loops und Klangschale) ist mit den Live-Klängen entfallen; das Skript für die Meditations-Platzhalter entsteht mit Meilenstein 3.
 
 ### 5.5 Kosten (Schätzung)
 
@@ -337,7 +333,7 @@ type Session = {
 
 ### 6.5 Offline (Service Worker)
 
-- **Vorab gespeichert (Precache):** App-Grundgerüst, Schriften, Icons, die 4 Loops und die Klangschale (≈ 2–4 MB). Damit laufen Timer, Atmen und Klänge sofort offline.
+- **Vorab gespeichert (Precache):** App-Grundgerüst, Schriften, Icons, die 8 Loops und die Klangschale (≈ 3 MB). Damit laufen Timer, Atmen und Klänge sofort offline.
 - **Meditationen:** Beim ersten Abspielen wird die Datei gestreamt und parallel vollständig in den Cache `ruhe-meditations` geladen (der Browser fragt beim Streamen nur Teilstücke an, die sich nicht cachen lassen; deshalb der zusätzliche vollständige Download). Aus dem Cache wird mit Range-Unterstützung ausgeliefert, damit Spulen offline funktioniert.
 - **„Alle offline speichern“** lädt alle fehlenden Meditationen mit Fortschrittsanzeige.
 - **Offline-Status** je Meditation wird über den Cache abgefragt (✓ in der Liste). Offline und nicht gespeichert: Eintrag ausgegraut mit Hinweis „Nicht offline verfügbar“.
@@ -381,7 +377,7 @@ ruhe/
 ├─ scripts/
 │  ├─ voice.mjs                 Vertonung: estimate | cast | build
 │  ├─ sounds.mjs                Loops & Klangschale erzeugen
-│  └─ placeholders.mjs          Platzhalter-Audio per ffmpeg
+│  └─ placeholders.mjs          Platzhalter-Audio für Meditationen per ffmpeg (Meilenstein 3)
 ├─ audio-work/                  Casting-Proben & Abschnitt-Cache (eingecheckt)
 ├─ public/
 │  ├─ audio/meditations/*.mp3   erzeugt
@@ -389,7 +385,7 @@ ruhe/
 │  └─ icons/
 ├─ src/
 │  ├─ lib/
-│  │  ├─ audio/                 engine, noise (Live-Klänge), loops, schedule (Timer-Plan), media-session
+│  │  ├─ audio/                 engine, loops, schedule (Timer-Plan), media-session
 │  │  ├─ breath/                Atemmuster & Phasen-Ablauf
 │  │  ├─ stats/                 store, streak, backup
 │  │  ├─ offline/               Cache-Status, „Alle speichern“
@@ -457,10 +453,10 @@ Jede Datei unter `src/lib/` hat eine klar umrissene Aufgabe und ist ohne UI test
 
 | # | Inhalt | Abnahme durch dich |
 |---|---|---|
-| 1 | Grundgerüst, Gestaltung, Reiterleiste, Audio-Engine, 4 Live-Klänge + Platzhalter-Loops, Sleep-Timer, PWA/Offline, Deployment | Härtetest: 60 Min Regen bei gesperrtem Bildschirm (Checkliste 1–4) |
+| 1 | Grundgerüst, Gestaltung, Reiterleiste, Audio-Engine, 4 Live-Klänge + Platzhalter-Loops (*21.10.2026:* ersetzt durch 8 echte ElevenLabs-Loops, ein Klang zur Zeit), Sleep-Timer, PWA/Offline, Deployment | Härtetest: 60 Min Regen bei gesperrtem Bildschirm (Checkliste 1–4) |
 | 2 | Meditations-Timer, Atemübungen, Statistik, Einstellungen, Backup | Erste echte Meditationen mit Timer und Atmen |
 | 3 | Geführte Meditationen: Player, Offline-Speicher, Platzhalter-Audio, Vertonungs-Skript (ohne API getestet), die 9 Texte | Texte gegenlesen und freigeben |
-| 4 | *Neue Session mit ElevenLabs-Zugang:* Stimm-Casting, Vertonung der 9 Meditationen, echte Loops und Klangschale | Fertige App, komplette Checkliste |
+| 4 | *Neue Session mit ElevenLabs-Zugang:* Stimm-Casting, Vertonung der 9 Meditationen, echter Klangschalen-Schlag (die 8 Loops sind seit 21.10.2026 fertig) | Fertige App, komplette Checkliste |
 
 Für jeden Meilenstein entsteht ein eigener Implementierungsplan, beginnend mit Meilenstein 1. Ergibt der Härtetest in Meilenstein 1, dass Plan B (4.6) nötig ist, wird das vor Meilenstein 2 umgesetzt.
 
