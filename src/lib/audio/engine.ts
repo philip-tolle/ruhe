@@ -265,11 +265,13 @@ export class AudioEngine {
     const idle = this.active.size === 0 && this.pending.size === 0
     // Steht die Audio-Uhr (Pause), wäre eine Rampe erst nach dem Fortsetzen zu hören: sofort
     // beenden. In der Pause ist das Medien-Element schon angehalten, das Ende also unhörbar.
-    // Endet damit die Sitzung, gilt das auch für eine Stimme, die ein Wechsel kurz zuvor abgelöst
-    // hat und deren Ausblenden mit der Uhr stehen geblieben ist.
+    // Das gilt für jede Stimme außer der aktiven, auch für eine, die ein Wechsel kurz zuvor
+    // abgelöst hat und deren Ausblenden mit der Uhr stehen geblieben ist.
     const frozen = this.state === 'paused' || ctx.state !== 'running'
     if (frozen) {
-      for (const channel of idle ? [...this.channels] : released) {
+      const playing = new Set(this.active.values())
+      for (const channel of [...this.channels]) {
+        if (playing.has(channel)) continue
         channel.voice.stop(now)
         this.teardown(channel)
       }

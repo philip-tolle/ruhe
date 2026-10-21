@@ -80,6 +80,17 @@ test('switching while paused resumes with only the new sound', async () => {
   expect(out!.ctx.state).toBe('running')
 })
 
+test('switching while paused also ends a sound still fading out from an earlier switch', async () => {
+  const e = make()
+  await e.toggle('kaminfeuer')
+  await e.toggle('regen')                    // Kaminfeuer blendet aus …
+  await e.pause()                            // … und bleibt dabei mit der Audio-Uhr stehen
+  expect(e.voiceCount()).toBe(2)
+  await e.toggle('wald')
+  expect(e.snapshot().volumes).toEqual({ wald: 0.7 })
+  expect(e.voiceCount()).toBe(1)             // nichts Ausklingendes läuft nach dem Fortsetzen weiter
+})
+
 test('rapid toggles never duplicate a voice', async () => {
   const e = make()
   await Promise.all([e.toggle('wald'), e.toggle('wald'), e.toggle('wald')])
