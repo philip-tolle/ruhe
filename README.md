@@ -30,6 +30,9 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 3. Atemübung mit Vibration, Bildschirm bleibt an.
 4. Backup exportieren und wieder importieren.
 5. Atemübung 10 Min: Handy wird nicht auffällig warm, Akku sinkt nicht ungewöhnlich (alle Töne werden zu Beginn eingeplant).
+6. Timer zu Ende laufen lassen und während die Klangschalen ausklingen im Sperrbildschirm auf Pause tippen: die Benachrichtigung verschwindet, die Sitzung steht unter „Ich“.
+7. Backup über Drive oder Messenger auf ein anderes Gerät schicken und dort importieren.
+8. Auf „Starten“ doppelt tippen: Der Timer läuft normal.
 
 ## Entwicklung
 

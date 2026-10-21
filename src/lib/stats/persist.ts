@@ -48,11 +48,14 @@ export function saveData(storage: StorageLike | null, data: AppData): boolean {
 }
 
 /**
- * Hängt eine Sitzung an einen neuen Stand an (`data` bleibt unverändert). Die einzige Stelle
- * der 60-Sekunden-Regel: kürzere Sitzungen ergeben `null`.
+ * Hängt eine Sitzung an einen neuen Stand an (`data` bleibt unverändert). Hier gilt die
+ * 60-Sekunden-Regel für neue Sitzungen (beim Import prüft `mergeBackup` dasselbe): kürzere ergeben
+ * `null`. Ebenso eine Dauer, die keine endliche Zahl ist, oder ein ungültiger Beginn: Gespeichert
+ * machte eine solche Sitzung beim nächsten Laden den ganzen Stand ungültig. Wirft nie.
  */
 export function withSession(data: AppData, result: SessionResult, id: string): AppData | null {
-  if (result.seconds < MIN_SECONDS) return null
+  if (!(Number.isFinite(result.seconds) && result.seconds >= MIN_SECONDS)) return null
+  if (Number.isNaN(result.start.getTime())) return null
   const session = { id, start: result.start.toISOString(), kind: result.kind, ref: result.ref, seconds: Math.floor(result.seconds) }
   return { ...data, sessions: [...data.sessions, session] }
 }

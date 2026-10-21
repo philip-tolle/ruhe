@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import { parseData, emptyData, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
 import { SOUNDS } from '../../src/lib/sounds/catalog'
-import { BREATH_PATTERNS } from '../../src/lib/breath/patterns'
+import { BREATH_MINUTES, BREATH_PATTERNS } from '../../src/lib/breath/patterns'
 
 const session = { id: 'a', start: '2026-10-21T08:00:00.000Z', kind: 'breath', ref: '478', seconds: 76 }
 const withSettings = (settings: unknown) => parseData({ version: 1, sessions: [], settings })?.settings
@@ -100,5 +100,13 @@ test('an invalid lastUsed is dropped, the rest stays', () => {
     expect(parsed).not.toBeNull()
     expect(parsed).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
     expect(parsed && 'lastUsed' in parsed).toBe(false)
+  }
+})
+test('a breath lastUsed must have one of the offered durations', () => {
+  for (const minutes of BREATH_MINUTES)
+    expect(withLastUsed({ kind: 'breath', pattern: 'box', minutes })?.lastUsed).toEqual({ kind: 'breath', pattern: 'box', minutes })
+  for (const minutes of [2, 4, 7, 3.5, 15, 120]) {
+    const parsed = withLastUsed({ kind: 'breath', pattern: 'box', minutes })
+    expect(parsed).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
   }
 })

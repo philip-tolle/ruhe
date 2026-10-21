@@ -284,6 +284,8 @@ Atme ein … und lass den Atem ganz von allein wieder gehen.
 - Ausgabe als Ogg/Opus (Stereo, 48 kHz, ≈ 96 kbit/s, −26 LUFS) nach `public/audio/sounds/`.
 - *Stand 21.10.2026:* Die 8 Loops sind echt und eingecheckt (je 4 Varianten, gewählt nach der saubersten Naht); die Prompts in `content/sounds.json` sind die tatsächlich verwendeten. Offen ist nur noch der Klangschalen-Schlag.
 
+*Ergänzung vom 21.10.2026:* Der Klangschalen-Schlag ist seit Meilenstein 2 ebenfalls eine echte Aufnahme.
+
 ### 5.4 Platzhalter bis zur Vertonung
 
 Ein Platzhalter-Skript erzeugt per ffmpeg für jede Meditation eine Datei in der Ziel-Länge (leise Stille mit synthetischem Glockenton alle 30 s). So sind Player, Offline-Speicher und Statistik vollständig testbar, bevor die Vertonung steht. Die echten Dateien ersetzen die Platzhalter später unter gleichem Namen.

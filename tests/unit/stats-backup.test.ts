@@ -51,3 +51,10 @@ test('invalid backup variants leave everything untouched', () => {
     expect(mergeBackup(mine, text)).toEqual(INVALID)
   expect(JSON.stringify(mine)).toBe(before)
 })
+test('merge drops sessions under 60 s from the file instead of importing them; the file stays valid', () => {
+  const short = (id: string, seconds: number) => ({ ...sess(id, '2026-10-19T08:00:00.000Z'), seconds })
+  const theirs = { ...emptyData(), sessions: [short('null', 0), short('kurz', 59.9), short('genau', 60), sess('lang', '2026-10-20T08:00:00.000Z')] }
+  const r = mergeBackup(emptyData(), serializeBackup(theirs))
+  expect(r).toMatchObject({ added: 2 })
+  expect('data' in r && r.data.sessions.map(x => x.id)).toEqual(['genau', 'lang'])
+})

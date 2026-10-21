@@ -1,7 +1,7 @@
 // Datenschema der gespeicherten Daten (localStorage['ruhe.v1']) mit strenger Prüfung.
 // Reine Funktionen ohne Speicherzugriff; das Laden und Sichern übernimmt die Persistenz.
 import { SOUNDS, type SoundId } from '../sounds/catalog'
-import { BREATH_PATTERNS, type BreathPatternId } from '../breath/patterns'
+import { BREATH_MINUTES, BREATH_PATTERNS, type BreathPatternId } from '../breath/patterns'
 import { INTERVAL_OPTIONS } from '../meditation/timer-plan'
 
 export type SessionKind = 'guided' | 'timer' | 'breath'
@@ -122,7 +122,8 @@ function parseLastUsed(raw: unknown): LastUsed | null {
   }
   if (raw.kind === 'breath') {
     const { pattern, minutes } = raw
-    if (!isPatternId(pattern) || !isPositive(minutes)) return null
+    // Nur die angebotenen Dauern: Eine Atemübung startet über diesen Eintrag direkt.
+    if (!isPatternId(pattern) || typeof minutes !== 'number' || !BREATH_MINUTES.includes(minutes)) return null
     return { kind: 'breath', pattern, minutes }
   }
   return null

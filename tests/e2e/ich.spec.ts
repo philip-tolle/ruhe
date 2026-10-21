@@ -241,6 +241,12 @@ test('export downloads the sessions and settings under the day of today', async 
 
 test('import merges new sessions, skips known ones and takes over the settings', async ({ page }) => {
   await open(page)
+  // Der Hinweis sagt vorher, dass die Einstellungen aus der Datei kommen.
+  await expect(
+    page.getByText(
+      'Sichere deine Sitzungen und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen dazu, die Einstellungen werden aus der Datei übernommen.',
+    ),
+  ).toBeVisible()
   const status = page.getByRole('status')
   await expect(status).toHaveText('')
   const incoming = backupOf(
