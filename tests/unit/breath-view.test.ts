@@ -1,11 +1,13 @@
 import { test, expect } from 'vitest'
 import { BREATH_PATTERNS, breathAt, breathPlan, type BreathMoment } from '../../src/lib/breath/patterns'
-import { circleScale, phaseChanged } from '../../src/lib/breath/view'
+import { circleScale, easedLevel, holdPulse, phaseChanged, phaseColor, phaseProgress, vibrationPattern } from '../../src/lib/breath/view'
 
 const moment = (over: Partial<BreathMoment> = {}): BreathMoment => ({
   kind: 'ein',
   label: 'Einatmen',
-  level: 0.5,
+  level: 0.25,
+  startLevel: 0,
+  endLevel: 1,
   phaseElapsed: 1,
   phaseLength: 4,
   secondsLeft: 3,
@@ -13,10 +15,96 @@ const moment = (over: Partial<BreathMoment> = {}): BreathMoment => ({
   ...over,
 })
 
-test('the circle scales between 0.6 and 1 with the breath level', () => {
-  expect(circleScale(0)).toBeCloseTo(0.6)
-  expect(circleScale(0.5)).toBeCloseTo(0.8)
+test('the circle scales between 0.45 and 1 with the breath level', () => {
+  expect(circleScale(0)).toBeCloseTo(0.45)
+  expect(circleScale(0.5)).toBeCloseTo(0.725)
   expect(circleScale(1)).toBeCloseTo(1)
+})
+
+test('the eased level starts and ends with its phase and passes the middle halfway', () => {
+  expect(easedLevel(moment({ phaseElapsed: 0 }))).toBe(0)
+  expect(easedLevel(moment({ phaseElapsed: 2 }))).toBeCloseTo(0.5)
+  expect(easedLevel(moment({ phaseElapsed: 4 }))).toBeCloseTo(1)
+  // start + (end − start) · (1 − cos(π·p)) / 2
+  expect(easedLevel(moment({ phaseElapsed: 1 }))).toBeCloseTo((1 - Math.cos(Math.PI / 4)) / 2)
+  expect(easedLevel(moment({ kind: 'aus', startLevel: 1, endLevel: 0, phaseElapsed: 1 }))).toBeCloseTo(1 - (1 - Math.cos(Math.PI / 4)) / 2)
+  expect(easedLevel(moment({ startLevel: 0.8, endLevel: 1, phaseElapsed: 0.5, phaseLength: 1 }))).toBeCloseTo(0.9)
+})
+
+test('the eased level moves gently at the edges of a phase and rests while holding', () => {
+  const linear = (m: BreathMoment) => m.startLevel + (m.endLevel - m.startLevel) * (m.phaseElapsed / m.phaseLength)
+  for (const t of [0.2, 0.6]) {
+    const rising = moment({ phaseElapsed: t })
+    const falling = moment({ kind: 'aus', startLevel: 1, endLevel: 0, phaseElapsed: t })
+    expect(easedLevel(rising)).toBeLessThan(linear(rising))
+    expect(easedLevel(falling)).toBeGreaterThan(linear(falling))
+  }
+  expect(easedLevel(moment({ phaseElapsed: 3.8 }))).toBeGreaterThan(linear(moment({ phaseElapsed: 3.8 })))
+  for (const t of [0, 1.3, 4]) expect(easedLevel(moment({ kind: 'halten', startLevel: 1, endLevel: 1, phaseElapsed: t }))).toBe(1)
+})
+
+test('the eased level follows the patterns without jumps, also across phase boundaries', () => {
+  const bad: string[] = []
+  for (const pattern of BREATH_PATTERNS) {
+    const { cycle, length } = breathPlan(pattern.id, 1)
+    let previous: number | null = null
+    // 60 Bilder pro Sekunde, bis zum Ende der Übung
+    for (let i = 0; i <= length * 60; i++) {
+      const t = i / 60
+      const m = breathAt(pattern.id, t, length)
+      const level = easedLevel(m)
+      if (level < 0 || level > 1) bad.push(`${pattern.id} t=${t}: ${level}`)
+      if (previous !== null && Math.abs(level - previous) > 0.01) bad.push(`${pattern.id} t=${t}: ${previous} → ${level}`)
+      previous = level
+    }
+    expect(easedLevel(breathAt(pattern.id, 0, length)), pattern.title).toBe(0)
+    expect(easedLevel(breathAt(pattern.id, cycle - 1e-9, length)), pattern.title).toBeCloseTo(0, 6)
+    expect(easedLevel(breathAt(pattern.id, length, length)), pattern.title).toBeCloseTo(0, 9)
+  }
+  expect(bad).toEqual([])
+})
+
+test('the phase ring fills with the phase and starts over with the next one', () => {
+  expect(phaseProgress(breathAt('478', 0, 76))).toBe(0)
+  expect(phaseProgress(breathAt('478', 2, 76))).toBeCloseTo(0.5)
+  expect(phaseProgress(breathAt('478', 4, 76))).toBe(0) // Halten beginnt
+  expect(phaseProgress(breathAt('478', 7.5, 76))).toBeCloseTo(0.5)
+  expect(phaseProgress(breathAt('478', 76, 76))).toBe(1) // fertig: Ring voll
+  expect(phaseProgress(moment({ phaseElapsed: 5 }))).toBe(1)
+  expect(phaseProgress(moment({ phaseElapsed: -1 }))).toBe(0)
+})
+
+test('the glow pulses gently only while holding, resting at both ends of the hold', () => {
+  for (const kind of ['ein', 'aus'] as const) {
+    for (const t of [0, 1.5, 2, 3.9]) expect(holdPulse(moment({ kind, phaseElapsed: t }))).toBe(0)
+  }
+  const hold = (phaseElapsed: number, phaseLength: number) =>
+    holdPulse(moment({ kind: 'halten', label: 'Halten', startLevel: 1, endLevel: 1, phaseElapsed, phaseLength }))
+  // 4-7-8: sieben Sekunden halten, zwei ruhige Wellen; Box-Atmung: vier Sekunden, eine Welle.
+  expect([0, 1.75, 3.5, 5.25, 7].map(t => hold(t, 7))).toEqual([0, 1, 0, 1, 0].map(v => expect.closeTo(v, 9)))
+  expect([0, 2, 4].map(t => hold(t, 4))).toEqual([0, 1, 0].map(v => expect.closeTo(v, 9)))
+  for (let t = 0; t <= 7; t += 0.1) {
+    expect(hold(t, 7)).toBeGreaterThanOrEqual(0)
+    expect(hold(t, 7)).toBeLessThanOrEqual(1)
+  }
+  expect(hold(0.5, 1)).toBeCloseTo(1) // ein sehr kurzes Halten hat trotzdem eine Welle
+})
+
+test('each phase has its own colour: warm gold, calm lilac, cool blue', () => {
+  expect(phaseColor('ein')).toBe('#F2C98A')
+  expect(phaseColor('halten')).toBe('#C9B8F0')
+  expect(phaseColor('aus')).toBe('#8FB8E8')
+})
+
+test('each phase has its own vibration: one pulse, a short tap, two pulses', () => {
+  expect(vibrationPattern('ein')).toEqual([200])
+  expect(vibrationPattern('halten')).toEqual([60])
+  expect(vibrationPattern('aus')).toEqual([150, 120, 150])
+  // Nachatmen beim Seufzer ist eine Phase der Art „ein“.
+  expect(vibrationPattern(breathAt('seufzer', 3.5, 60).kind)).toEqual([200])
+  // Jeder Aufruf gibt ein eigenes Muster zurück; Ändern eines Ergebnisses ändert die nächsten nicht.
+  vibrationPattern('aus').push(999)
+  expect(vibrationPattern('aus')).toEqual([150, 120, 150])
 })
 
 test('the first frame is no phase change', () => {

@@ -51,6 +51,26 @@ async function circleScale(page: Page) {
   return transform === 'none' ? 1 : parseFloat(transform.slice('matrix('.length))
 }
 
+// Phasenfarbe des Kreises (eingetragene Farbe, also als rgb() berechnet).
+const GOLD = 'rgb(242, 201, 138)' // Einatmen
+const LILAC = 'rgb(201, 184, 240)' // Halten
+const BLUE = 'rgb(143, 184, 232)' // Ausatmen
+const phaseColor = (page: Page) =>
+  page.getByTestId('breath-circle').evaluate((el) => getComputedStyle(el).getPropertyValue('--phase-color').trim())
+
+// Füllstand des Phasenrings, 0 … 1; zu Beginn einer Phase ist noch nichts gezeichnet.
+const ringProgress = (page: Page) =>
+  page.evaluate(() => {
+    const arc = document.querySelector('[data-testid="phase-ring"]')
+    if (!arc) return 0
+    return 1 - Number(arc.getAttribute('stroke-dashoffset')) / Number(arc.getAttribute('stroke-dasharray'))
+  })
+
+// Die Vibrationsmuster je Phase.
+const IN = [200]
+const HOLD = [60]
+const OUT = [150, 120, 150]
+
 test('breathing shows the phases in order and can be ended', async ({ page }) => {
   await page.goto('./')
   await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Atmen' }).click()
@@ -185,18 +205,24 @@ test('pause freezes countdown and circle and stops the animation loop', async ({
   await page.getByRole('button', { name: 'Pause' }).click()
   await expect(page.getByRole('button', { name: 'Weiter' })).toBeVisible()
   await page.waitForTimeout(400) // die Audio-Uhr hält an, die Schleife beruhigt sich
-  const paused = { frames: await frames(), seconds: await page.getByRole('timer').innerText(), transform: await circleTransform(page) }
+  const paused = {
+    frames: await frames(),
+    seconds: await page.getByRole('timer').innerText(),
+    transform: await circleTransform(page),
+    ring: await ringProgress(page),
+  }
   await page.waitForTimeout(1500)
   expect(await frames()).toBe(paused.frames)
   expect(await page.getByRole('timer').innerText()).toBe(paused.seconds)
   expect(await circleTransform(page)).toBe(paused.transform)
+  expect(await ringProgress(page)).toBe(paused.ring)
 
   await page.getByRole('button', { name: 'Weiter' }).click()
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
   await expect.poll(frames).toBeGreaterThan(paused.frames + 5)
 })
 
-test('the circle grows while breathing in, rests on hold and shrinks while breathing out', async ({ page }) => {
+test('the circle grows while breathing in, rests on hold and shrinks while breathing out, each phase in its colour', async ({ page }) => {
   test.setTimeout(45_000)
   await openAtmen(page)
   await page.getByRole('button', { name: 'Box-Atmung starten' }).click()
@@ -204,14 +230,18 @@ test('the circle grows while breathing in, rests on hold and shrinks while breat
   const hold = page.getByText('Halten', { exact: true })
   const exhale = page.getByText('Ausatmen', { exact: true })
 
+  // Ausgeatmet ist der Kreis knapp halb so groß; er wächst sanft an.
   await expect(inhale).toBeVisible()
   const early = await circleScale(page)
-  expect(early).toBeGreaterThanOrEqual(0.59)
-  expect(early).toBeLessThan(0.85)
+  expect(early).toBeGreaterThanOrEqual(0.44)
+  expect(early).toBeLessThan(0.75)
   await expect.poll(() => circleScale(page)).toBeGreaterThan(early + 0.1)
+  await expect.poll(() => phaseColor(page)).toBe(GOLD)
+  await expect.poll(() => ringProgress(page)).toBeGreaterThan(0.25)
 
   await expect(hold).toBeVisible({ timeout: 6000 })
   await expect.poll(() => circleScale(page)).toBeGreaterThan(0.97)
+  await expect.poll(() => phaseColor(page)).toBe(LILAC)
   await page.waitForTimeout(1000)
   expect(await circleScale(page)).toBeCloseTo(1, 2)
 
@@ -219,17 +249,24 @@ test('the circle grows while breathing in, rests on hold and shrinks while breat
   const start = await circleScale(page)
   expect(start).toBeGreaterThan(0.85)
   await expect.poll(() => circleScale(page)).toBeLessThan(start - 0.1)
+  await expect.poll(() => phaseColor(page)).toBe(BLUE)
 })
 
-test('under reduced motion the circle stays static while text and countdown still change', async ({ page }) => {
+test('under reduced motion the circle stays static while colour, ring, text and countdown still change', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await openAtmen(page)
   await page.getByRole('button', { name: '4-7-8 starten' }).click()
   await expect(page.getByText('Einatmen', { exact: true })).toBeVisible()
   const still = await circleTransform(page)
+  expect(await phaseColor(page)).toBe(GOLD)
+  const ring = await ringProgress(page)
   await page.waitForTimeout(1500)
   expect(await circleTransform(page)).toBe(still)
+  expect(await ringProgress(page)).toBeGreaterThan(ring + 0.2)
   await expect(page.getByText('Halten', { exact: true })).toBeVisible({ timeout: 6000 })
+  // Ohne Übergang: Die Farbe wechselt mit dem Text, der Ring beginnt von vorn.
+  expect(await phaseColor(page)).toBe(LILAC)
+  expect(await ringProgress(page)).toBeLessThan(0.5)
   expect(await circleTransform(page)).toBe(still)
   await expect(page.getByRole('timer')).toHaveText(/^[5-7]$/)
 })
@@ -242,17 +279,17 @@ test('it vibrates on each real phase change and not on the first frame', async (
   await page.waitForTimeout(500)
   expect(await vibrations(page)).toEqual([])
   await expect(page.getByText('Halten', { exact: true })).toBeVisible({ timeout: 6000 })
-  await expect.poll(() => vibrations(page)).toEqual([40])
+  await expect.poll(() => vibrations(page)).toEqual([HOLD])
 
   // Pause und Weiter sind kein Phasenwechsel.
   await page.getByRole('button', { name: 'Pause' }).click()
   await page.getByRole('button', { name: 'Weiter' }).click()
   await page.waitForTimeout(500)
-  expect(await vibrations(page)).toEqual([40])
+  expect(await vibrations(page)).toEqual([HOLD])
 
   await page.getByRole('button', { name: 'Beenden' }).click()
   await expect(page.getByRole('heading', { name: 'Gut gemacht.' })).toBeVisible()
-  expect(await vibrations(page)).toEqual([40])
+  expect(await vibrations(page)).toEqual([HOLD])
 })
 
 test('it does not vibrate when vibration is switched off in the settings', async ({ page }) => {
@@ -309,19 +346,19 @@ test('the screen stays on during the exercise, comes back after the page was hid
   await expect.poll(() => locks(page)).toEqual([true, true])
 })
 
-test('a full one-minute exercise is counted, vibrates once per phase change and frees the screen', async ({ page }) => {
+test('a full one-minute exercise is counted, vibrates once per phase change in its pattern and frees the screen', async ({ page }) => {
   test.setTimeout(120_000)
   await spyOnDevice(page)
   await openAtmen(page)
   await page.getByRole('radio', { name: '1 Min' }).click()
-  // 10-s-Zyklus: genau 60 s, sechs Zyklen mit je zwei Phasen.
-  await page.getByRole('button', { name: 'Langes Ausatmen starten' }).click()
+  // 19-s-Zyklus: Der vierte Zyklus wird zu Ende geführt, 76 s mit je drei Phasen.
+  await page.getByRole('button', { name: '4-7-8 starten' }).click()
   await expect(page.getByRole('timer')).toHaveText(/^[1-4]$/)
 
-  await expect(page.getByText('1 Min geatmet')).toBeVisible({ timeout: 75_000 })
+  await expect(page.getByText('1 Min geatmet')).toBeVisible({ timeout: 90_000 })
   await expect(page.getByRole('heading', { name: 'Gut gemacht.' })).toBeVisible()
   await expect.poll(() => depth(page)).toBe(1)
-  expect(await vibrations(page)).toEqual(Array(11).fill(40))
+  expect(await vibrations(page)).toEqual([HOLD, OUT, IN, HOLD, OUT, IN, HOLD, OUT, IN, HOLD, OUT])
   expect(await locks(page)).toEqual([true])
   await page.getByRole('button', { name: 'Fertig' }).click()
   await expect.poll(() => depth(page)).toBe(0)
@@ -329,8 +366,8 @@ test('a full one-minute exercise is counted, vibrates once per phase change and 
 
   const data = await page.evaluate(() => JSON.parse(localStorage.getItem('ruhe.v1') ?? 'null'))
   expect(data.sessions).toHaveLength(1)
-  expect(data.sessions[0]).toMatchObject({ kind: 'breath', ref: 'langes-ausatmen', seconds: 60 })
-  expect(data.lastUsed).toEqual({ kind: 'breath', pattern: 'langes-ausatmen', minutes: 1 })
+  expect(data.sessions[0]).toMatchObject({ kind: 'breath', ref: '478', seconds: 76 })
+  expect(data.lastUsed).toEqual({ kind: 'breath', pattern: '478', minutes: 1 })
 })
 
 test('a double tap on a start button does not reach the player that opens over it', async ({ page }) => {

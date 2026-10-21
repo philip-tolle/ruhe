@@ -118,6 +118,8 @@ Sechs Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird 
 *Ergänzung vom 21.10.2026 (auf Nutzerwunsch):* Langes Ausatmen, Physiologischer Seufzer und Wechselatmung kamen dazu. Für sie kann eine Phase einen eigenen Text tragen („Nachatmen“, „Links einatmen“ …), und beim Seufzer wächst der Kreis beim Nachatmen noch ein Stück weiter.
 
 - **Anzeige:** Ein Kreis wächst beim Einatmen, ruht beim Halten, schrumpft beim Ausatmen. Darunter der Text („Einatmen“, „Halten“, „Ausatmen“) und der Sekunden-Countdown der Phase.
+
+  *Ergänzung vom 21.10.2026:* Der Kreis ist größer (ausgeatmet knapp halb so groß wie eingeatmet, eingeatmet fast so breit wie der Bildschirm) und bewegt sich weich: Jede Phase beginnt und endet langsam. Die Phasen haben eigene Farben – Einatmen warmes Gold, Halten helles Lila, Ausatmen kühles Blau – mit einem weichen Schein um den Kreis, der beim Halten sanft pulsiert. Ein dünner Phasenring um den Kreis füllt sich in jeder Phase im Uhrzeigersinn. Jede Phase vibriert mit eigenem Muster: Einatmen ein Puls, Halten ein kurzes Antippen, Ausatmen zwei Pulse. Bei „Bewegung reduzieren“ steht der Kreis still; Farbe, Ring, Text und Countdown zeigen die Phase.
 - **Ton:** ein leiser, weicher Ton bei jedem Phasenwechsel (live synthetisiert).
 - **Vibration:** kurzes Vibrieren bei jedem Phasenwechsel (in den Einstellungen abschaltbar).
 - **Bildschirm bleibt an** (Screen Wake Lock), solange die Übung läuft.

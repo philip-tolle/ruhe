@@ -24,7 +24,7 @@ test('plans finish the running cycle', () => {
   expect(breathPlan('box', 10).length).toBe(608)
 })
 test('moment at a point in time', () => {
-  expect(breathAt('478', 5, 76)).toEqual({ kind: 'halten', label: 'Halten', level: 1, phaseElapsed: 1, phaseLength: 7, secondsLeft: 6, done: false })
+  expect(breathAt('478', 5, 76)).toEqual({ kind: 'halten', label: 'Halten', level: 1, startLevel: 1, endLevel: 1, phaseElapsed: 1, phaseLength: 7, secondsLeft: 6, done: false })
   expect(breathAt('kohaerent', -2, 187)).toMatchObject({ kind: 'ein', phaseElapsed: 0, done: false })
   expect(breathAt('478', 76, 76)).toMatchObject({ done: true })
 })
@@ -79,7 +79,8 @@ test('sweep over all patterns: values stay in range', () => {
         const t = i * 0.1 // 0,1 ist binär nicht exakt: Rundungsfehler an den Phasengrenzen sind gewollt
         const m = breathAt(p.id, t, length)
         const ok = !m.done && m.phaseElapsed >= 0 && m.phaseElapsed < m.phaseLength &&
-          m.secondsLeft >= 1 && m.secondsLeft <= Math.ceil(m.phaseLength) && m.level >= 0 && m.level <= 1
+          m.secondsLeft >= 1 && m.secondsLeft <= Math.ceil(m.phaseLength) && m.level >= 0 && m.level <= 1 &&
+          m.startLevel >= 0 && m.startLevel <= 1 && m.endLevel >= 0 && m.endLevel <= 1
         if (!ok) bad.push(`${p.id} ${minutes} t=${t}: ${JSON.stringify(m)}`)
       }
     }
@@ -97,12 +98,37 @@ test('every cycle starts and ends at level 0', () => {
   }
 })
 
+test('a moment knows the level at the start and at the end of its phase', () => {
+  const ends = (id: Parameters<typeof breathAt>[0], t: number, length: number) => {
+    const { label, startLevel, endLevel } = breathAt(id, t, length)
+    return [label, startLevel, endLevel]
+  }
+  expect([2, 6, 15].map(t => ends('478', t, 76))).toEqual([['Einatmen', 0, 1], ['Halten', 1, 1], ['Ausatmen', 1, 0]])
+  expect([2, 6, 10, 14].map(t => ends('box', t, 64))).toEqual([['Einatmen', 0, 1], ['Halten', 1, 1], ['Ausatmen', 1, 0], ['Halten', 0, 0]])
+  expect([1, 3.5, 7].map(t => ends('seufzer', t, 60))).toEqual([['Einatmen', 0, 0.8], ['Nachatmen', 0.8, 1], ['Ausatmen', 1, 0]])
+  // In jedem Zyklus wieder dieselben Stände.
+  expect(ends('478', 19 * 3 + 6, 76)).toEqual(['Halten', 1, 1])
+})
+
+test('the linear level runs from the start level to the end level of the phase', () => {
+  const bad: string[] = []
+  for (const p of BREATH_PATTERNS) {
+    const { length } = breathPlan(p.id, 1)
+    for (let t = 0; t < length; t += 0.25) {
+      const m = breathAt(p.id, t, length)
+      const expected = m.startLevel + (m.endLevel - m.startLevel) * (m.phaseElapsed / m.phaseLength)
+      if (!(Math.abs(m.level - expected) <= 1e-9)) bad.push(`${p.id} t=${t}: ${JSON.stringify(m)}`)
+    }
+  }
+  expect(bad).toEqual([])
+})
+
 test('done: last phase, level 0, nothing left', () => {
-  expect(breathAt('478', 76, 76)).toEqual({ kind: 'aus', label: 'Ausatmen', level: 0, phaseElapsed: 8, phaseLength: 8, secondsLeft: 0, done: true })
+  expect(breathAt('478', 76, 76)).toEqual({ kind: 'aus', label: 'Ausatmen', level: 0, startLevel: 1, endLevel: 0, phaseElapsed: 8, phaseLength: 8, secondsLeft: 0, done: true })
   expect(breathAt('wechselatmung', 500, 64)).toMatchObject({ kind: 'aus', label: 'Links ausatmen', level: 0, secondsLeft: 0, done: true })
 })
 
 test('before the start and invalid times begin the first phase', () => {
-  expect(breathAt('seufzer', -0.5, 60)).toEqual({ kind: 'ein', label: 'Einatmen', level: 0, phaseElapsed: 0, phaseLength: 3, secondsLeft: 3, done: false })
+  expect(breathAt('seufzer', -0.5, 60)).toEqual({ kind: 'ein', label: 'Einatmen', level: 0, startLevel: 0, endLevel: 0.8, phaseElapsed: 0, phaseLength: 3, secondsLeft: 3, done: false })
   expect(breathAt('seufzer', NaN, 60)).toMatchObject({ kind: 'ein', phaseElapsed: 0, done: false })
 })

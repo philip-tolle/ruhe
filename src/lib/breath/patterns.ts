@@ -123,8 +123,12 @@ export function breathPlan(id: BreathPatternId, minutes: number): BreathPlan {
 export interface BreathMoment {
   kind: PhaseKind
   label: string
-  /** Kreisgröße von 0 (klein) bis 1 (groß). */
+  /** Kreisgröße von 0 (klein) bis 1 (groß), linear über die Phase. */
   level: number
+  /** Kreisgröße am Beginn der Phase. */
+  startLevel: number
+  /** Kreisgröße am Ende der Phase. */
+  endLevel: number
   phaseElapsed: number
   phaseLength: number
   /** Verbleibende ganze Sekunden der Phase, aufgerundet. */
@@ -161,6 +165,8 @@ export function breathAt(id: BreathPatternId, elapsed: number, length: number): 
     kind: phase.kind,
     label: phase.label ?? PHASE_LABEL[phase.kind],
     level: done ? 0 : from + (to - from) * (phaseElapsed / phase.seconds),
+    startLevel: from,
+    endLevel: to,
     phaseElapsed,
     phaseLength: phase.seconds,
     secondsLeft: Math.ceil(phase.seconds - phaseElapsed),

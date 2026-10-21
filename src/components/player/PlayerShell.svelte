@@ -129,6 +129,7 @@
     background:
       radial-gradient(80% 45% at 50% 42%, rgb(242 201 138 / 0.09), transparent 70%),
       linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 58%, var(--sky-bottom) 100%);
+    overflow-x: hidden; /* was über den Rand leuchtet (der Schein des Atemkreises), verschiebt nichts */
     overflow-y: auto;
     overscroll-behavior: contain;
   }
