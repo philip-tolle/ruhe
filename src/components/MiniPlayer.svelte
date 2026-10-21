@@ -1,19 +1,13 @@
 <script lang="ts">
   import { audio, togglePause } from '../lib/audio/engine-store.svelte'
-  import { mediaTitle } from '../lib/audio/media-title'
-  import { SOUNDS } from '../lib/sounds/catalog'
+  import { mediaTitle, soundTitles } from '../lib/audio/media-title'
   import { formatRemaining } from '../lib/time/format'
   import type { TabId } from '../lib/ui/tabs'
 
   let { onNavigate }: { onNavigate: (tab: TabId) => void } = $props()
 
-  // Titel des laufenden Klangs; es läuft immer nur einer (Antippen wechselt).
-  const title = $derived(
-    mediaTitle(
-      SOUNDS.filter((s) => audio.snap.volumes[s.id] !== undefined).map((s) => s.title),
-      null,
-    ),
-  )
+  // Wie in der Benachrichtigung, aber ohne Sleep-Timer-Zusatz (die Restzeit steht daneben).
+  const title = $derived(mediaTitle(soundTitles(audio.snap), null))
   const remaining = $derived(audio.snap.remainingSec)
   const playing = $derived(audio.snap.state === 'playing')
 </script>

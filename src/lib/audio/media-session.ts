@@ -1,6 +1,6 @@
 // Media Session: Titel, Artwork und Steuerung in Benachrichtigung und Sperrbildschirm.
-import { SOUNDS, assetUrl } from '../sounds/catalog'
-import { mediaTitle } from './media-title'
+import { assetUrl } from '../sounds/catalog'
+import { mediaTitle, soundTitles } from './media-title'
 import type { EngineSnapshot } from './engine'
 
 export interface MediaActions {
@@ -34,9 +34,7 @@ export function syncMediaSession(snap: EngineSnapshot, actions: MediaActions): v
     return
   }
 
-  // Titel des laufenden Klangs; es läuft immer nur einer (Antippen wechselt).
-  const titles = SOUNDS.filter((s) => snap.volumes[s.id] !== undefined).map((s) => s.title)
-  const title = mediaTitle(titles, snap.sleepMinutes)
+  const title = mediaTitle(soundTitles(snap), snap.sleepMinutes)
   if (title !== lastTitle || !session.metadata) {
     session.metadata = new MediaMetadata({
       title,

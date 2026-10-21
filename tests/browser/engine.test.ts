@@ -269,16 +269,21 @@ test('ending a session clears the media session and releases its controls', asyn
 
 test('a switch keeps the media session and shows only the new title', async () => {
   const setHandler = vi.spyOn(navigator.mediaSession, 'setActionHandler')
+  const setMetadata = vi.spyOn(navigator.mediaSession, 'metadata', 'set')
   try {
     const e = make()
     await e.toggle('regen')
     setHandler.mockClear()
+    setMetadata.mockClear()
     await e.toggle('wald')
+    // Schon während der Wald lädt, steht er im Titel: kein Zwischenstand „Ruhe“.
+    expect(setMetadata.mock.calls.map(([m]) => m?.title)).toEqual(['Wald mit Vögeln'])
     expect(navigator.mediaSession.metadata?.title).toBe('Wald mit Vögeln')
     expect(navigator.mediaSession.playbackState).toBe('playing')
     expect(setHandler).not.toHaveBeenCalled()
   } finally {
     setHandler.mockRestore()
+    setMetadata.mockRestore()
   }
 })
 
