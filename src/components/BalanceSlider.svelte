@@ -25,6 +25,7 @@
   <span class="end" aria-hidden="true">Stimme</span>
   <input
     type="range"
+    class="range"
     aria-label="Balance Stimme ↔ Hintergrund"
     aria-valuetext="{percent} % Hintergrund"
     min="0"
@@ -41,7 +42,6 @@
 
 <style>
   .balance {
-    --track: rgb(169 175 203 / 0.72);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -55,72 +55,9 @@
     font-weight: 600;
   }
 
+  /* Aussehen des Reglers: Klasse `range` in app.css. */
   input[type='range'] {
     flex: 1;
     min-width: 0;
-    height: 48px;
-    margin: 0;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  input[type='range']:disabled {
-    cursor: default;
-  }
-
-  /* Der Füllstand endet in der Mitte des Reglerknopfs (12 px = halber Knopf). */
-  input[type='range']::-webkit-slider-runnable-track {
-    height: 6px;
-    border-radius: 3px;
-    background: linear-gradient(
-      to right,
-      var(--accent) calc(12px + (100% - 24px) * var(--v)),
-      var(--track) calc(12px + (100% - 24px) * var(--v))
-    );
-  }
-
-  input[type='range']::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    margin-top: -9px;
-    border: 0;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow:
-      0 0 0 4px rgb(242 201 138 / 0.2),
-      0 2px 8px rgb(5 8 24 / 0.5);
-  }
-
-  input[type='range']::-moz-range-track {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--track);
-  }
-
-  input[type='range']::-moz-range-progress {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--accent);
-  }
-
-  input[type='range']::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
-    border: 0;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow:
-      0 0 0 4px rgb(242 201 138 / 0.2),
-      0 2px 8px rgb(5 8 24 / 0.5);
-  }
-
-  input[type='range']:focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: -2px;
-    border-radius: 14px;
   }
 </style>

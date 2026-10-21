@@ -168,6 +168,78 @@ main.with-player-bar {
   transform: scale(0.98);
 }
 
+/*
+  Regler (Lautstärke einer Klangkachel, Balance Stimme ↔ Hintergrund): Klasse `range` am
+  `<input type="range">`. `--v` (0 … 1) ist der Füllstand. Die Lage bestimmt die Komponente.
+*/
+input[type='range'].range {
+  --track: rgb(169 175 203 / 0.72);
+  height: 48px;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range'].range:disabled {
+  cursor: default;
+}
+
+/* Der Füllstand endet in der Mitte des Reglerknopfs (12 px = halber Knopf). */
+input[type='range'].range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--accent) calc(12px + (100% - 24px) * var(--v)),
+    var(--track) calc(12px + (100% - 24px) * var(--v))
+  );
+}
+
+input[type='range'].range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -9px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 0 4px rgb(242 201 138 / 0.2),
+    0 2px 8px rgb(5 8 24 / 0.5);
+}
+
+input[type='range'].range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track);
+}
+
+input[type='range'].range::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+input[type='range'].range::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 0 4px rgb(242 201 138 / 0.2),
+    0 2px 8px rgb(5 8 24 / 0.5);
+}
+
+input[type='range'].range:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 14px;
+}
+
 /* Bewegung nur, wenn das System sie nicht reduziert */
 @media (prefers-reduced-motion: no-preference) {
   .screen {

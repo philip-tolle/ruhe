@@ -58,6 +58,7 @@
   {#if volume !== undefined}
     <input
       type="range"
+      class="range"
       aria-label="Lautstärke {sound.title}"
       aria-valuetext="{Math.round(volume * 100)} %"
       min="0"
@@ -72,7 +73,6 @@
 
 <style>
   .tile {
-    --track: rgb(169 175 203 / 0.72);
     position: relative;
     display: flex;
     min-height: 120px;
@@ -131,70 +131,11 @@
     pointer-events: none;
   }
 
+  /* Aussehen des Reglers: Klasse `range` in app.css; hier nur seine Lage in der Kachel. */
   input[type='range'] {
     position: absolute;
     inset: auto 10px 6px;
     width: calc(100% - 20px);
-    height: 48px;
-    margin: 0;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  /* Der Füllstand endet in der Mitte des Reglerknopfs (12 px = halber Knopf). */
-  input[type='range']::-webkit-slider-runnable-track {
-    height: 6px;
-    border-radius: 3px;
-    background: linear-gradient(
-      to right,
-      var(--accent) calc(12px + (100% - 24px) * var(--v)),
-      var(--track) calc(12px + (100% - 24px) * var(--v))
-    );
-  }
-
-  input[type='range']::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    margin-top: -9px;
-    border: 0;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow:
-      0 0 0 4px rgb(242 201 138 / 0.2),
-      0 2px 8px rgb(5 8 24 / 0.5);
-  }
-
-  input[type='range']::-moz-range-track {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--track);
-  }
-
-  input[type='range']::-moz-range-progress {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--accent);
-  }
-
-  input[type='range']::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
-    border: 0;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow:
-      0 0 0 4px rgb(242 201 138 / 0.2),
-      0 2px 8px rgb(5 8 24 / 0.5);
-  }
-
-  input[type='range']:focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: -2px;
-    border-radius: 14px;
   }
 
   @media (prefers-reduced-motion: no-preference) {

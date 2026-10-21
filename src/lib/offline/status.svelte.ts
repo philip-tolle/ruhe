@@ -1,10 +1,11 @@
 // Offline-Status der Meditationen für die Oberfläche: welche Dateien gespeichert sind und ob das
 // Gerät online ist. Der Status kommt aus dem Cache (`isSaved`); weil `isSaved` die ganze Datei
 // liest, wird jede Adresse höchstens einmal zur Zeit geprüft, nacheinander, und eine gespeicherte
-// nicht noch einmal. Schlüssel sind die absoluten Adressen (`absoluteAudioUrl`).
+// nicht noch einmal. Schlüssel sind die absoluten Adressen (`absoluteAudioUrl`). Drei Zustände:
+// `undefined` (noch nicht geprüft), `false` (nicht gespeichert), `true` (gespeichert).
 import { isSaved, saveMeditation } from './meditations'
 
-export const offline: { saved: Record<string, boolean>; online: boolean } = $state({
+export const offline: { saved: Partial<Record<string, boolean>>; online: boolean } = $state({
   saved: {},
   online: navigator.onLine,
 })

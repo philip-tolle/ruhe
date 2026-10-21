@@ -50,8 +50,10 @@
         <h3 id="theme-{group.category}">{group.title}</h3>
         <ul>
           {#each group.items as { m, url } (m.id)}
-            {@const saved = offline.saved[url] === true}
-            {@const available = startable(saved, offline.online)}
+            <!-- Drei Zustände: noch ungeprüft (undefined) ist weder „✓ offline“ noch gesperrt. -->
+            {@const status = offline.saved[url]}
+            {@const saved = status === true}
+            {@const available = startable(status, offline.online)}
             <li>
               <!-- Im Tipp selbst starten, damit der Audio-Start als Nutzergeste gilt. -->
               <button

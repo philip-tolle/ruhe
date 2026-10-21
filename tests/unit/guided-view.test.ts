@@ -51,6 +51,12 @@ test('an entry starts online, and offline only when it is saved', () => {
   expect(startable(false, false)).toBe(false)
 })
 
+test('an entry that has not been checked yet is never held back', () => {
+  // Beim Start ohne Netz steht der Cache-Status noch aus (undefined): kein „Nicht offline verfügbar“.
+  expect(startable(undefined, false)).toBe(true)
+  expect(startable(undefined, true)).toBe(true)
+})
+
 describe('balance', () => {
   test('background volume is 0.7 × balance, the default 0.5 gives 0.35', () => {
     expect(backgroundVolume(0.5)).toBeCloseTo(0.35, 10)

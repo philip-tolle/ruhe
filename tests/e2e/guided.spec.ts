@@ -30,6 +30,9 @@ async function expectRemainingNear(page: Page, target: number, tolerance = 2) {
   await expect.poll(async () => Math.abs((await remaining(page)) - target)).toBeLessThanOrEqual(tolerance)
 }
 
+// Hauptschaltfläche: das Gold der Oberfläche (--accent).
+const GOLD = 'rgb(242, 201, 138)'
+
 const GROUPS = {
   'Einsteiger & Achtsamkeit': ['Ankommen im Atem', 'Gedanken wie Wolken', 'Bodyscan im Sitzen'],
   'Stress & Ruhe': ['Drei-Minuten-Atempause', 'Nach einem vollen Tag', 'Vor einem wichtigen Termin'],
@@ -139,6 +142,9 @@ test('the background sound and the balance act at once and are remembered', asyn
   const sound = player.getByRole('combobox', { name: 'Hintergrundklang' })
   const balance = player.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
   await expect(sound).toBeVisible()
+  // Die sichtbare Beschriftung nennt dasselbe wie der Name des Felds.
+  await expect(player.getByText('Hintergrundklang', { exact: true })).toBeVisible()
+  await expect(player.getByText('Klang', { exact: true })).toHaveCount(0)
   // Ohne Hintergrund gibt es nichts abzuwägen.
   await expect(balance).toHaveCount(0)
 
@@ -167,6 +173,47 @@ test('the background sound and the balance act at once and are remembered', asyn
   await expect(balance).toHaveValue('20')
 })
 
+test('the background sound and the balance reach the engine', async ({ page }) => {
+  // Die Engine blendet jeden Klang auf seine Lautstärke ein bzw. fährt sie dorthin (Rampe): Der Test
+  // zeichnet die Ziele der Rampen auf, den Weg bis zum Audio-Graphen also.
+  await page.addInitScript(() => {
+    const ramps: number[] = []
+    ;(window as unknown as { __ramps: number[] }).__ramps = ramps
+    const original = AudioParam.prototype.linearRampToValueAtTime
+    AudioParam.prototype.linearRampToValueAtTime = function (value: number, endTime: number) {
+      ramps.push(value)
+      return original.call(this, value, endTime)
+    }
+  })
+  const ramps = () => page.evaluate(() => (window as unknown as { __ramps: number[] }).__ramps)
+  const reached = (target: number) => expect.poll(async () => (await ramps()).some((v) => Math.abs(v - target) < 1e-6))
+
+  await openMeditieren(page)
+  await entry(page, 'Guten Morgen').click()
+  const player = page.getByRole('dialog', { name: 'Geführte Meditation' })
+  const sound = player.getByRole('combobox', { name: 'Hintergrundklang' })
+  const balance = player.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
+
+  // Ein neuer Hintergrund beginnt mit 0,7 × Balance (Standard 0,5 → 0,35) …
+  await sound.selectOption({ label: 'Regen' })
+  await reached(0.35).toBe(true)
+  // … der Regler fährt ihn auf 0,7 × 0,2 bzw. 0,7 × 1.
+  await balance.fill('20')
+  await reached(0.14).toBe(true)
+  await balance.fill('100')
+  await reached(0.7).toBe(true)
+  await balance.fill('80')
+  await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.8)
+
+  // Die nächste Meditation beginnt gleich mit der gemerkten Wahl: Regen bei 0,7 × 0,8.
+  await player.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await page.evaluate(() => (window as unknown as { __ramps: number[] }).__ramps.splice(0))
+  await entry(page, 'Ankommen im Atem').click()
+  await expect(player.getByRole('heading', { name: 'Ankommen im Atem' })).toBeVisible()
+  await reached(0.56).toBe(true)
+})
+
 test.describe('when the file does not load', () => {
   // Ohne Service Worker: Sonst beantwortete er den Abruf an der Route vorbei.
   test.use({ serviceWorkers: 'block' })
@@ -180,6 +227,10 @@ test.describe('when the file does not load', () => {
     await expect(player.getByText('Die Meditation konnte nicht geladen werden.')).toBeVisible()
     const retry = player.getByRole('button', { name: 'Erneut versuchen' })
     await expect(retry).toBeVisible()
+    // „Erneut versuchen“ ist die einzige Hauptschaltfläche (Gold); „Weiter“ versucht dasselbe, tritt aber zurück.
+    await expect(retry).toHaveCSS('background-color', GOLD)
+    await expect(player.getByRole('button', { name: 'Weiter' })).not.toHaveCSS('background-color', GOLD)
+    await expect(player.getByRole('button', { name: 'Beenden' })).not.toHaveCSS('background-color', GOLD)
     await expect(player.getByRole('timer')).toHaveCount(0)
     await expect(player.getByRole('button', { name: '15 Sekunden vor' })).toBeDisabled()
 
@@ -189,6 +240,8 @@ test.describe('when the file does not load', () => {
     await expect(player.getByRole('timer')).toBeVisible()
     await expect(player.getByText('Die Meditation konnte nicht geladen werden.')).toHaveCount(0)
     await expect(player.getByRole('button', { name: 'Pause' })).toBeVisible()
+    // Ohne Fehler ist „Pause“ wieder die Hauptschaltfläche.
+    await expect(player.getByRole('button', { name: 'Pause' })).toHaveCSS('background-color', GOLD)
     await expect(player.getByRole('button', { name: '15 Sekunden vor' })).toBeEnabled()
   })
 })
@@ -221,6 +274,43 @@ test('a played meditation is saved; offline only saved ones can start', async ({
   await context.setOffline(false)
   await expect(hints).toHaveCount(0)
   await expect(entry(page, 'Guten Morgen')).toBeEnabled()
+})
+
+test('offline at launch, an entry is not held back before the cache has been read', async ({ page, context }) => {
+  await openMeditieren(page)
+  await entry(page, 'Drei-Minuten-Atempause').click()
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(1)
+  await page.evaluate(async () => { await navigator.serviceWorker.ready })
+
+  // Beim nächsten Start ohne Netz hält der Test das Lesen des Caches an: Der Status ist noch offen.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __releaseCache: () => void }
+    const open = CacheStorage.prototype.open
+    const gate = new Promise<void>((resolve) => (w.__releaseCache = resolve))
+    CacheStorage.prototype.open = async function (...args: Parameters<CacheStorage['open']>) {
+      await gate
+      return open.apply(this, args)
+    }
+  })
+  await context.setOffline(true)
+  await page.reload()
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Meditieren' }).click()
+
+  // Noch ungeprüft: nichts ist gesperrt, nichts als gespeichert gezeigt.
+  await expect(entry(page, 'Guten Morgen')).toBeVisible()
+  await expect(entry(page, 'Guten Morgen')).toBeEnabled()
+  await expect(entry(page, 'Drei-Minuten-Atempause')).toBeEnabled()
+  await expect(page.getByText('Nicht offline verfügbar', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(0)
+
+  // Gelesen: Die gespeicherte bleibt startbar, die übrigen acht sind gesperrt.
+  await page.evaluate(() => (window as unknown as { __releaseCache: () => void }).__releaseCache())
+  await expect(page.getByText('Nicht offline verfügbar', { exact: true })).toHaveCount(8)
+  await expect(entry(page, 'Guten Morgen')).toBeDisabled()
+  await expect(page.getByRole('button', { name: /^Drei-Minuten-Atempause, \d+ Minuten, offline verfügbar$/ })).toBeEnabled()
+  await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(1)
 })
 
 test.describe('on a small phone', () => {

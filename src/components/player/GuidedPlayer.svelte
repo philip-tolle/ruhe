@@ -119,7 +119,7 @@
   {#snippet footer()}
     <div class="background">
       <div class="sound">
-        <span class="label" aria-hidden="true">Klang</span>
+        <span class="label" aria-hidden="true">Hintergrundklang</span>
         <SoundSelect label="Hintergrundklang" bind:value={() => sound, setSound} disabled={!arming.armed} />
       </div>
       {#if sound !== null}
@@ -178,22 +178,18 @@
     max-width: 400px;
   }
 
+  /* Die Beschriftung steht über der Auswahl: Neben ihr bliebe auf schmalen Telefonen zu wenig Platz
+     für „Braunes Rauschen“. */
   .sound {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .label {
-    flex: none;
     color: var(--text-muted);
     font-size: 0.875rem;
     font-weight: 600;
-  }
-
-  .sound :global(select) {
-    flex: 1;
-    min-width: 0;
   }
 
   @media (prefers-reduced-motion: no-preference) {

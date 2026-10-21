@@ -17,9 +17,13 @@ export function entryLabel(m: Pick<Meditation, 'title' | 'duration'>, saved: boo
   return `${m.title}, ${minutes}${saved ? ', offline verfügbar' : ''}`
 }
 
-/** Startbar ist ein Eintrag online immer, offline nur, wenn die Datei gespeichert ist. */
-export function startable(saved: boolean, online: boolean): boolean {
-  return online || saved
+/**
+ * Startbar ist ein Eintrag online immer, offline nur, wenn die Datei gespeichert ist. `saved` ist
+ * `undefined`, solange der Cache noch nicht geprüft ist: Dann wird der Eintrag nicht gesperrt (er
+ * könnte gespeichert sein), erst die Prüfung sperrt ihn.
+ */
+export function startable(saved: boolean | undefined, online: boolean): boolean {
+  return online || saved !== false
 }
 
 /**

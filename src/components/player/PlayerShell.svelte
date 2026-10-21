@@ -84,7 +84,8 @@
     {/if}
 
     <div class="controls">
-      <button type="button" class="button" disabled={!arming.armed} onclick={togglePause}>
+      <!-- Mit Ladefehler heißt „Weiter“ dasselbe wie „Erneut versuchen“ des Players; das ist dort die Hauptschaltfläche. -->
+      <button type="button" class="button" class:secondary={run.error} disabled={!arming.armed} onclick={togglePause}>
         {audio.snap.state === 'playing' ? 'Pause' : 'Weiter'}
       </button>
       <button type="button" class="button secondary" disabled={!arming.armed} onclick={end}>Beenden</button>
