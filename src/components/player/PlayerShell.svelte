@@ -54,10 +54,21 @@
     }
   }
 
+  // Ein schneller zweiter Tipp auf „Starten“ (Doppeltipp) landete sonst auf „Pause“ oder „Beenden“,
+  // die sich gerade an dieselbe Stelle gelegt haben: Die Knöpfe nehmen Tipps erst nach kurzer Zeit
+  // an, sichtbar sind sie sofort. Ein reiner Anzeige-Timer, nicht das Ende des Einblendens (bei
+  // reduzierter Bewegung gibt es keins).
+  const ARM_MS = 400
+  let armed = $state(false)
+
   onMount(() => {
     title?.focus()
     closeLayer = openLayer(onBack)
-    return () => closeLayer()
+    const arming = setTimeout(() => (armed = true), ARM_MS)
+    return () => {
+      clearTimeout(arming)
+      closeLayer()
+    }
   })
 
   function end() {
@@ -76,10 +87,10 @@
     {/if}
 
     <div class="controls">
-      <button type="button" class="button" onclick={togglePause}>
+      <button type="button" class="button" disabled={!armed} onclick={togglePause}>
         {audio.snap.state === 'playing' ? 'Pause' : 'Weiter'}
       </button>
-      <button type="button" class="button secondary" onclick={end}>Beenden</button>
+      <button type="button" class="button secondary" disabled={!armed} onclick={end}>Beenden</button>
     </div>
   {:else if done}
     <SessionDone kind={done.kind} seconds={done.seconds} counted={done.counted} onDone={clearDone} />

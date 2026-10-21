@@ -19,7 +19,11 @@ test('works offline after first visit', async ({ page, context }) => {
   await page.evaluate(async () => { await navigator.serviceWorker.ready })
   await page.reload()
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+  // Auch die Klangschale liegt im Speicher. Workbox hängt dort eine Revision an die Adresse an.
+  const bowl = new URL('audio/sounds/klangschale.ogg', page.url()).href
+  expect(await page.evaluate(async (url) => (await caches.match(url, { ignoreSearch: true })) instanceof Response, bowl)).toBe(true)
   await context.setOffline(true)
+  expect(await page.evaluate(async (url) => (await fetch(url)).ok, bowl)).toBe(true)
   await page.reload()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Guten (Morgen|Tag|Abend)$/)
   await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Klänge' }).click()

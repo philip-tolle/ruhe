@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { doubleTap, expectStillRunning } from './taps'
 
 // Tiefe der obersten Ebene im aktuellen History-Eintrag (0 = keine Ebene offen).
 const depth = (page: Page) => page.evaluate(() => (history.state as { ruheLayer?: number } | null)?.ruheLayer ?? 0)
@@ -330,4 +331,25 @@ test('a full one-minute exercise is counted, vibrates once per phase change and 
   expect(data.sessions).toHaveLength(1)
   expect(data.sessions[0]).toMatchObject({ kind: 'breath', ref: 'langes-ausatmen', seconds: 60 })
   expect(data.lastUsed).toEqual({ kind: 'breath', pattern: 'langes-ausatmen', minutes: 1 })
+})
+
+test('a double tap on a start button does not reach the player that opens over it', async ({ page }) => {
+  await openAtmen(page)
+  const done = page.getByRole('heading', { name: 'Gut gemacht.' })
+
+  // An seinem Platz liegt „4-7-8 starten“ über dem Atemkreis des Players.
+  await doubleTap(page, page.getByRole('button', { name: '4-7-8 starten' }), 0.25)
+  await expectStillRunning(page)
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await expect(done).toHaveCount(0)
+
+  // Weiter gescrollt liegt eine Karte knapp über der Reiterleiste, also dort, wo der Player „Pause“ hat.
+  const start = page.getByRole('button', { name: 'Kohärentes Atmen starten' })
+  const nav = (await page.getByRole('navigation', { name: 'Hauptnavigation' }).boundingBox())!
+  const box = (await start.boundingBox())!
+  await page.evaluate((dy) => window.scrollBy(0, dy), box.y + box.height / 2 - (nav.y - 20))
+  await doubleTap(page, start, 0.25)
+  await expectStillRunning(page)
+  await expect(page.getByRole('heading', { name: 'Atmen · Kohärentes Atmen' })).toBeVisible()
 })

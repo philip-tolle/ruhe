@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
+import { doubleTap, expectStillRunning } from './taps'
+
+const NO_BOWL = 'Die Klangschale konnte nicht geladen werden – der Timer läuft ohne sie.'
 
 // Tiefe der obersten Ebene im aktuellen History-Eintrag (0 = keine Ebene offen).
 const depth = (page: Page) => page.evaluate(() => (history.state as { ruheLayer?: number } | null)?.ruheLayer ?? 0)
@@ -107,7 +110,12 @@ test('a full one-minute timer is counted', async ({ page }) => {
   await expect.poll(() => depth(page)).toBe(0)
   await expect(page.getByText('1 Min · ohne Zwischenschale')).toBeVisible()
 
-  // Bis der Reiter „Ich“ die Statistik zeigt (Task 9), direkt im Speicher nachsehen.
+  // Die Sitzung steht unter „Ich“ …
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Ich' }).click()
+  const sessions = page.locator('dl > div').filter({ has: page.getByText('Sitzungen', { exact: true }) }).locator('dd')
+  await expect(sessions).toHaveText('1')
+
+  // … und so im Speicher.
   const data = await page.evaluate(() => JSON.parse(localStorage.getItem('ruhe.v1') ?? 'null'))
   expect(data.sessions).toHaveLength(1)
   expect(data.sessions[0]).toMatchObject({ kind: 'timer', ref: 'timer', seconds: 60 })
@@ -136,6 +144,7 @@ test('pause freezes the display and stops the animation loop', async ({ page }) 
   await expect(countdown).toBeVisible()
   const first = await frames()
   await expect.poll(frames).toBeGreaterThan(first + 5) // läuft Bild für Bild
+  await expect(page.getByText(NO_BOWL)).toHaveCount(0) // die Klangschale ist geladen
 
   await page.getByRole('button', { name: 'Pause' }).click()
   await expect(page.getByRole('button', { name: 'Weiter' })).toBeVisible()
@@ -149,4 +158,33 @@ test('pause freezes the display and stops the animation loop', async ({ page }) 
   await page.getByRole('button', { name: 'Weiter' }).click()
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
   await expect.poll(frames).toBeGreaterThan(paused.frames + 5)
+})
+
+test('a double tap on „Starten“ does not reach the player that opens under it', async ({ page }) => {
+  await openMeditieren(page)
+  // Unter „Starten“ liegen dann links „Pause“, rechts „Beenden“.
+  for (const side of [0.25, 0.75]) {
+    await page.getByRole('button', { name: 'Timer einstellen' }).click()
+    await doubleTap(page, page.getByRole('button', { name: 'Starten' }), side)
+    await expectStillRunning(page)
+    await page.getByRole('button', { name: 'Beenden' }).click()
+    await page.getByRole('button', { name: 'Fertig' }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Meditieren')
+  }
+})
+
+test.describe('when the bowl does not load', () => {
+  // Ohne Service Worker: Sonst beantwortete er den Abruf aus seinem Speicher, an der Route vorbei.
+  test.use({ serviceWorkers: 'block' })
+
+  test('the player says so and the timer runs without it', async ({ page }) => {
+    await page.route('**/audio/sounds/klangschale.ogg', (route) => route.abort())
+    await openMeditieren(page)
+    await page.getByRole('button', { name: 'Timer einstellen' }).click()
+    await page.getByRole('button', { name: 'Starten' }).click()
+    await expect(page.getByText(NO_BOWL)).toBeVisible()
+    await expect(page.getByText('Ankommen', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+    expect(await page.evaluate(() => navigator.mediaSession.playbackState)).toBe('playing')
+  })
 })
