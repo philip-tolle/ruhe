@@ -5,3 +5,6 @@ playwright-report
 .vite
 __screenshots__
 .vitest
+
+# Abschnittslisten von `npm run meditations split` – jederzeit neu erzeugbar
+audio-work/sections/
