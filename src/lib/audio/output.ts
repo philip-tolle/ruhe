@@ -24,8 +24,17 @@ export function createOutput(): Output {
   input.gain.value = HEADROOM
   const fade = ctx.createGain()
   fade.gain.value = 1
+  // Spitzenbegrenzer: Alle acht Klänge auf voller Lautstärke erreichen trotz Reserve Spitzen um
+  // 1,39; ohne Begrenzer würde das übersteuern. Darunter bleibt die Mischung unverändert
+  // (bis auf die feste Aufholverstärkung, die der Kompressor laut Web-Audio-Spec mitbringt).
+  const limiter = ctx.createDynamicsCompressor()
+  limiter.threshold.value = -2
+  limiter.knee.value = 0
+  limiter.ratio.value = 20
+  limiter.attack.value = 0.003
+  limiter.release.value = 0.25
   const dest = ctx.createMediaStreamDestination()
-  input.connect(fade).connect(dest)
+  input.connect(fade).connect(limiter).connect(dest)
 
   const element = new Audio()
   element.srcObject = dest.stream
