@@ -1,7 +1,7 @@
 // Ein Durchlauf eines Programms auf der Audio-Uhr: Startzeit, eigener Gain, die beiden Marken
 // (gezählte Zeit vorbei, ausgeklungen) und das Sitzungsergebnis, das er höchstens einmal meldet.
 // Die Engine hält höchstens einen Durchlauf; Output, Zustand und Hintergrundklang regelt sie.
-import { scheduleMarker } from './clock'
+import { holdParam, scheduleMarker } from './clock'
 import type { ProgramAssets, ProgramSpec } from './program'
 import type { SessionResult } from '../stats/schema'
 
@@ -20,11 +20,24 @@ export interface ProgramSnapshot {
   ended: boolean // gezählte Zeit vorbei und Ergebnis gemeldet; es klingt noch aus
 }
 
+// Ausblenden beim Beenden (Audio-Uhr): Rampe auf 0 bis `fadeEnd`, die Klänge enden bei `stopAt`.
+export interface FadeOut {
+  fadeEnd: number
+  stopAt: number
+}
+
+// Was der Durchlauf eingeplant hat: sein Gain in `sink` und der Stopp seiner Klänge.
+interface Sound {
+  gain: GainNode
+  sink: AudioNode
+  stop: (when?: number) => void
+}
+
 export class ProgramRun {
   // Programmstart auf der Audio-Uhr und als Datum; null, solange die Klangschale noch lädt.
   private start: { t0: number; date: Date } | null = null
-  private gain: GainNode | null = null
-  private cancels: (() => void)[] = []
+  private sound: Sound | null = null
+  private markers: (() => void)[] = []
   private reported = false
 
   constructor(
@@ -42,12 +55,11 @@ export class ProgramRun {
     const gain = ctx.createGain()
     gain.gain.value = 1
     gain.connect(sink)
-    this.gain = gain
     this.start = { t0, date: new Date() }
+    this.sound = { gain, sink, stop: spec.schedule(ctx, gain, t0, assets) }
     // Am Ende zählt genau die geplante Dauer: Kommt eine Marke verzögert an (gedrosselter
     // Hintergrund), ändert das nichts. Ausgeklungen heißt, die gezählte Zeit ist sicher vorbei.
-    this.cancels = [
-      spec.schedule(ctx, gain, t0, assets),
+    this.markers = [
       scheduleMarker(ctx, sink, now, t0 + spec.lead + spec.length, () => {
         this.complete(spec.length)
         onCounted()
@@ -69,16 +81,34 @@ export class ProgramRun {
     return { kind, ref, title, lead, length, finish, elapsed: this.elapsed(), ended: this.reported }
   }
 
-  // Bricht sofort ab: Eingeplantes verstummt, die Marken entfallen. War der Durchlauf schon
-  // eingeplant, meldet er (falls noch nicht geschehen) die bis jetzt gezählte Zeit ohne Vorlauf.
-  end(): void {
-    for (const cancel of this.cancels) cancel()
-    this.cancels = []
-    this.gain?.disconnect()
-    this.gain = null
+  // Beendet den Durchlauf; die Marken entfallen sofort. Was klingt, blendet mit `fade` aus wie ein
+  // gestoppter Klang, statt hart abzubrechen. Ohne `fade` (die Audio-Uhr steht, eine Rampe wäre erst
+  // nach dem Fortsetzen zu hören) verstummt es sofort. War der Durchlauf eingeplant, meldet er
+  // (falls noch nicht geschehen) die bis jetzt gezählte Zeit ohne Vorlauf.
+  end(fade: FadeOut | null): void {
+    for (const cancel of this.markers) cancel()
+    this.markers = []
+    this.silence(fade)
     if (!this.start) return
     const { lead, length } = this.spec
     this.complete(Math.min(length, Math.max(0, this.elapsed() - lead)))
+  }
+
+  private silence(fade: FadeOut | null): void {
+    const sound = this.sound
+    this.sound = null
+    if (!sound) return
+    const { gain, sink, stop } = sound
+    if (!fade) {
+      stop()
+      gain.disconnect()
+      return
+    }
+    const now = this.ctx.currentTime
+    holdParam(gain.gain, now)
+    gain.gain.linearRampToValueAtTime(0, fade.fadeEnd)
+    stop(fade.stopAt)
+    scheduleMarker(this.ctx, sink, now, fade.stopAt, () => gain.disconnect())
   }
 
   private complete(seconds: number): void {

@@ -21,20 +21,29 @@ export interface ProgramSpec {
   length: number
   finish: number
   background: SoundId | null
-  // Plant alle Klänge ab t0 ein und liefert eine Funktion, die alles Eingeplante sofort stoppt.
-  schedule(ctx: BaseAudioContext, destination: AudioNode, t0: number, assets: ProgramAssets): () => void
+  // Plant alle Klänge ab t0 ein und liefert eine Funktion, die alles Eingeplante stoppt: Was schon
+  // klingt, endet bei `when` (Audio-Uhr, Standard: sofort), was noch nicht eingesetzt hat, sofort.
+  schedule(ctx: BaseAudioContext, destination: AudioNode, t0: number, assets: ProgramAssets): (when?: number) => void
 }
 
-// Stoppt und trennt die Knoten sofort, auch solche, die erst später erklingen würden.
-function stopper(nodes: AudioScheduledSourceNode[]): () => void {
-  return () => {
-    for (const node of nodes) {
+interface Scheduled {
+  node: AudioScheduledSourceNode
+  at: number // Einsatz auf der Audio-Uhr
+}
+
+// Was bis jetzt nicht eingesetzt hat, stoppt sofort: Unter dem Ausblenden des Programms begänne
+// sonst noch eine Schale oder ein Hinweiston. Ein gerade klingender Hinweiston läuft dabei bis
+// `when` auf seinem unhörbaren Rest weiter (der letzte Stopp gilt). Abgebaut wird mit dem Gain
+// des Programms.
+function stopper(ctx: BaseAudioContext, scheduled: Scheduled[]): (when?: number) => void {
+  return (when) => {
+    const now = ctx.currentTime
+    for (const { node, at } of scheduled) {
       try {
-        node.stop()
+        node.stop(at > now ? undefined : when)
       } catch {
         // schon gestoppt
       }
-      node.disconnect()
     }
   }
 }
@@ -53,7 +62,11 @@ export function timerProgram(s: TimerSettings): ProgramSpec {
     background: s.sound,
     schedule(ctx, destination, t0, { strike }) {
       if (!strike) return () => {}
-      return stopper(plan.strikes.map((at) => scheduleStrike(ctx, destination, strike, t0 + at)))
+      const scheduled = plan.strikes.map((offset) => {
+        const at = t0 + offset
+        return { node: scheduleStrike(ctx, destination, strike, at), at }
+      })
+      return stopper(ctx, scheduled)
     },
   }
 }
@@ -71,7 +84,11 @@ export function breathProgram(id: BreathPatternId, minutes: number): ProgramSpec
     finish: plan.length + 1,
     background: null,
     schedule(ctx, destination, t0) {
-      return stopper(plan.cues.map((cue) => scheduleCue(ctx, destination, t0 + cue.at, cue.kind)))
+      const scheduled = plan.cues.map((cue) => {
+        const at = t0 + cue.at
+        return { node: scheduleCue(ctx, destination, at, cue.kind), at }
+      })
+      return stopper(ctx, scheduled)
     },
   }
 }

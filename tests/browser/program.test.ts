@@ -37,6 +37,23 @@ const spec = (over: Partial<ProgramSpec> = {}): ProgramSpec => ({
   schedule: vi.fn(() => vi.fn()), ...over,
 })
 
+// Eine echte (lautlose) Quelle als Programm-Klang: zeigt, wann sie verstummt und wie laut der
+// Gain des Programms gerade ist.
+function liveTone() {
+  const tone = { gain: null as GainNode | null, playing: false, stops: [] as (number | undefined)[] }
+  const schedule: ProgramSpec['schedule'] = (ctx, destination, t0) => {
+    tone.gain = destination as GainNode
+    const source = ctx.createConstantSource()
+    source.offset.value = 0
+    source.connect(destination)
+    source.onended = () => { tone.playing = false }
+    source.start(t0)
+    tone.playing = true
+    return when => { tone.stops.push(when); source.stop(when) }
+  }
+  return { tone, schedule }
+}
+
 test('program stops running sounds and reports its title', async () => {
   const urls: string[] = []
   const e = make((ctx, url) => { urls.push(url); return synthetic(ctx, url) })
@@ -163,14 +180,53 @@ test('a program resets a running sleep fade', async () => {
 
 test('background sound plays and fades at finish', async () => {
   const e = make()
-  await e.startProgram(spec({ background: 'regen' }))
+  const stop = vi.fn()
+  const s = spec({ background: 'regen', schedule: vi.fn(() => stop) })
+  await e.startProgram(s)
+  const gain = vi.mocked(s.schedule).mock.calls[0][1] as GainNode
   expect(e.snapshot().volumes).toEqual({ regen: 0.7 })
   expect(e.voiceCount()).toBe(1)
   await expect.poll(() => e.snapshot().program, { timeout: 4000 }).toBeNull()
   expect(e.snapshot()).toMatchObject({ state: 'idle', volumes: {} })
   expect(e.voiceCount()).toBe(1)             // blendet noch aus
+  expect(stop).toHaveBeenCalledWith(expect.any(Number)) // auch die Schalen klingen aus statt abzubrechen
   await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(0)
   await expect.poll(() => out!.ctx.state, { timeout: 3000 }).toBe('suspended')
+  expect(gain.gain.value).toBe(0)
+})
+
+test('ending a program fades its sounds out instead of cutting them', async () => {
+  const e = make()
+  const seen = results(e)
+  const { tone, schedule } = liveTone()
+  await e.startProgram(spec({ lead: 0, length: 10, finish: 11, schedule }))
+  await wait(200)
+  const now = out!.ctx.currentTime
+  await e.endProgram()
+  expect(e.snapshot()).toMatchObject({ state: 'idle', program: null }) // Zustand und Ergebnis sofort, wie bisher
+  expect(seen).toHaveLength(1)
+  expect(tone.stops).toHaveLength(1)
+  expect(tone.stops[0]).toBeCloseTo(now + 0.9, 1)
+  await wait(400)
+  expect(tone.playing).toBe(true)            // klingt noch, aber leiser
+  expect(tone.gain!.gain.value).toBeGreaterThan(0.1)
+  expect(tone.gain!.gain.value).toBeLessThan(0.9)
+  await expect.poll(() => tone.playing, { timeout: 1500 }).toBe(false)
+  expect(tone.gain!.gain.value).toBe(0)
+})
+
+test('ending a paused program silences it at once', async () => {
+  const e = make()
+  const seen = results(e)
+  const { tone, schedule } = liveTone()
+  await e.startProgram(spec({ lead: 0, length: 10, finish: 11, schedule }))
+  await e.pause()
+  await e.endProgram()
+  expect(e.snapshot()).toMatchObject({ state: 'idle', program: null })
+  expect(seen).toHaveLength(1)
+  expect(tone.stops).toEqual([undefined])    // sofort: Eine Rampe auf der stehenden Uhr käme erst später
+  await e.toggle('regen')                    // die Audio-Uhr läuft wieder: Der Klang kehrt nicht zurück
+  await expect.poll(() => tone.playing, { timeout: 1500 }).toBe(false)
 })
 
 test('a program runs on without bowl and background when they fail to load', async () => {
@@ -227,6 +283,26 @@ test('timerProgram schedules strikes at the planned times', async () => {
   } finally {
     start.mockRestore()
   }
+})
+
+test('stopping a program lets a ringing strike end on time and drops those still to come', async () => {
+  const rate = 8000
+  const ctx = new OfflineAudioContext(1, rate * 80, rate)
+  const strike = ctx.createBuffer(1, rate * 5, rate)
+  strike.getChannelData(0).fill(1)           // 5 s Gleichpegel 1: leicht nachzumessen
+  const stop = timerProgram({ minutes: 1, intervalMin: null, lead: true, sound: null })
+    .schedule(ctx, ctx.destination, 0, { strike })
+  // Schalen bei 10, 70, 73 und 76 s. Bei 72,5 s endet das Programm und klingt bis 74 s aus.
+  void ctx.suspend(72.5).then(() => { stop(74); return ctx.resume() })
+  const data = (await ctx.startRendering()).getChannelData(0)
+  const peak = (from: number, to: number) => {
+    let max = 0
+    for (let i = Math.round(from * rate); i < Math.round(to * rate); i++) max = Math.max(max, Math.abs(data[i]))
+    return max
+  }
+  expect(peak(70.1, 72.4)).toBe(1)
+  expect(peak(73.1, 73.9)).toBe(1)           // klingt weiter, allein: Die Schale bei 73 s setzt nicht mehr ein
+  expect(peak(74.1, 80)).toBe(0)             // ab 74 s still, auch keine Schale bei 76 s
 })
 
 test('breathProgram schedules a cue at every phase', async () => {

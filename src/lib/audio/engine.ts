@@ -8,7 +8,7 @@ import { createLoopVoice, loadBuffer } from './loops'
 import { syncMediaSession, type MediaActions } from './media-session'
 import { createOutput, type Output } from './output'
 import type { ProgramSpec } from './program'
-import { ProgramRun, type ProgramSnapshot } from './program-run'
+import { ProgramRun, type FadeOut, type ProgramSnapshot } from './program-run'
 import { sleepPlan } from './sleep-timer'
 import type { Voice } from './voice'
 import { assetUrl, EFFECTS, soundById, type SoundId } from '../sounds/catalog'
@@ -121,7 +121,7 @@ export class AudioEngine {
     this.resetFade() // ein Sleep-Ausblenden kann die Gesamtlautstärke gesenkt haben
     const starting = this.ensurePlaying()
     this.stop(previous)
-    predecessor?.end()
+    predecessor?.end(this.fadeOut())
     this.emit()
     const [started, strike] = await Promise.allSettled([starting, this.load(out.ctx, assetUrl(EFFECTS[0].file))])
     // Inzwischen abgelöst (Programm, Klang, Stopp): Dieser Durchlauf beginnt nie und meldet nichts.
@@ -336,13 +336,25 @@ export class AudioEngine {
     this.emit()
   }
 
-  // Beendet die ganze Sitzung: Klänge blenden in 0,8 s aus, die Engine ist idle. Das Programm
-  // meldet erst danach (falls noch nicht geschehen), damit Hörer schon den neuen Stand sehen.
+  // Beendet die ganze Sitzung: Klänge und Programm blenden in 0,8 s aus, die Engine ist idle. Das
+  // Programm meldet erst danach (falls noch nicht geschehen), damit Hörer schon den neuen Stand sehen.
   private endSession(): void {
     const run = this.program
+    const fade = this.fadeOut() // vorher: Nach dem Stopp wäre eine Pause schon idle
     this.program = null
     this.stop([...this.active.keys(), ...this.pending.keys()])
-    run?.end()
+    run?.end(fade)
+  }
+
+  // Ausblenden eines endenden Programms wie in `release`; null, wenn die Audio-Uhr steht.
+  private fadeOut(): FadeOut | null {
+    if (this.frozen()) return null
+    const now = this.out!.ctx.currentTime
+    return { fadeEnd: now + FADE_OUT, stopAt: now + STOP_AFTER }
+  }
+
+  private frozen(): boolean {
+    return this.state === 'paused' || this.out!.ctx.state !== 'running'
   }
 
   private stop(ids: SoundId[]): void {
@@ -368,7 +380,7 @@ export class AudioEngine {
     // beenden. In der Pause ist das Medien-Element schon angehalten, das Ende also unhörbar.
     // Das gilt für jede Stimme außer der aktiven, auch für eine, die ein Wechsel kurz zuvor
     // abgelöst hat und deren Ausblenden mit der Uhr stehen geblieben ist.
-    const frozen = this.state === 'paused' || ctx.state !== 'running'
+    const frozen = this.frozen()
     if (frozen) {
       const playing = new Set(this.active.values())
       for (const channel of [...this.channels]) {
