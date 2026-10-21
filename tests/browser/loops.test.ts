@@ -41,7 +41,7 @@ test('a response that is not audio (HTTP 200, e.g. an HTML fallback page) reject
 
 test('loop voice wraps around the buffer, has a unity output and stops on time', async () => {
   const ctx = new OfflineAudioContext(1, SR * 3, SR)
-  const buf = ctx.createBuffer(1, SR / 2, SR) // 0,5 s Rauschen: muss sich mehrfach wiederholen
+  const buf = ctx.createBuffer(1, SR / 2, SR) // 0,5 s Sinuston: muss sich mehrfach wiederholen
   const data = buf.getChannelData(0)
   for (let i = 0; i < data.length; i++) data[i] = Math.sin(i * 0.3) * 0.5
   const voice = createLoopVoice(ctx, buf)
