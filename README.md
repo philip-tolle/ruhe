@@ -1,6 +1,6 @@
 # Ruhe
 
-Ruhe ist meine persönliche Meditations-App: beruhigende Klänge, ein Sleep-Timer und (in den nächsten Meilensteinen) Timer, Atemübungen und geführte Meditationen. Sie läuft im Browser und lässt sich wie eine normale App aufs Handy installieren.
+Ruhe ist meine persönliche Meditations-App: beruhigende Klänge mit Sleep-Timer, ein Meditations-Timer, Atemübungen, Statistik mit Backup und (im nächsten Meilenstein) geführte Meditationen. Sie läuft im Browser und lässt sich wie eine normale App aufs Handy installieren.
 
 **Adresse:** <https://philip-tolle.github.io/ruhe/>
 
@@ -17,11 +17,19 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 ## Handy-Checkliste Meilenstein 1
 
 1. Installation über Chrome → Icon auf dem Startbildschirm, Start ohne Browserleiste.
-2. Flugmodus → Klänge funktionieren (Timer und Atmen folgen mit Meilenstein 2).
+2. Flugmodus → Klänge, Timer und Atmen funktionieren auch offline.
 3. Regen + Sleep-Timer 60 Min, Bildschirm sperren → läuft durch und blendet in der letzten Minute sanft aus.
 4. Benachrichtigung bzw. Sperrbildschirm zeigt Titel und Play/Pause, die Steuerung funktioniert.
 
 > Hinweis: Alle acht Klänge und der einzelne Klangschalen-Schlag des Meditations-Timers sind echte Aufnahmen (ElevenLabs).
+
+## Handy-Checkliste Meilenstein 2
+
+1. Timer 5 Min mit Intervall bei gesperrtem Bildschirm: Klangschalen pünktlich, danach erscheint die Sitzung unter „Ich“.
+2. Anruf während des Timers: pausiert, die Zeit zählt nicht weiter.
+3. Atemübung mit Vibration, Bildschirm bleibt an.
+4. Backup exportieren und wieder importieren.
+5. Atemübung 10 Min: Handy wird nicht auffällig warm, Akku sinkt nicht ungewöhnlich (alle Töne werden zu Beginn eingeplant).
 
 ## Entwicklung
 

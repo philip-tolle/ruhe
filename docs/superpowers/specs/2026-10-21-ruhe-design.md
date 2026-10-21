@@ -72,6 +72,8 @@ Unten eine feste Leiste mit fünf Reitern. Die Android-Zurück-Geste schließt z
   2. *Zuletzt genutzt:* die letzte geführte Meditation, Timer- oder Atem-Sitzung erneut starten (gleiche Meditation, gleiche Timer-Einstellungen bzw. gleiche Übung und Dauer). Klänge zählen hier nicht. Ohne bisherige Sitzung: „Ankommen im Atem“.
   3. *3 Min durchatmen:* startet direkt „Kohärentes Atmen“ für 3 Minuten.
 
+*Ergänzung vom 21.10.2026:* Bis Meilenstein 3 gibt es keine Karte „Vorschlag des Tages“, und „Zuletzt genutzt“ bleibt ausgeblendet, solange noch nichts genutzt wurde (der Ersatz „Ankommen im Atem“ braucht die geführten Meditationen).
+
 ### 3.2 Meditieren
 
 - Oben eine Karte **Meditations-Timer** (öffnet die Timer-Einstellungen).
@@ -119,6 +121,8 @@ Sechs Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird 
 - **Ton:** ein leiser, weicher Ton bei jedem Phasenwechsel (live synthetisiert).
 - **Vibration:** kurzes Vibrieren bei jedem Phasenwechsel (in den Einstellungen abschaltbar).
 - **Bildschirm bleibt an** (Screen Wake Lock), solange die Übung läuft.
+
+*Ergänzung vom 21.10.2026:* Der Atem-Player hat auch „Pause“ und „Weiter“ (nötig, wenn ein Anruf die Übung unterbricht).
 
 ### 3.4 Klänge
 
@@ -189,6 +193,8 @@ Normale JavaScript-Timer werden von Android im Hintergrund stark gedrosselt. Des
 - Das **Ende einer Sitzung** wird über das `ended`-Ereignis einer eingeplanten Quelle erkannt. Kommt das Ereignis verzögert an (gedrosselter Hintergrund), wird die Dauer trotzdem korrekt aus der Audio-Uhr berechnet.
 - Die Anzeige (Restzeit, Ring) liest bei sichtbarem Bildschirm `audioContext.currentTime` aus; sie steuert nichts.
 - **Pause** hält die Audio-Uhr (`audioContext.suspend()`) und die Stimme gemeinsam an. Alle eingeplanten Ereignisse verschieben sich dadurch automatisch mit.
+
+*Ergänzung vom 21.10.2026:* Endet ein Programm (regulär oder vorzeitig), klingen seine Klänge in 0,8 s aus, statt abrupt abzubrechen.
 
 ### 4.3 Live erzeugte Klänge (entfallen)
 
