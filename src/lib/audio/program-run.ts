@@ -1,6 +1,7 @@
 // Ein Durchlauf eines Programms auf der Audio-Uhr: Startzeit, eigener Gain, die beiden Marken
 // (gezählte Zeit vorbei, ausgeklungen) und das Sitzungsergebnis, das er höchstens einmal meldet.
-// Die Engine hält höchstens einen Durchlauf; Output, Zustand und Hintergrundklang regelt sie.
+// Dazu die Schnittstelle, die er mit einer geführten Sitzung (guided-run.ts) teilt: Die Engine hält
+// höchstens eine Sitzung der einen oder anderen Art; Output, Zustand und Hintergrundklang regelt sie.
 import { holdParam, scheduleMarker } from './clock'
 import type { ProgramAssets, ProgramSpec } from './program'
 import type { SessionResult } from '../stats/schema'
@@ -8,23 +9,37 @@ import type { SessionResult } from '../stats/schema'
 // s Vorsprung des Programmstarts, damit die ersten Klänge nicht schon in der Vergangenheit liegen.
 const START_DELAY = 0.05
 
-// Laufendes Programm für die Oberfläche; Zeiten in Sekunden ab Programmstart.
+// Laufende Sitzung für die Oberfläche; Zeiten in Sekunden ab Programmstart bzw. Dateianfang.
 export interface ProgramSnapshot {
-  kind: 'timer' | 'breath'
+  kind: 'timer' | 'breath' | 'guided'
   ref: string
   title: string
   lead: number
   length: number
   finish: number
-  elapsed: number // auf der Audio-Uhr, Pausen zählen nicht
+  elapsed: number // auf der Audio-Uhr (Pausen zählen nicht); geführt: Position in der Datei
   ended: boolean // gezählte Zeit vorbei und Ergebnis gemeldet; es klingt noch aus
   noBowl: boolean // ein Timer, dessen Klangschale nicht geladen werden konnte: Er läuft still
+  error: boolean // eine geführte Meditation, deren Datei nicht lädt; bei Programmen nie
 }
 
 // Ausblenden beim Beenden (Audio-Uhr): Rampe auf 0 bis `fadeEnd`, die Klänge enden bei `stopAt`.
 export interface FadeOut {
   fadeEnd: number
   stopAt: number
+}
+
+// Eine Sitzung, wie die Engine sie hält. Jeder Weg, der sie beendet, ruft `end`; gemeldet wird
+// dabei höchstens einmal je Sitzung.
+export interface SessionRun {
+  // Ergebnis schon gemeldet? Dann klingt die Sitzung nur noch aus.
+  readonly reported: boolean
+  snapshot(): ProgramSnapshot
+  // s für die Anzeige (`engine.programElapsed()`).
+  elapsed(): number
+  // Beendet die Sitzung: meldet (falls noch nicht geschehen) und lässt ihren Klang mit `fade`
+  // ausklingen, ohne `fade` (die Audio-Uhr steht) verstummt er sofort.
+  end(fade: FadeOut | null): void
 }
 
 // Was der Durchlauf eingeplant hat: sein Gain in `sink` und der Stopp seiner Klänge.
@@ -34,7 +49,7 @@ interface Sound {
   stop: (when?: number) => void
 }
 
-export class ProgramRun {
+export class ProgramRun implements SessionRun {
   // Programmstart auf der Audio-Uhr und als Datum; null, solange die Klangschale noch lädt.
   private start: { t0: number; date: Date } | null = null
   private sound: Sound | null = null
@@ -87,7 +102,7 @@ export class ProgramRun {
 
   snapshot(): ProgramSnapshot {
     const { kind, ref, title, lead, length, finish } = this.spec
-    return { kind, ref, title, lead, length, finish, elapsed: this.elapsed(), ended: this.hasReported, noBowl: this.noBowl }
+    return { kind, ref, title, lead, length, finish, elapsed: this.elapsed(), ended: this.hasReported, noBowl: this.noBowl, error: false }
   }
 
   // Beendet den Durchlauf; die Marken entfallen sofort. Was klingt, blendet mit `fade` aus wie ein

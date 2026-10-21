@@ -8,7 +8,7 @@ const withSettings = (settings: unknown) => parseData({ version: 1, sessions: []
 const withLastUsed = (lastUsed: unknown) => parseData({ version: 1, sessions: [], settings: {}, lastUsed })
 
 test('defaults', () => {
-  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, voiceBalance: 0.5, timerSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
+  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
   expect(emptyData()).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
 })
 test('emptyData hands out fresh objects', () => {
@@ -18,7 +18,7 @@ test('emptyData hands out fresh objects', () => {
   a.settings.vibration = false
   a.settings.timer.minutes = 99
   a.sessions.push({ id: 'x', start: session.start, kind: 'timer', ref: 'timer', seconds: 60 })
-  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, voiceBalance: 0.5, timerSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
+  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
   expect(emptyData()).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
 })
 test('parseData accepts valid data and fills missing settings', () => {
@@ -56,9 +56,9 @@ test('sessions: all kinds and zero seconds are valid; unknown fields are dropped
   expect(parseData({ version: 1, sessions: [{ ...sessions[0], extra: 1 }, sessions[1]], settings: {} })).toEqual({ version: 1, sessions, settings: DEFAULT_SETTINGS })
 })
 test('settings fall back to defaults field by field', () => {
-  expect(withSettings({ vibration: 'ja', voiceBalance: 'x', timerSound: 'foo', timerLead: 1, timer: 'x' })).toEqual(DEFAULT_SETTINGS)
-  expect(withSettings({ vibration: false, voiceBalance: 0.2, timerSound: 'regen', timerLead: false, timer: { minutes: 25, intervalMin: 5 } }))
-    .toEqual({ vibration: false, voiceBalance: 0.2, timerSound: 'regen', timerLead: false, timer: { minutes: 25, intervalMin: 5 } })
+  expect(withSettings({ vibration: 'ja', voiceBalance: 'x', timerSound: 'foo', guidedSound: 'bar', timerLead: 1, timer: 'x' })).toEqual(DEFAULT_SETTINGS)
+  expect(withSettings({ vibration: false, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', timerLead: false, timer: { minutes: 25, intervalMin: 5 } }))
+    .toEqual({ vibration: false, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', timerLead: false, timer: { minutes: 25, intervalMin: 5 } })
 })
 test('voiceBalance must be a finite number in [0, 1]', () => {
   for (const v of [0, 0.25, 1]) expect(withSettings({ voiceBalance: v })?.voiceBalance).toBe(v)
@@ -68,6 +68,13 @@ test('timerSound accepts every catalog sound and null', () => {
   for (const sound of SOUNDS) expect(withSettings({ timerSound: sound.id })?.timerSound).toBe(sound.id)
   expect(withSettings({ timerSound: null })?.timerSound).toBeNull()
   for (const v of ['nope', 3, undefined]) expect(withSettings({ timerSound: v })?.timerSound).toBeNull()
+})
+test('guidedSound accepts every catalog sound and null, independently of timerSound', () => {
+  for (const sound of SOUNDS) expect(withSettings({ guidedSound: sound.id })?.guidedSound).toBe(sound.id)
+  expect(withSettings({ guidedSound: null })?.guidedSound).toBeNull()
+  for (const v of ['nope', 3, undefined, {}]) expect(withSettings({ guidedSound: v })?.guidedSound).toBeNull()
+  expect(withSettings({ timerSound: 'wald', guidedSound: 'regen' })).toMatchObject({ timerSound: 'wald', guidedSound: 'regen' })
+  expect(withSettings({ timerSound: 'wald', guidedSound: 'x' })).toMatchObject({ timerSound: 'wald', guidedSound: null })
 })
 test('timer settings: minutes integer 1-120, interval one of the options', () => {
   for (const m of [1, 10, 120]) expect(withSettings({ timer: { minutes: m } })?.timer.minutes).toBe(m)
@@ -86,11 +93,17 @@ test('lastUsed is kept when valid', () => {
   for (const p of BREATH_PATTERNS) expect(withLastUsed({ kind: 'breath', pattern: p.id, minutes: 1 })?.lastUsed).toEqual({ kind: 'breath', pattern: p.id, minutes: 1 })
   for (const sound of SOUNDS) expect(withLastUsed({ ...timer, sound: sound.id })?.lastUsed).toMatchObject({ sound: sound.id })
 })
+test('a guided lastUsed keeps its meditation id', () => {
+  expect(withLastUsed({ kind: 'guided', id: 'abendruhe' })?.lastUsed).toEqual({ kind: 'guided', id: 'abendruhe' })
+  // Ob es die Meditation (noch) gibt, entscheidet der Katalog, nicht das Schema.
+  expect(withLastUsed({ kind: 'guided', id: 'gibt-es-nicht' })?.lastUsed).toEqual({ kind: 'guided', id: 'gibt-es-nicht' })
+  expect(withLastUsed({ kind: 'guided', id: 'abendruhe', minutes: 5 })?.lastUsed).toEqual({ kind: 'guided', id: 'abendruhe' })
+})
 test('an invalid lastUsed is dropped, the rest stays', () => {
   const timer = { kind: 'timer', minutes: 20, intervalMin: 5, sound: 'wald', lead: false }
   const { sound: _sound, ...noSound } = timer
   const bad: unknown[] = [
-    'x', 5, [], { kind: 'guided', minutes: 5 }, { kind: 'sound' }, {},
+    'x', 5, [], { kind: 'guided', minutes: 5 }, { kind: 'guided', id: '' }, { kind: 'guided', id: 5 }, { kind: 'guided', id: null }, { kind: 'sound' }, {},
     { kind: 'breath', pattern: 'unbekannt', minutes: 3 }, { kind: 'breath', pattern: 'box' }, { kind: 'breath', minutes: 3 },
     { kind: 'breath', pattern: 'box', minutes: 0 }, { kind: 'breath', pattern: 'box', minutes: -3 }, { kind: 'breath', pattern: 'box', minutes: NaN }, { kind: 'breath', pattern: 'box', minutes: '3' },
     { ...timer, minutes: 0 }, { ...timer, minutes: Infinity }, { ...timer, sound: 'nope' }, noSound, { ...timer, lead: 'ja' }, { ...timer, intervalMin: 3 }, { ...timer, intervalMin: undefined },

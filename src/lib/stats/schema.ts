@@ -31,6 +31,8 @@ export interface Settings {
   voiceBalance: number
   /** Standard-Hintergrundklang des Timers. */
   timerSound: SoundId | null
+  /** Zuletzt gewählter Hintergrundklang geführter Meditationen (eigener Wert, unabhängig vom Timer). */
+  guidedSound: SoundId | null
   /** Vorlauf beim Timer. */
   timerLead: boolean
   /** Zuletzt gewählt im Timer. */
@@ -40,6 +42,7 @@ export interface Settings {
 export type LastUsed =
   | { kind: 'timer'; minutes: number; intervalMin: number | null; sound: SoundId | null; lead: boolean }
   | { kind: 'breath'; pattern: BreathPatternId; minutes: number }
+  | { kind: 'guided'; id: string }
 
 export interface AppData {
   version: 1
@@ -49,7 +52,7 @@ export interface AppData {
 }
 
 function defaultSettings(): Settings {
-  return { vibration: true, voiceBalance: 0.5, timerSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
+  return { vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
 }
 
 export const DEFAULT_SETTINGS: Settings = defaultSettings()
@@ -97,13 +100,14 @@ function parseSession(raw: unknown): Session | null {
 /** Jedes fehlende oder ungültige Feld bekommt seinen Standardwert. */
 function parseSettings(raw: Record<string, unknown>): Settings {
   const def = defaultSettings()
-  const { vibration, voiceBalance, timerSound, timerLead } = raw
+  const { vibration, voiceBalance, timerSound, guidedSound, timerLead } = raw
   const timer = isRecord(raw.timer) ? raw.timer : {}
   const { minutes, intervalMin } = timer
   return {
     vibration: typeof vibration === 'boolean' ? vibration : def.vibration,
     voiceBalance: typeof voiceBalance === 'number' && voiceBalance >= 0 && voiceBalance <= 1 ? voiceBalance : def.voiceBalance,
     timerSound: timerSound === null || isSoundId(timerSound) ? timerSound : def.timerSound,
+    guidedSound: guidedSound === null || isSoundId(guidedSound) ? guidedSound : def.guidedSound,
     timerLead: typeof timerLead === 'boolean' ? timerLead : def.timerLead,
     timer: {
       minutes: typeof minutes === 'number' && Number.isInteger(minutes) && minutes >= 1 && minutes <= MAX_TIMER_MINUTES ? minutes : def.timer.minutes,
@@ -125,6 +129,12 @@ function parseLastUsed(raw: unknown): LastUsed | null {
     // Nur die angebotenen Dauern: Eine Atemübung startet über diesen Eintrag direkt.
     if (!isPatternId(pattern) || typeof minutes !== 'number' || !BREATH_MINUTES.includes(minutes)) return null
     return { kind: 'breath', pattern, minutes }
+  }
+  if (raw.kind === 'guided') {
+    // Ob es die Meditation gibt, prüft erst der Katalog beim Anzeigen; hier nur die Form.
+    const { id } = raw
+    if (typeof id !== 'string' || id === '') return null
+    return { kind: 'guided', id }
   }
   return null
 }

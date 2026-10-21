@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { lastUsedProgram, lastUsedSummary, streakLine } from '../../src/lib/ui/heute-view'
+import { lastUsedProgram, lastUsedSummary, streakLine, type ProgramLastUsed } from '../../src/lib/ui/heute-view'
 import type { LastUsed } from '../../src/lib/stats/schema'
 
 test('streak line: days in a row, singular for one, an invitation for none', () => {
@@ -10,7 +10,7 @@ test('streak line: days in a row, singular for one, an invitation for none', () 
   expect(streakLine(365)).toBe('365 Tage in Folge')
 })
 
-const timer = (over: Partial<Extract<LastUsed, { kind: 'timer' }>> = {}): LastUsed => ({
+const timer = (over: Partial<Extract<LastUsed, { kind: 'timer' }>> = {}): ProgramLastUsed => ({
   kind: 'timer',
   minutes: 20,
   intervalMin: 5,

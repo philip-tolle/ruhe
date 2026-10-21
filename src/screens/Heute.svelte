@@ -12,7 +12,9 @@
   const greeting = greetingFor(new Date())
 
   const days = $derived(streak(stats.data.sessions, new Date()))
-  const lastUsed = $derived(stats.data.lastUsed)
+  // Eine geführte Meditation als „Zuletzt genutzt“ kann die Karte noch nicht starten: Sie zeigt
+  // dann nichts, bis der Katalog der Meditationen dazukommt.
+  const lastUsed = $derived(stats.data.lastUsed?.kind === 'guided' ? undefined : stats.data.lastUsed)
 
   // Beide Starts im Tipp selbst, damit der Audio-Start als Nutzergeste gilt.
   // „Erneut starten“ ändert nichts am Gemerkten: Es ist ja schon die letzte Sitzung.

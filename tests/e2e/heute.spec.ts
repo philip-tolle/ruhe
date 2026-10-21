@@ -11,7 +11,7 @@ const THREE_DAYS = [
   session('s-20', '2026-10-20T07:30:00+02:00'),
   session('s-21', '2026-10-21T07:30:00+02:00'),
 ]
-const SETTINGS = { vibration: true, voiceBalance: 0.5, timerSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
+const SETTINGS = { vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
 const dataOf = (sessions: object[], lastUsed?: object, settings: object = SETTINGS) => ({
   version: 1,
   sessions,
