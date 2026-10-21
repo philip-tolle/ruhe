@@ -127,7 +127,7 @@ export class AudioEngine {
     // Inzwischen abgelöst (Programm, Klang, Stopp): Dieser Durchlauf beginnt nie und meldet nichts.
     if (this.program === run) {
       const assets = { strike: strike.status === 'fulfilled' ? strike.value : null }
-      run.begin(out.input, assets, () => this.emit(), () => this.finishProgram(run))
+      run.begin(out.input, assets, () => this.programCounted(run), () => this.finishProgram(run))
       this.emit()
       // Der Hintergrund gehört zum Programm; ohne ihn (Ladefehler) läuft es weiter.
       if (spec.background) await this.playSound(spec.background, Promise.resolve())
@@ -173,8 +173,10 @@ export class AudioEngine {
     this.emit()
   }
 
+  // Hält an. Klingt ein Programm nur noch aus, endet stattdessen die Sitzung (`endIfCounted`).
   async pause(): Promise<void> {
     if (this.state !== 'playing') return
+    if (this.endIfCounted()) return
     this.state = 'paused'
     this.emit()
     await this.suspendOutput()
@@ -329,6 +331,24 @@ export class AudioEngine {
     this.channels.add(channel)
   }
 
+  // Gezählte Zeit vorbei, das Ergebnis ist gemeldet. Kam die Marke erst nach einer Pause an (die
+  // Uhr stand da noch nicht), endet die Sitzung wie bei einer Pause im Ausklingen.
+  private programCounted(run: ProgramRun): void {
+    if (this.program !== run) return
+    if (this.state === 'paused') this.endSession()
+    this.emit()
+  }
+
+  // Eine Pause, während ein Programm nur noch ausklingt (sein Ergebnis ist gemeldet), beendet die
+  // Sitzung, ohne zweites Ergebnis. Pausiert bliebe sonst ein beendetes Programm stehen, samt
+  // Benachrichtigung, und „Weiter“ spielte nur noch die Schalen nach. true, wenn beendet.
+  private endIfCounted(): boolean {
+    if (!this.program?.reported) return false
+    this.endSession()
+    this.emit()
+    return true
+  }
+
   // Programm ausgeklungen (sein Ergebnis ist schon gemeldet): Sitzung beenden.
   private finishProgram(run: ProgramRun): void {
     if (this.program !== run) return
@@ -478,13 +498,15 @@ export class AudioEngine {
     await out.suspend()
   }
 
-  // Unterbrechung von außen (Anruf, andere App): Audio-Uhr anhalten, Zustand paused.
+  // Unterbrechung von außen (Anruf, andere App): Audio-Uhr anhalten, Zustand paused. Klingt ein
+  // Programm nur noch aus, endet die Sitzung (wie bei `pause`).
   private readonly onElementPause = (): void => {
     if (this.ownPauses > 0) {
       this.ownPauses--
       return
     }
     if (this.state !== 'playing') return
+    if (this.endIfCounted()) return
     this.state = 'paused'
     const { ctx } = this.out!
     if (ctx.state !== 'closed') void ctx.suspend()
@@ -498,6 +520,11 @@ export class AudioEngine {
     const { ctx } = this.out!
     if (this.state !== 'playing' || this.startPending) return
     if (ctx.state === 'running' || ctx.state === 'closed') return
+    if (this.endIfCounted()) {
+      // Die Marke, die danach den Output anhält, läuft auf der stehenden Uhr nie ab: selbst anhalten.
+      void this.suspendOutput()
+      return
+    }
     this.state = 'paused'
     void this.suspendOutput() // auch das Medien-Element anhalten; sein pause-Event ist eigenes
     this.emit()

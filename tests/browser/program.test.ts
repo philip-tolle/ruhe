@@ -61,7 +61,7 @@ test('program stops running sounds and reports its title', async () => {
   const s = spec()
   await e.startProgram(s)
   expect(e.snapshot().volumes).toEqual({})
-  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { title: 'Meditation · 1 Min', ended: false } })
+  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { title: 'Meditation · 1 Min', ended: false, noBowl: false } })
   expect(navigator.mediaSession.metadata?.title).toBe('Meditation · 1 Min')
   // Die Klangschale kommt über den Loader; eingeplant wird auf einem eigenen Gain.
   expect(urls).toContain(assetUrl('audio/sounds/klangschale.ogg'))
@@ -100,6 +100,75 @@ test('pause freezes the program clock and is not counted', async () => {
   expect(seen).toHaveLength(1)
   expect(seen[0].seconds).toBeGreaterThan(0.5)
   expect(seen[0].seconds).toBeLessThan(0.95)
+})
+
+// Nach dem gezählten Ende klingt das Programm noch aus (Timer 12 s, Atmen 1 s). Eine Pause darin,
+// eigene (Sperrbildschirm) oder von außen (Anruf), beendet die Sitzung: Sie ließe sonst ein schon
+// gemeldetes Programm pausiert stehen, mit Benachrichtigung und „Weiter“, das die Schalen wiederholt.
+const tail = () => spec({ lead: 0, length: 0.3, finish: 5 })
+
+async function ringingOut(e: AudioEngine) {
+  await expect.poll(() => e.snapshot().program?.ended, { timeout: 4000 }).toBe(true)
+  expect(e.snapshot().state).toBe('playing')
+}
+
+test('pausing while the program rings out ends the session without a second result', async () => {
+  const e = make()
+  const seen = results(e)
+  await e.startProgram(tail())
+  await e.pause()                            // in der gezählten Zeit: eine gewöhnliche Pause
+  expect(e.snapshot()).toMatchObject({ state: 'paused', program: { ended: false } })
+  await e.resume()
+  await ringingOut(e)
+  expect(seen).toHaveLength(1)
+  await e.pause()
+  expect(e.snapshot()).toMatchObject({ state: 'idle', program: null })
+  expect(navigator.mediaSession.playbackState).toBe('none')
+  expect(seen).toHaveLength(1)
+  await wait(300)
+  expect(seen).toHaveLength(1)
+})
+
+test('an interruption of the media element while the program rings out ends the session', async () => {
+  const e = make()
+  const seen = results(e)
+  await e.startProgram(tail())
+  await ringingOut(e)
+  out!.element.dispatchEvent(new Event('pause')) // simuliert Anruf / andere App
+  expect(e.snapshot()).toMatchObject({ state: 'idle', program: null })
+  expect(seen).toHaveLength(1)
+})
+
+test('a suspension of the audio context while the program rings out ends the session', async () => {
+  const e = make()
+  const seen = results(e)
+  await e.startProgram(tail())
+  await ringingOut(e)
+  await out!.ctx.suspend()                   // simuliert das System
+  await expect.poll(() => e.snapshot().state, { timeout: 3000 }).toBe('idle')
+  expect(e.snapshot().program).toBeNull()
+  expect(out!.element.paused).toBe(true)
+  expect(seen).toHaveLength(1)
+})
+
+test('a count that ends just after a pause ends the session instead of leaving it paused', async () => {
+  // Das Ende der gezählten Zeit kommt erst nach der Pause an: Hier hält das Anhalten die Uhr nicht an.
+  engine = new AudioEngine({
+    createOutput: () => {
+      const o = (out = createOutput())
+      o.suspend = async () => { o.element.pause() }
+      return o
+    },
+    load: synthetic,
+  })
+  const e = engine
+  const seen = results(e)
+  await e.startProgram(tail())
+  await e.pause()
+  expect(e.snapshot()).toMatchObject({ state: 'paused', program: { ended: false } })
+  await expect.poll(() => seen.length, { timeout: 4000 }).toBe(1)
+  expect(e.snapshot()).toMatchObject({ state: 'idle', program: null })
+  expect(seen[0].seconds).toBe(0.3)
 })
 
 test('early end inside the lead counts nothing', async () => {
@@ -235,6 +304,23 @@ test('a program runs on without bowl and background when they fail to load', asy
   await e.startProgram(s)
   expect(s.schedule).toHaveBeenCalledWith(out!.ctx, expect.any(GainNode), expect.any(Number), { strike: null })
   expect(e.snapshot()).toMatchObject({ state: 'playing', errors: ['regen'], volumes: {}, program: { title: 'Meditation · 1 Min' } })
+})
+
+test('a timer whose bowl fails to load says so and still runs to its end; a breath program never does', async () => {
+  const bowl = assetUrl('audio/sounds/klangschale.ogg')
+  const e = make(async (ctx, url) => {
+    if (url === bowl) throw new Error('Konnte nicht geladen werden: ' + url)
+    return synthetic(ctx, url)
+  })
+  const seen = results(e)
+  const starting = e.startProgram(spec())
+  expect(e.snapshot().program).toMatchObject({ noBowl: false }) // lädt noch: noch nicht bekannt
+  await starting
+  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { kind: 'timer', noBowl: true } })
+  await expect.poll(() => seen.length, { timeout: 4000 }).toBe(1)
+  expect(seen[0].seconds).toBe(1)
+  await e.startProgram(spec({ kind: 'breath', ref: '478' }))
+  expect(e.snapshot().program).toMatchObject({ kind: 'breath', noBowl: false })
 })
 
 test('a failed start keeps the program, and resume plays it from its start', async () => {

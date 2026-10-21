@@ -51,6 +51,10 @@
       </div>
     </div>
   {/if}
+
+  {#if run?.noBowl}
+    <p class="notice" role="status">Die Klangschale konnte nicht geladen werden – der Timer läuft ohne sie.</p>
+  {/if}
 </PlayerShell>
 
 <style>
@@ -101,6 +105,12 @@
     font-size: 1.125rem;
     font-weight: 600;
     letter-spacing: 0.04em;
+  }
+
+  .notice {
+    max-width: 400px;
+    color: var(--text-muted);
+    text-align: center;
   }
 
   .big {

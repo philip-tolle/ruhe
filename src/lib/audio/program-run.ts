@@ -18,6 +18,7 @@ export interface ProgramSnapshot {
   finish: number
   elapsed: number // auf der Audio-Uhr, Pausen zählen nicht
   ended: boolean // gezählte Zeit vorbei und Ergebnis gemeldet; es klingt noch aus
+  noBowl: boolean // ein Timer, dessen Klangschale nicht geladen werden konnte: Er läuft still
 }
 
 // Ausblenden beim Beenden (Audio-Uhr): Rampe auf 0 bis `fadeEnd`, die Klänge enden bei `stopAt`.
@@ -38,7 +39,8 @@ export class ProgramRun {
   private start: { t0: number; date: Date } | null = null
   private sound: Sound | null = null
   private markers: (() => void)[] = []
-  private reported = false
+  private hasReported = false
+  private noBowl = false
 
   constructor(
     readonly spec: ProgramSpec,
@@ -56,6 +58,8 @@ export class ProgramRun {
     gain.gain.value = 1
     gain.connect(sink)
     this.start = { t0, date: new Date() }
+    // Nur der Timer spielt die Klangschale; eine Atemübung braucht sie nie.
+    this.noBowl = spec.kind === 'timer' && assets.strike === null
     this.sound = { gain, sink, stop: spec.schedule(ctx, gain, t0, assets) }
     // Am Ende zählt genau die geplante Dauer: Kommt eine Marke verzögert an (gedrosselter
     // Hintergrund), ändert das nichts. Ausgeklungen heißt, die gezählte Zeit ist sicher vorbei.
@@ -71,6 +75,11 @@ export class ProgramRun {
     ]
   }
 
+  // Hat der Durchlauf sein Ergebnis gemeldet? Ab dem Ende der gezählten Zeit klingt er nur noch aus.
+  get reported(): boolean {
+    return this.hasReported
+  }
+
   // s seit Programmstart auf der Audio-Uhr (sie steht in der Pause); 0, solange noch nicht eingeplant.
   elapsed(): number {
     return this.start ? Math.max(0, this.ctx.currentTime - this.start.t0) : 0
@@ -78,7 +87,7 @@ export class ProgramRun {
 
   snapshot(): ProgramSnapshot {
     const { kind, ref, title, lead, length, finish } = this.spec
-    return { kind, ref, title, lead, length, finish, elapsed: this.elapsed(), ended: this.reported }
+    return { kind, ref, title, lead, length, finish, elapsed: this.elapsed(), ended: this.hasReported, noBowl: this.noBowl }
   }
 
   // Beendet den Durchlauf; die Marken entfallen sofort. Was klingt, blendet mit `fade` aus wie ein
@@ -112,8 +121,8 @@ export class ProgramRun {
   }
 
   private complete(seconds: number): void {
-    if (this.reported || !this.start) return
-    this.reported = true
+    if (this.hasReported || !this.start) return
+    this.hasReported = true
     const { kind, ref } = this.spec
     this.report({ kind, ref, start: this.start.date, seconds })
   }
