@@ -1,0 +1,44 @@
+{
+  "sounds": [
+    { "id": "regen", "title": "Regen", "kind": "live" },
+    { "id": "meer", "title": "Meeresrauschen", "kind": "live" },
+    { "id": "wind", "title": "Wind", "kind": "live" },
+    { "id": "braun", "title": "Braunes Rauschen", "kind": "live" },
+    {
+      "id": "wald",
+      "title": "Wald mit Vögeln",
+      "kind": "loop",
+      "file": "audio/sounds/wald.ogg",
+      "prompt": "Peaceful forest ambience in the early morning, gentle birdsong from several distant birds, soft rustling leaves, no wind gusts, seamless loop"
+    },
+    {
+      "id": "kaminfeuer",
+      "title": "Kaminfeuer",
+      "kind": "loop",
+      "file": "audio/sounds/kaminfeuer.ogg",
+      "prompt": "Cozy crackling fireplace, steady soft crackles and gentle pops, close and warm, no music, seamless loop"
+    },
+    {
+      "id": "bach",
+      "title": "Bach",
+      "kind": "loop",
+      "file": "audio/sounds/bach.ogg",
+      "prompt": "Gentle mountain stream, steady water flowing over small stones, calm and continuous, no birds, seamless loop"
+    },
+    {
+      "id": "klangschalen",
+      "title": "Klangschalen",
+      "kind": "loop",
+      "file": "audio/sounds/klangschalen.ogg",
+      "prompt": "Slow ambient Tibetan singing bowls, soft overlapping resonant tones, meditative drone, no percussion, seamless loop"
+    }
+  ],
+  "effects": [
+    {
+      "id": "klangschale",
+      "title": "Klangschale",
+      "file": "audio/sounds/klangschale.ogg",
+      "prompt": "Single strike of a Tibetan singing bowl, clear warm resonance, long natural decay, close recording"
+    }
+  ]
+}

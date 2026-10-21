@@ -7,6 +7,9 @@ export default defineConfig({
     projects: [
       { test: { name: 'unit', include: ['tests/unit/**/*.test.ts'], environment: 'node' } },
       {
+        // Kein SPA-Fallback: Fehlende Dateien (z. B. Klangdateien) sollen 404 liefern,
+        // statt index.html auszuliefern und damit die App zu kompilieren.
+        appType: 'custom',
         test: {
           name: 'browser',
           include: ['tests/browser/**/*.test.ts'],
