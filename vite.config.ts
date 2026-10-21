@@ -39,7 +39,9 @@ export default defineConfig({
         // (Spulen offline). Teilantworten (206) landen nie im Cache, nur vollständige 200er.
         runtimeCaching: [
           {
-            urlPattern: /\/audio\/meditations\/.+\.mp3$/,
+            // Mit optionaler Abfrage: Die App ruft die Dateien als `<id>.mp3?v=<Version>` ab (audioUrl in
+            // src/lib/content/catalog.ts); Workbox prüft den Ausdruck gegen die ganze Adresse samt Abfrage.
+            urlPattern: /\/audio\/meditations\/.+\.mp3(\?.*)?$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'ruhe-meditations',

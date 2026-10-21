@@ -1,6 +1,7 @@
 // Rauchtests für scripts/meditations.mjs: Das Skript läuft als eigener Prozess,
 // alle Pfade zeigen in ein Wegwerf-Verzeichnis. Echte Dateien unter public/ und audio-work/ bleiben unberührt.
 import { execFileSync, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -47,6 +48,9 @@ const text = (id: string, body: string, minutes = 1, category = 'achtsamkeit') =
   `---\nid: ${id}\ntitle: Titel ${id}\ncategory: ${category}\nminutes: ${minutes}\ndescription: Beschreibung ${id}.\n---\n\n${body}\n`
 const put = (ws: Workspace, id: string, body: string, minutes = 1) =>
   writeFileSync(join(ws.content, `${id}.md`), text(id, body, minutes))
+
+/** Die ersten 10 Hex-Zeichen des SHA-256 der Dateibytes: die Version, die die Audio-Adresse im Manifest bekommt. */
+const contentVersion = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 10)
 
 const probe = (file: string, entries: string) =>
   execFileSync('ffprobe', ['-v', 'error', '-show_entries', entries, '-of', 'json', file], { encoding: 'utf8' })
@@ -197,7 +201,7 @@ describe('placeholders und manifest', () => {
       const { meditations } = JSON.parse(readFileSync(ws.manifest, 'utf8'))
       expect(meditations.map((x: { id: string }) => x.id)).toEqual(['gedanken-wie-wolken', 'bodyscan-im-sitzen', 'zzz-echt'])
       const [first, , third] = meditations
-      expect(Object.keys(first)).toEqual(['id', 'title', 'category', 'description', 'minutes', 'file', 'duration', 'bytes', 'placeholder'])
+      expect(Object.keys(first)).toEqual(['id', 'title', 'category', 'description', 'minutes', 'file', 'duration', 'bytes', 'version', 'placeholder'])
       expect(first).toMatchObject({
         id: 'gedanken-wie-wolken',
         title: 'Titel gedanken-wie-wolken',
@@ -206,13 +210,41 @@ describe('placeholders und manifest', () => {
         minutes: 1,
         file: 'audio/meditations/gedanken-wie-wolken.mp3',
         bytes: statSync(file).size,
+        version: contentVersion(file),
         placeholder: true,
       })
+      expect(first.version).toMatch(/^[0-9a-f]{10}$/)
       expect(first.duration).toBe(Math.round(duration(file) * 10) / 10)
-      expect(third).toMatchObject({ minutes: 3, bytes: realBytes.length, placeholder: false })
+      expect(third).toMatchObject({ minutes: 3, bytes: realBytes.length, version: contentVersion(real), placeholder: false })
       expect(third.duration).toBeCloseTo(2, 0)
     },
   )
+
+  it('gibt jeder Datei eine Version aus ihren Bytes: gleiche Bytes, gleiche Version; neue Aufnahme, neue Version', () => {
+    const ws = workspace('manifest-version')
+    put(ws, 'probe-eins', 'Atme ein.')
+    put(ws, 'probe-zwei', 'Atme ein.')
+    const eins = join(ws.audio, 'probe-eins.mp3')
+    const zwei = join(ws.audio, 'probe-zwei.mp3')
+    sine(eins, 1)
+    writeFileSync(zwei, readFileSync(eins)) // gleiche Bytes unter anderem Namen
+    const versions = () => {
+      expect(cli(ws, ['manifest']).status).toBe(0)
+      const { meditations } = JSON.parse(readFileSync(ws.manifest, 'utf8')) as { meditations: { id: string; version: string }[] }
+      return Object.fromEntries(meditations.map((m) => [m.id, m.version]))
+    }
+
+    const before = versions()
+    expect(before['probe-eins']).toBe(contentVersion(eins))
+    expect(before['probe-zwei']).toBe(before['probe-eins'])
+    expect(versions()).toEqual(before) // zweiter Lauf: unverändert
+
+    sine(zwei, 2) // neu aufgenommen
+    const after = versions()
+    expect(after['probe-zwei']).toBe(contentVersion(zwei))
+    expect(after['probe-zwei']).not.toBe(before['probe-zwei'])
+    expect(after['probe-eins']).toBe(before['probe-eins'])
+  })
 
   it('weist das Manifest ab, wenn eine Audiodatei fehlt', () => {
     const ws = workspace('manifest-missing')

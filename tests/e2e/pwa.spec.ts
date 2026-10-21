@@ -45,7 +45,8 @@ test('a saved meditation is served from the cache with range support while offli
   await page.reload()
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
   // Die MP3 liegt nicht im Precache (zu groß); sie kommt erst durch das Speichern in den Cache.
-  const file = new URL('audio/meditations/drei-minuten-atempause.mp3', page.url()).href
+  // Mit Version wie in der App (audioUrl): Die Route des Service Workers muss auch die Abfrage verstehen.
+  const file = new URL('audio/meditations/drei-minuten-atempause.mp3?v=0123456789', page.url()).href
   expect(await page.evaluate(async (url) => (await caches.match(url, { ignoreSearch: true })) === undefined, file)).toBe(true)
 
   // So speichert die App (src/lib/offline/meditations.ts): vollständig laden, dann als 200 in `ruhe-meditations`.

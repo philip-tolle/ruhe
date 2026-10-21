@@ -9,6 +9,7 @@
       "file": "audio/meditations/ankommen-im-atem.mp3",
       "duration": 300.1,
       "bytes": 600339,
+      "version": "b258c3f2f7",
       "placeholder": true
     },
     {
@@ -20,6 +21,7 @@
       "file": "audio/meditations/gedanken-wie-wolken.mp3",
       "duration": 480.1,
       "bytes": 960307,
+      "version": "a9dd294b36",
       "placeholder": true
     },
     {
@@ -31,6 +33,7 @@
       "file": "audio/meditations/bodyscan-im-sitzen.mp3",
       "duration": 600.1,
       "bytes": 1200320,
+      "version": "6a0bc64090",
       "placeholder": true
     },
     {
@@ -42,6 +45,7 @@
       "file": "audio/meditations/drei-minuten-atempause.mp3",
       "duration": 180.1,
       "bytes": 360326,
+      "version": "850c8511b2",
       "placeholder": true
     },
     {
@@ -53,6 +57,7 @@
       "file": "audio/meditations/nach-einem-vollen-tag.mp3",
       "duration": 600.1,
       "bytes": 1200320,
+      "version": "6a0bc64090",
       "placeholder": true
     },
     {
@@ -64,6 +69,7 @@
       "file": "audio/meditations/vor-einem-wichtigen-termin.mp3",
       "duration": 300.1,
       "bytes": 600339,
+      "version": "b258c3f2f7",
       "placeholder": true
     },
     {
@@ -75,6 +81,7 @@
       "file": "audio/meditations/guten-morgen.mp3",
       "duration": 300.1,
       "bytes": 600339,
+      "version": "b258c3f2f7",
       "placeholder": true
     },
     {
@@ -86,6 +93,7 @@
       "file": "audio/meditations/fokus-vor-der-arbeit.mp3",
       "duration": 420.1,
       "bytes": 840352,
+      "version": "584e1db0b7",
       "placeholder": true
     },
     {
@@ -97,6 +105,7 @@
       "file": "audio/meditations/energie-in-der-mittagspause.mp3",
       "duration": 480.1,
       "bytes": 960307,
+      "version": "a9dd294b36",
       "placeholder": true
     }
   ]

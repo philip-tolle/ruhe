@@ -5,6 +5,7 @@
 // audio-work/cache/<hash>.mp3 bereit. Dieses Skript braucht keinen API-Schlüssel.
 //
 // Aufruf: npm run meditations <Befehl> [id] [Optionen]   (braucht ffmpeg und ffprobe)
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,7 +42,8 @@ Befehle
   assemble <id>     setzt Schale, vertonte Abschnitte aus audio-work/cache und Pausen zur fertigen
                     MP3 zusammen (mono 64 kbit/s, −19 LUFS, zwei Durchgänge); nimmt die id aus
                     placeholders.json, sobald die Datei an ihrem Platz liegt
-  manifest          schreibt src/content/meditations.json
+  manifest          schreibt src/content/meditations.json (je Eintrag mit „version“: die ersten
+                    10 Hex-Zeichen des SHA-256 der MP3; die App hängt sie als ?v= an die Adresse)
 
 Optionen (Standardwerte im Repo; vor allem für Tests)
   --content <Ordner>    Meditationstexte            (content/meditations)
@@ -335,6 +337,14 @@ function cmdAssemble(id) {
   return 0
 }
 
+/**
+ * Version einer Audiodatei: die ersten 10 Hex-Zeichen des SHA-256 ihrer Bytes. Die App hängt sie als
+ * `?v=` an die Adresse, damit eine neu aufgenommene Meditation eine neue Adresse bekommt und Geräte
+ * die alte Kopie im Cache nicht weiter ausliefern.
+ * @param {string} file
+ */
+const contentVersion = (file) => createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 10)
+
 function cmdManifest() {
   const items = loadMeditations()
   const placeholders = new Set(readPlaceholders())
@@ -353,6 +363,7 @@ function cmdManifest() {
       file: `audio/meditations/${id}.mp3`,
       duration: Math.round(probeDuration(file) * 10) / 10,
       bytes: statSync(file).size,
+      version: contentVersion(file),
       placeholder: placeholders.has(id),
     }
   })
