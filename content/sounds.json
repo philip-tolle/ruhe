@@ -1,36 +1,52 @@
 {
   "sounds": [
-    { "id": "regen", "title": "Regen", "kind": "live" },
-    { "id": "meer", "title": "Meeresrauschen", "kind": "live" },
-    { "id": "wind", "title": "Wind", "kind": "live" },
-    { "id": "braun", "title": "Braunes Rauschen", "kind": "live" },
+    {
+      "id": "regen",
+      "title": "Regen",
+      "file": "audio/sounds/regen.ogg",
+      "prompt": "Steady rain pattering on a wooden deck and wooden roof, dense continuous drops, warm and soft, no thunder"
+    },
+    {
+      "id": "meer",
+      "title": "Meeresrauschen",
+      "file": "audio/sounds/meer.ogg",
+      "prompt": "Gentle ocean waves rolling onto a sandy beach, slow calm rhythm, soft wash, no seagulls, no wind"
+    },
+    {
+      "id": "wind",
+      "title": "Wind",
+      "file": "audio/sounds/wind.ogg",
+      "prompt": "Soft wind blowing through tree leaves, gentle steady rustling, no gusts, no birds"
+    },
+    {
+      "id": "braun",
+      "title": "Braunes Rauschen",
+      "file": "audio/sounds/braun.ogg",
+      "prompt": "Deep warm brown noise, smooth constant low rumble, steady and even"
+    },
     {
       "id": "wald",
       "title": "Wald mit Vögeln",
-      "kind": "loop",
       "file": "audio/sounds/wald.ogg",
-      "prompt": "Peaceful forest ambience in the early morning, gentle birdsong from several distant birds, soft rustling leaves, no wind gusts, seamless loop"
+      "prompt": "Peaceful forest in the morning, distant gentle birdsong, soft rustling leaves, calm"
     },
     {
       "id": "kaminfeuer",
       "title": "Kaminfeuer",
-      "kind": "loop",
       "file": "audio/sounds/kaminfeuer.ogg",
-      "prompt": "Cozy crackling fireplace, steady soft crackles and gentle pops, close and warm, no music, seamless loop"
+      "prompt": "Cozy fireplace, crackling wood fire, warm soft crackles and occasional gentle pops"
     },
     {
       "id": "bach",
       "title": "Bach",
-      "kind": "loop",
       "file": "audio/sounds/bach.ogg",
-      "prompt": "Gentle mountain stream, steady water flowing over small stones, calm and continuous, no birds, seamless loop"
+      "prompt": "Gentle stream flowing over small stones, steady calm babbling water, no birds"
     },
     {
       "id": "klangschalen",
       "title": "Klangschalen",
-      "kind": "loop",
       "file": "audio/sounds/klangschalen.ogg",
-      "prompt": "Slow ambient Tibetan singing bowls, soft overlapping resonant tones, meditative drone, no percussion, seamless loop"
+      "prompt": "Slow overlapping Tibetan singing bowls, soft sustained resonant tones, meditative drone, no percussion"
     }
   ],
   "effects": [

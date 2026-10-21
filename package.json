@@ -13,7 +13,6 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "placeholders": "node scripts/placeholders.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {

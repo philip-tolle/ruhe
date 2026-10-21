@@ -1,20 +1,29 @@
 import { test, expect, afterEach, vi } from 'vitest'
 import { AudioEngine } from '../../src/lib/audio/engine'
+import { loadBuffer } from '../../src/lib/audio/loops'
 import { createOutput, type Output } from '../../src/lib/audio/output'
+import { assetUrl } from '../../src/lib/sounds/catalog'
+
+type Loader = (ctx: BaseAudioContext, url: string) => Promise<AudioBuffer>
 
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms))
+// Für Tests, in denen der Inhalt egal ist: 1 s Stille statt Laden und Dekodieren der Aufnahme.
+const synthetic: Loader = async ctx => ctx.createBuffer(2, ctx.sampleRate, ctx.sampleRate)
 let out: Output | undefined
 let engine: AudioEngine
-function make(load?: (ctx: BaseAudioContext, url: string) => Promise<AudioBuffer>) {
+function make(load: Loader = synthetic) {
   engine = new AudioEngine({ createOutput: () => (out = createOutput()), load })
   return engine
 }
 afterEach(async () => { await engine?.stopAll(); await out?.ctx.close() })
 
-test('toggle starts and stops a live sound', async () => {
-  const e = make()
+test('toggle starts and stops a sound from its recording', async () => {
+  const urls: string[] = []
+  const e = make((ctx, url) => { urls.push(url); return loadBuffer(ctx, url) })
   await e.toggle('regen')
+  expect(urls).toEqual([assetUrl('audio/sounds/regen.ogg')])
   expect(e.snapshot()).toMatchObject({ state: 'playing', volumes: { regen: 0.7 } })
+  expect(e.voiceCount()).toBe(1)
   expect(out!.ctx.state).toBe('running')
   await e.toggle('regen')
   await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(0)
@@ -22,7 +31,7 @@ test('toggle starts and stops a live sound', async () => {
   expect(e.snapshot().state).toBe('idle')
 })
 
-test('loop sound loads and plays alongside a live sound', async () => {
+test('two recordings load and play together', async () => {
   const e = make()
   await Promise.all([e.toggle('regen'), e.toggle('wald')])
   expect(Object.keys(e.snapshot().volumes).sort()).toEqual(['regen', 'wald'])
@@ -89,7 +98,10 @@ test('external pause of the media element pauses the engine', async () => {
 })
 
 test('failed loop load marks only that sound as error', async () => {
-  const e = make(async () => { throw new Error('Konnte nicht geladen werden: x') })
+  const e = make(async (ctx, url) => {
+    if (url.endsWith('/wald.ogg')) throw new Error('Konnte nicht geladen werden: ' + url)
+    return synthetic(ctx, url)
+  })
   await e.toggle('regen')
   await e.toggle('wald')
   expect(e.snapshot()).toMatchObject({ state: 'playing', volumes: { regen: 0.7 }, errors: ['wald'], loading: [] })

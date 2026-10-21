@@ -1,4 +1,4 @@
-// Katalog aller Klänge: vier live synthetisierte und vier Datei-Loops, dazu der
+// Katalog aller Klänge: acht echte Aufnahmen (ElevenLabs, nahtlose 30-s-Schleifen), dazu der
 // Einzelanschlag der Klangschale. Die Daten stehen in content/sounds.json.
 import catalog from '../../../content/sounds.json'
 
@@ -7,11 +7,10 @@ export type SoundId = 'regen' | 'meer' | 'wind' | 'braun' | 'wald' | 'kaminfeuer
 export interface SoundDef {
   id: SoundId
   title: string
-  kind: 'live' | 'loop'
-  // Pfad relativ zu BASE_URL; nur bei kind 'loop'.
-  file?: string
-  // Englischer ElevenLabs-Prompt für die echten Aufnahmen (Meilenstein 4); nur bei kind 'loop'.
-  prompt?: string
+  // Pfad der Aufnahme relativ zu BASE_URL.
+  file: string
+  // Englischer ElevenLabs-Prompt, mit dem die Aufnahme erzeugt wurde.
+  prompt: string
 }
 
 export interface EffectDef {

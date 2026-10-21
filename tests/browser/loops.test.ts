@@ -1,15 +1,24 @@
 import { test, expect, vi } from 'vitest'
 import { loadBuffer, createLoopVoice } from '../../src/lib/audio/loops'
-import { assetUrl } from '../../src/lib/sounds/catalog'
+import { SOUNDS, assetUrl } from '../../src/lib/sounds/catalog'
 
 const SR = 22050
-test('placeholder loop decodes to 20 s and keeps looping', async () => {
-  const ctx = new OfflineAudioContext(2, SR * 22, SR)
-  const buf = await loadBuffer(ctx, assetUrl('audio/sounds/wald.ogg'))
-  expect(buf.duration).toBeGreaterThan(19.95); expect(buf.duration).toBeLessThan(20.05)
-  expect(await loadBuffer(ctx, assetUrl('audio/sounds/wald.ogg'))).toBe(buf)
+test('every recording decodes to 30 s', async () => {
+  const ctx = new OfflineAudioContext(2, SR, SR)
+  for (const sound of SOUNDS) {
+    const buf = await loadBuffer(ctx, assetUrl(sound.file))
+    expect(buf.duration, sound.id).toBeGreaterThan(29.95)
+    expect(buf.duration, sound.id).toBeLessThan(30.05)
+  }
+})
+
+// Braunes Rauschen ist durchgehend gleich laut; in anderen Aufnahmen gibt es leise Stellen.
+test('a recording is loaded once and keeps looping past its end', async () => {
+  const ctx = new OfflineAudioContext(2, SR * 32, SR)
+  const buf = await loadBuffer(ctx, assetUrl('audio/sounds/braun.ogg'))
+  expect(await loadBuffer(ctx, assetUrl('audio/sounds/braun.ogg'))).toBe(buf)
   createLoopVoice(ctx, buf).output.connect(ctx.destination)
-  const d = (await ctx.startRendering()).getChannelData(0).subarray(SR * 20.5, SR * 21.5)
+  const d = (await ctx.startRendering()).getChannelData(0).subarray(SR * 30.5, SR * 31.5)
   expect(Math.sqrt(d.reduce((s, v) => s + v * v, 0) / d.length)).toBeGreaterThan(0.01)
 })
 

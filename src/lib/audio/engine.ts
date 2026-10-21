@@ -3,7 +3,6 @@
 // also innerhalb einer Nutzergeste. Ein-/Ausblenden, Sleep-Ende und das Abbauen gestoppter
 // Stimmen sind auf der Audio-Uhr eingeplant (Rampen, `onended`), nie über JS-Timer.
 import { holdParam, scheduleMarker, scheduleSleepFade } from './clock'
-import { createLiveSound, createNoiseBank, type LiveSoundId, type NoiseBank } from './live-sounds'
 import { createLoopVoice, loadBuffer } from './loops'
 import { syncMediaSession, type MediaActions } from './media-session'
 import { createOutput, type Output } from './output'
@@ -58,13 +57,12 @@ export class AudioEngine {
   }
 
   private out: Output | null = null
-  private bank: NoiseBank | null = null
   private state: EngineState = 'idle'
   private starting: Promise<void> = Promise.resolve()
   private startPending = false // der aktuelle Start (resume + play) ist noch nicht durch
   private startFailed = false // der letzte Start wurde abgelehnt
   private readonly active = new Map<SoundId, Channel>() // klingende Klänge
-  private readonly pending = new Map<SoundId, number>() // ladende Loops → Nummer des Ladevorgangs
+  private readonly pending = new Map<SoundId, number>() // ladende Klänge → Nummer des Ladevorgangs
   private readonly errors = new Set<SoundId>()
   private readonly channels = new Set<Channel>() // alle noch nicht abgebauten Stimmen
   private loads = 0
@@ -92,18 +90,10 @@ export class AudioEngine {
     const sound = soundById(id)
     this.errors.delete(id)
     const starting = this.ensurePlaying()
-    if (sound.kind === 'live') {
-      this.bank ??= createNoiseBank(out.ctx)
-      this.addChannel(id, createLiveSound(out.ctx, id as LiveSoundId, this.bank))
-      this.emit()
-      await starting
-      return
-    }
-
     const load = ++this.loads
     this.pending.set(id, load)
     this.emit()
-    const [started, loaded] = await Promise.allSettled([starting, this.load(out.ctx, assetUrl(sound.file!))])
+    const [started, loaded] = await Promise.allSettled([starting, this.load(out.ctx, assetUrl(sound.file))])
     // Wurde der Klang inzwischen gestoppt (oder danach neu angestoßen), gilt dieser Ladevorgang nicht mehr.
     if (this.pending.get(id) === load) {
       this.pending.delete(id)

@@ -21,7 +21,7 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 3. Regen + Sleep-Timer 60 Min, Bildschirm sperren → läuft durch und blendet in der letzten Minute sanft aus.
 4. Benachrichtigung bzw. Sperrbildschirm zeigt Titel und Play/Pause, die Steuerung funktioniert.
 
-> Hinweis: Die Klangdateien (Loops und Klangschale) sind bis Meilenstein 4 (ElevenLabs) noch Platzhalter. Regen, Meer, Wind und braunes Rauschen werden live in der App erzeugt.
+> Hinweis: Alle acht Klänge sind echte Aufnahmen (ElevenLabs, nahtlose 30-s-Schleifen). Nur der einzelne Klangschalen-Schlag (für den Meditations-Timer ab Meilenstein 2) ist bis Meilenstein 4 noch ein Platzhalter.
 
 ## Entwicklung
 
@@ -33,7 +33,6 @@ npm run dev            # Entwicklungsserver (http://localhost:5173/ruhe/)
 npm run check          # Typen und Svelte-Prüfung
 npm test               # Unit- und Browser-Tests (Vitest)
 npm run test:e2e       # End-to-End-Tests (Playwright, baut und startet die App selbst)
-npm run placeholders   # Platzhalter-Klänge neu erzeugen (braucht ffmpeg mit libopus)
 npm run icons          # App-Icons neu erzeugen (braucht Chromium von Playwright)
 npm run build          # Produktions-Build nach dist/
 ```
