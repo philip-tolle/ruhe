@@ -352,7 +352,7 @@ type Session = {
 - Standard-Hintergrundklang für den Timer (Standard: keiner)
 - Vorlauf beim Timer: an/aus (Standard: an)
 
-*Ergänzung vom 21.10.2026 (Meilenstein 3):* Neue Einstellung `guidedSound` (Standard: keiner): der zuletzt gewählte Hintergrundklang der geführten Meditation. Er wird im Player gewählt und gilt beim nächsten Start wieder; der „Standard-Hintergrundklang“ unter „Ich“ gilt weiter nur für den Timer. Die Balance (`voiceBalance`) wirkt im Player sofort und wird beim Loslassen des Reglers gespeichert.
+*Ergänzung vom 21.10.2026 (Meilenstein 3):* Neue Einstellung `guidedSound` (Standard: keiner): der zuletzt gewählte Hintergrundklang der geführten Meditation. Er wird im Player gewählt und gilt beim nächsten Start wieder; der Klang unter „Ich“ gilt weiter nur für den Timer und heißt dort jetzt „Hintergrundklang beim Timer“. Die Balance (`voiceBalance`) wirkt im Player sofort und wird beim Loslassen des Reglers gespeichert.
 
 ### 6.5 Offline (Service Worker)
 
