@@ -13,7 +13,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "icons": "node scripts/icons.mjs"
+    "icons": "node scripts/icons.mjs",
+    "meditations": "node scripts/meditations.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "5.3.0",

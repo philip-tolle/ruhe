@@ -1,0 +1,103 @@
+{
+  "meditations": [
+    {
+      "id": "ankommen-im-atem",
+      "title": "Ankommen im Atem",
+      "category": "achtsamkeit",
+      "description": "Eine erste, ganz einfache Übung, um bei dir und im Moment anzukommen.",
+      "minutes": 5,
+      "file": "audio/meditations/ankommen-im-atem.mp3",
+      "duration": 300.1,
+      "bytes": 600339,
+      "placeholder": true
+    },
+    {
+      "id": "gedanken-wie-wolken",
+      "title": "Gedanken wie Wolken",
+      "category": "achtsamkeit",
+      "description": "Gedanken kommen und ziehen weiter – du schaust ihnen einfach zu.",
+      "minutes": 8,
+      "file": "audio/meditations/gedanken-wie-wolken.mp3",
+      "duration": 480.1,
+      "bytes": 960307,
+      "placeholder": true
+    },
+    {
+      "id": "bodyscan-im-sitzen",
+      "title": "Bodyscan im Sitzen",
+      "category": "achtsamkeit",
+      "description": "Eine ruhige Reise durch deinen Körper, von den Füßen bis zum Scheitel.",
+      "minutes": 10,
+      "file": "audio/meditations/bodyscan-im-sitzen.mp3",
+      "duration": 600.1,
+      "bytes": 1200320,
+      "placeholder": true
+    },
+    {
+      "id": "drei-minuten-atempause",
+      "title": "Drei-Minuten-Atempause",
+      "category": "stress",
+      "description": "Drei kleine Schritte, die dich mitten im Trubel wieder zu dir bringen.",
+      "minutes": 3,
+      "file": "audio/meditations/drei-minuten-atempause.mp3",
+      "duration": 180.1,
+      "bytes": 360326,
+      "placeholder": true
+    },
+    {
+      "id": "nach-einem-vollen-tag",
+      "title": "Nach einem vollen Tag",
+      "category": "stress",
+      "description": "Am Abend den Tag ablegen, die Schultern sinken lassen und zur Ruhe kommen.",
+      "minutes": 10,
+      "file": "audio/meditations/nach-einem-vollen-tag.mp3",
+      "duration": 600.1,
+      "bytes": 1200320,
+      "placeholder": true
+    },
+    {
+      "id": "vor-einem-wichtigen-termin",
+      "title": "Vor einem wichtigen Termin",
+      "category": "stress",
+      "description": "Ein paar ruhige Minuten, um mit festem Stand und klarem Kopf loszugehen.",
+      "minutes": 5,
+      "file": "audio/meditations/vor-einem-wichtigen-termin.mp3",
+      "duration": 300.1,
+      "bytes": 600339,
+      "placeholder": true
+    },
+    {
+      "id": "guten-morgen",
+      "title": "Guten Morgen",
+      "category": "fokus",
+      "description": "Ein sanfter Start mit frischem Atem, etwas Bewegung und einem Wort für den Tag.",
+      "minutes": 5,
+      "file": "audio/meditations/guten-morgen.mp3",
+      "duration": 300.1,
+      "bytes": 600339,
+      "placeholder": true
+    },
+    {
+      "id": "fokus-vor-der-arbeit",
+      "title": "Fokus vor der Arbeit",
+      "category": "fokus",
+      "description": "Den Kopf sortieren und mit einer einzigen, klaren Absicht anfangen.",
+      "minutes": 7,
+      "file": "audio/meditations/fokus-vor-der-arbeit.mp3",
+      "duration": 420.1,
+      "bytes": 840352,
+      "placeholder": true
+    },
+    {
+      "id": "energie-in-der-mittagspause",
+      "title": "Energie in der Mittagspause",
+      "category": "fokus",
+      "description": "Kurz auftanken, den Atem weit werden lassen und frisch in den Nachmittag gehen.",
+      "minutes": 8,
+      "file": "audio/meditations/energie-in-der-mittagspause.mp3",
+      "duration": 480.1,
+      "bytes": 960307,
+      "placeholder": true
+    }
+  ]
+}
