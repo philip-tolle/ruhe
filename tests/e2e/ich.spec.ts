@@ -279,6 +279,25 @@ test('an imported backup brings its balance along', async ({ page }) => {
   await expect(balanceSlider(page)).toHaveValue('65')
 })
 
+test('the balance slider follows an import after a drag that ended where it began', async ({ page }) => {
+  await open(page)
+  const slider = balanceSlider(page)
+  // Ziehen und zurück an den Anfang: Es gibt kein „change“, der Wert ist wie vorher.
+  await slider.evaluate((el: HTMLInputElement) => {
+    for (const value of ['70', '30', '50']) {
+      el.value = value
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  })
+  await expect(slider).toHaveValue('50')
+  expect((await stored(page)).settings.voiceBalance).toBe(0.5)
+
+  // Kommt der Wert danach von außen, zeigt der Regler ihn (und nicht den Rest des Ziehens).
+  await chooseFile(page, { name: 'b.json', content: JSON.stringify(backupOf([], { ...SETTINGS, voiceBalance: 0.65 })) })
+  await expect(backupStatus(page)).toHaveText('0 neue Sitzungen importiert.')
+  await expect(slider).toHaveValue('65')
+})
+
 test('the offline card sits above the backup and starts empty', async ({ page }) => {
   await open(page)
   const heading = page.getByRole('heading', { level: 2, name: 'Offline', exact: true })
@@ -419,6 +438,74 @@ test.describe('saving all meditations', () => {
     await expect(offlineStatus(page)).toHaveText('Alle Meditationen sind offline verfügbar.')
     await expect(summary(page)).toHaveText(SUMMARY(9))
     expect(requests).toHaveLength(3 + 7)
+  })
+
+  test('a result that arrives while the user is on another tab is shown on return, once', async ({ page }) => {
+    await page.addInitScript(() => {
+      const put = Cache.prototype.put
+      let puts = 0
+      Cache.prototype.put = function (...args: Parameters<Cache['put']>) {
+        if (++puts !== 3) return put.apply(this, args)
+        ;(window as unknown as { __quotaHit: boolean }).__quotaHit = true
+        return Promise.reject(new DOMException('voll', 'QuotaExceededError'))
+      }
+    })
+    await open(page)
+
+    await saveAll(page).click()
+    await nav(page, 'Meditieren')
+    // Der Lauf endet, während Ich nicht zu sehen ist (nach der Meldung ist noch ein Durchlauf nötig, bis
+    // die Ergebnisse gesetzt sind).
+    await page.waitForFunction(() => (window as unknown as { __quotaHit?: boolean }).__quotaHit === true)
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)))
+
+    await nav(page, 'Ich')
+    await expect(offlineStatus(page)).toHaveText('Nicht genug Speicherplatz. Bereits Gespeichertes bleibt erhalten.')
+    await expect(summary(page)).toHaveText(SUMMARY(2))
+
+    // Einmal gesehen: Wer wieder weg- und zurückgeht, findet sie nicht mehr.
+    await nav(page, 'Meditieren')
+    await nav(page, 'Ich')
+    await expect(offlineStatus(page)).toHaveText('')
+  })
+
+  test('files that were there already count at once towards the progress', async ({ page }) => {
+    const meditations: { file: string; version: string; bytes: number }[] = JSON.parse(
+      readFileSync('src/content/meditations.json', 'utf8'),
+    ).meditations
+    const total = meditations.reduce((sum, m) => sum + m.bytes, 0)
+    const last = meditations.at(-1)!
+    const expected = Math.round(((total - last.bytes) / total) * 100)
+
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let requests = 0
+    await page.route('**/audio/meditations/**', async (route) => {
+      // Es werden nur acht Dateien geladen (die erste liegt schon im Cache); die letzte hält der Test fest.
+      if (++requests === 8) await gate
+      await route.continue()
+    })
+    await open(page)
+    const first = meditations[0]
+    await page.evaluate(
+      async ({ file, version }) => {
+        const cache = await caches.open('ruhe-meditations')
+        await cache.put(
+          new URL(`${file}?v=${version}`, location.href),
+          new Response(new Uint8Array(1000), { headers: { 'Content-Type': 'audio/mpeg' } }),
+        )
+      },
+      { file: first.file, version: first.version },
+    )
+
+    await saveAll(page).click()
+    await expect(page.getByText('Speichere 9 von 9 …')).toBeVisible()
+    // Die erste Datei war schon da und zählt mit ihrer Größe laut Katalog; die letzte hat noch kein Byte geliefert.
+    await expect(progress(page)).toHaveAttribute('aria-valuenow', String(expected))
+    release()
+    await expect(offlineStatus(page)).toHaveText('Alle Meditationen sind offline verfügbar.')
+    expect(requests).toBe(8)
+    await expect(summary(page)).toHaveText(SUMMARY(9))
   })
 
   test('a file that fails does not stop the others and is counted', async ({ page }) => {

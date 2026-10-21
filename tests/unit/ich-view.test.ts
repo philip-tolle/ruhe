@@ -7,11 +7,14 @@ import {
   monthTitle,
   MONTH_NAMES,
   offlineSummary,
+  saveProgress,
   savePercent,
   saveResultMessage,
+  savedTotals,
   savingLabel,
   shiftMonth,
   streakLabel,
+  sumBytes,
   WEEKDAYS,
 } from '../../src/lib/ui/ich-view'
 
@@ -154,5 +157,91 @@ describe('save result message', () => {
   test('failed files are counted, the others stay saved', () => {
     expect(saveResultMessage({ saved: 8, failed: 1, quota: false }, 9)).toBe('8 von 9 gespeichert, 1 fehlgeschlagen.')
     expect(saveResultMessage({ saved: 0, failed: 9, quota: false }, 9)).toBe('0 von 9 gespeichert, 9 fehlgeschlagen.')
+  })
+})
+
+describe('saved files and their size', () => {
+  const files = [
+    { url: 'a', bytes: 400 },
+    { url: 'b', bytes: 600 },
+    { url: 'c', bytes: 250 },
+  ]
+
+  test('sum of bytes', () => {
+    expect(sumBytes(files)).toBe(1250)
+    expect(sumBytes([])).toBe(0)
+  })
+
+  test('only files known to be saved count; unchecked and not saved do not', () => {
+    expect(savedTotals(files, {})).toEqual({ count: 0, bytes: 0 })
+    expect(savedTotals(files, { a: true, b: false })).toEqual({ count: 1, bytes: 400 })
+    expect(savedTotals(files, { a: true, b: true, c: true })).toEqual({ count: 3, bytes: 1250 })
+    expect(savedTotals(files, { x: true })).toEqual({ count: 0, bytes: 0 }) // fremde Adresse
+  })
+})
+
+// Der Lauf meldet, wie `saveAll` es tut: die empfangenen Bytes (zusammen, nur gespeicherte Dateien samt
+// der laufenden), dann „Datei gespeichert“, dann nochmals die Bytes ohne die Bruchstücke gescheiterter Dateien.
+describe('save progress', () => {
+  test('downloaded files: the share of bytes received', () => {
+    const p = saveProgress(1000) // Dateien à 400 und 600
+    expect(p.received(0)).toBe(0)
+    expect(p.received(100)).toBe(10)
+    expect(p.received(400)).toBe(40)
+    expect(p.saved(400)).toBe(40)
+    expect(p.received(400)).toBe(40)
+    expect(p.received(700)).toBe(70)
+    expect(p.received(1000)).toBe(100)
+    expect(p.saved(600)).toBe(100)
+  })
+
+  test('a file that was there already counts at once, with the size from the catalog', () => {
+    const p = saveProgress(1000) // 400 gespeichert, 600 zu laden
+    expect(p.received(0)).toBe(0)
+    expect(p.saved(400)).toBe(40) // keine Bytes empfangen, also schon da
+    expect(p.received(0)).toBe(40)
+    expect(p.received(300)).toBe(70)
+    expect(p.received(600)).toBe(100)
+    expect(p.saved(600)).toBe(100) // diese wurde geladen: zählt nicht doppelt
+  })
+
+  test('a file that was there already in the middle of a run', () => {
+    const p = saveProgress(1000) // 300 geladen, 200 schon da, 500 geladen
+    p.received(0)
+    p.received(300)
+    expect(p.saved(300)).toBe(30)
+    p.received(300)
+    expect(p.saved(200)).toBe(50) // seit der letzten Datei kamen keine Bytes
+    expect(p.received(300)).toBe(50)
+    expect(p.received(550)).toBe(75)
+    expect(p.received(800)).toBe(100)
+    expect(p.saved(500)).toBe(100)
+  })
+
+  test('every file there already: complete without a single byte received', () => {
+    const p = saveProgress(1000)
+    p.received(0)
+    expect(p.saved(400)).toBe(40)
+    p.received(0)
+    expect(p.saved(600)).toBe(100)
+  })
+
+  test('the bar never goes back when a failed file drops its fragment', () => {
+    const p = saveProgress(1000) // 500 scheitert bei 250, 500 ist schon da
+    p.received(0)
+    expect(p.received(250)).toBe(25)
+    expect(p.received(0)).toBe(25) // gescheitert: Bruchstück fällt heraus, Anzeige bleibt
+    expect(p.saved(500)).toBe(50) // die nächste war schon da (die Bytes standen wieder auf dem alten Wert)
+  })
+
+  test('nothing to load: 0', () => {
+    const p = saveProgress(0)
+    expect(p.received(0)).toBe(0)
+    expect(p.saved(0)).toBe(0)
+  })
+
+  test('more bytes than expected stop at 100', () => {
+    const p = saveProgress(1000)
+    expect(p.received(1500)).toBe(100)
   })
 })

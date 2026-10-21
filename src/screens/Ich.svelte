@@ -8,7 +8,7 @@
   import { backupFileName, serializeBackup } from '../lib/stats/backup'
   import { importBackup, stats, updateSettings } from '../lib/stats/store.svelte'
   import { streak, totalMinutes } from '../lib/stats/summary'
-  import { importMessage, offlineSummary, savingLabel, streakLabel } from '../lib/ui/ich-view'
+  import { importMessage, offlineSummary, savedTotals, savingLabel, streakLabel } from '../lib/ui/ich-view'
   import { clearSaveMessage, meditationFiles, saveAllOffline, saveAllUi } from '../lib/ui/offline-ui.svelte'
 
   const sessions = $derived(stats.data.sessions)
@@ -29,15 +29,23 @@
     dragging = null
   }
 
+  // Ein Ziehen, das dort endet, wo es begann, löst kein „change“ aus. Ändert sich der gespeicherte Wert
+  // danach von außen (Import, Player), gilt er und nicht der Rest des Ziehens.
+  $effect(() => {
+    void settings.voiceBalance
+    dragging = null
+  })
+
   // Offline: Der Stand kommt aus dem Cache (wie in der Liste unter „Meditieren“).
   const files = meditationFiles()
-  const saved = $derived(files.filter((file) => offline.saved[file.url] === true))
-  const savedBytes = $derived(saved.reduce((sum, file) => sum + file.bytes, 0))
-  const canSave = $derived(offline.online && !saveAllUi.running && saved.length < files.length)
+  const saved = $derived(savedTotals(files, offline.saved))
+  const canSave = $derived(offline.online && !saveAllUi.running && saved.count < files.length)
 
+  // Eine Meldung nach „Alle offline speichern“ ist einmal zu sehen, auch wenn der Lauf endete, während
+  // der Reiter nicht offen war: Sie verschwindet erst, wenn man ihn verlässt.
   onMount(() => {
-    clearSaveMessage()
     void refreshSaved(files.map((file) => file.url))
+    return clearSaveMessage
   })
 
   let fileInput = $state<HTMLInputElement>()
@@ -120,8 +128,8 @@
 
   <div class="card">
     <h2>Offline</h2>
-    <p class="hint">{offlineSummary(saved.length, files.length, savedBytes)}</p>
-    <button type="button" class="button" disabled={!canSave} onclick={() => saveAllOffline().catch(() => {})}>
+    <p class="hint">{offlineSummary(saved.count, files.length, saved.bytes)}</p>
+    <button type="button" class="button" class:secondary={!canSave} disabled={!canSave} onclick={() => void saveAllOffline()}>
       Alle offline speichern
     </button>
     {#if saveAllUi.running}
@@ -217,12 +225,9 @@
     gap: 12px;
   }
 
-  /* Nichts zu speichern oder ohne Netz: wie eine zurückgenommene Schaltfläche, nicht wie eine blasse goldene. */
+  /* Nichts zu speichern oder ohne Netz: wie eine zurückgenommene Schaltfläche (.secondary), mit gedämpfter Schrift. */
   .button:disabled {
-    border: 1px solid var(--surface-border);
-    background: var(--surface);
     color: var(--text-muted);
-    box-shadow: none;
     cursor: default;
   }
 

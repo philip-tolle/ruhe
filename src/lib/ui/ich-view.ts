@@ -98,3 +98,51 @@ export function saveResultMessage(result: { saved: number; failed: number; quota
   if (result.failed > 0) return `${result.saved} von ${total} gespeichert, ${result.failed} fehlgeschlagen.`
   return 'Alle Meditationen sind offline verfügbar.'
 }
+
+/** Summe der Größen in Bytes. */
+export function sumBytes(files: readonly { bytes: number }[]): number {
+  return files.reduce((sum, file) => sum + file.bytes, 0)
+}
+
+/**
+ * Die Dateien, die laut `status` (Adresse → gespeichert, `undefined` = noch nicht geprüft) gespeichert
+ * sind: ihre Zahl und Größe zusammen.
+ */
+export function savedTotals(
+  files: readonly { url: string; bytes: number }[],
+  status: Partial<Record<string, boolean>>,
+): { count: number; bytes: number } {
+  const saved = files.filter((file) => status[file.url] === true)
+  return { count: saved.length, bytes: sumBytes(saved) }
+}
+
+/**
+ * Fortschritt von „Alle offline speichern“ in ganzen Prozent der Bytes laut Katalog (`totalBytes`).
+ * Er hört auf die Meldungen von `saveAll`: `received(bytes)` mit den bisher empfangenen Bytes
+ * (gespeicherte Dateien samt der laufenden, ohne die Bruchstücke gescheiterter), `saved(fileBytes)`
+ * mit der Größe laut Katalog, sobald eine Datei vollständig im Cache liegt. Kamen seit der letzten
+ * gespeicherten Datei keine Bytes, war sie schon da: Sie zählt dann mit ihrer Katalog-Größe, ohne dass
+ * jemand vorher prüfen müsste, was schon gespeichert war. Jeder Aufruf liefert den neuen Stand; er
+ * geht nie zurück.
+ */
+export function saveProgress(totalBytes: number): {
+  received: (bytes: number) => number
+  saved: (fileBytes: number) => number
+} {
+  let skipped = 0 // Bytes der Dateien, die schon im Cache lagen
+  let received = 0 // zuletzt gemeldete Bytes
+  let settled = 0 // Bytes beim Abschluss der letzten gespeicherten Datei
+  let percent = 0
+  const update = () => (percent = Math.max(percent, savePercent(skipped + received, totalBytes)))
+  return {
+    received(bytes) {
+      received = bytes
+      return update()
+    },
+    saved(fileBytes) {
+      if (received === settled) skipped += fileBytes
+      settled = received
+      return update()
+    },
+  }
+}

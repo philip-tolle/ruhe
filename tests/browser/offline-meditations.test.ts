@@ -13,6 +13,9 @@ import {
 // Nur für Fälle, die der echte Cache nicht zulässt (206-Antwort, Speicher voll), steht ein
 // kleiner Fake-Cache bereit.
 
+// Eine gespeicherte Datei trägt einen Audio-Typ; ohne ihn zählt ein Eintrag nicht (siehe `isSaved`).
+const AUDIO = { 'Content-Type': 'audio/mpeg' }
+
 const url = (name: string) => new URL(`audio/meditations/${name}.mp3`, location.href).href
 
 function bytes(length: number, seed = 1): Uint8Array<ArrayBuffer> {
@@ -300,9 +303,9 @@ test('isSaved: a 200 without Content-Length counts, a 206 never does', async () 
   const b = url('b')
   const c = url('c')
   const { storage, entries } = fakeCaches()
-  entries.set(a, new Response(bytes(500), { status: 200 }))
-  entries.set(b, new Response(bytes(500), { status: 206, headers: { 'Content-Length': '500' } }))
-  entries.set(c, new Response(bytes(400), { status: 200, headers: { 'Content-Length': '500' } }))
+  entries.set(a, new Response(bytes(500), { status: 200, headers: AUDIO }))
+  entries.set(b, new Response(bytes(500), { status: 206, headers: { ...AUDIO, 'Content-Length': '500' } }))
+  entries.set(c, new Response(bytes(400), { status: 200, headers: { ...AUDIO, 'Content-Length': '500' } }))
 
   expect(await isSaved(a, { caches: storage })).toBe(true)
   expect(await isSaved(b, { caches: storage })).toBe(false)
@@ -446,9 +449,10 @@ test('isSaved does not compare the Content-Length of an entry that has a Content
   const b = url('b')
   const { storage, entries } = fakeCaches()
   // Länge vor dem Entpacken (200) ≠ Länge des Inhalts (500): nicht prüfbar, also zählt die 200-Antwort.
-  entries.set(a, new Response(bytes(500), { status: 200, headers: { 'Content-Encoding': 'gzip', 'Content-Length': '200' } }))
+  const gzip = { ...AUDIO, 'Content-Encoding': 'gzip', 'Content-Length': '200' }
+  entries.set(a, new Response(bytes(500), { status: 200, headers: gzip }))
   // Eine Teilantwort zählt trotzdem nie.
-  entries.set(b, new Response(bytes(500), { status: 206, headers: { 'Content-Encoding': 'gzip', 'Content-Length': '200' } }))
+  entries.set(b, new Response(bytes(500), { status: 206, headers: gzip }))
 
   expect(await isSaved(a, { caches: storage })).toBe(true)
   expect(await isSaved(b, { caches: storage })).toBe(false)
@@ -535,4 +539,50 @@ test('saveAll does not call onSaved for the file that hit the storage limit', as
 
   expect(result).toEqual({ saved: 1, failed: 0, quota: true })
   expect(saved).toEqual([url('a')])
+})
+
+// Der Service Worker schreibt jede 200-Antwort in den Cache (cacheableResponse prüft nur den Status),
+// auch die Startseite, die der Server statt einer fehlenden Datei liefert.
+const PAGE = new TextEncoder().encode('<!doctype html><title>Ruhe</title><p>Nicht gefunden</p>')
+const htmlResponse = (type: string | null = 'text/html; charset=utf-8') =>
+  new Response(PAGE, { status: 200, headers: { ...(type ? { 'Content-Type': type } : {}), 'Content-Length': String(PAGE.length) } })
+
+test('a cached 200 that is not audio does not count as saved', async () => {
+  const a = url('a')
+  const b = url('b')
+  const { storage, entries } = fakeCaches()
+  entries.set(a, htmlResponse())
+  entries.set(b, htmlResponse(null)) // ganz ohne Content-Type
+  entries.set(url('c'), new Response(bytes(500), { status: 200, headers: { 'Content-Type': 'audio/mp3' } }))
+
+  expect(await isSaved(a, { caches: storage })).toBe(false)
+  expect(await isSaved(b, { caches: storage })).toBe(false)
+  expect(await isSaved(url('c'), { caches: storage })).toBe(true) // jeder audio/*-Typ zählt
+})
+
+test('a cached page instead of the file is replaced by the next save', async () => {
+  const a = url('a')
+  const data = bytes(3000)
+  const cache = await caches.open(MEDITATION_CACHE)
+  await cache.put(a, htmlResponse())
+  expect(await isSaved(a)).toBe(false)
+
+  const fetch = fakeFetch({ [a]: { data } })
+  expect(await saveMeditation(a, undefined, { fetch })).toBe('saved')
+
+  expect(fetch.calls).toEqual([a]) // nicht als „schon gespeichert“ übersprungen
+  expect(await isSaved(a)).toBe(true)
+  const cached = await cache.match(a)
+  expect(cached?.headers.get('Content-Type')).toBe('audio/mpeg')
+  expect(new Uint8Array(await cached!.arrayBuffer())).toEqual(data)
+})
+
+test('a cached page is gone even when the new download fails', async () => {
+  const a = url('a')
+  const cache = await caches.open(MEDITATION_CACHE)
+  await cache.put(a, htmlResponse())
+
+  expect(await saveMeditation(a, undefined, { fetch: fakeFetch({ [a]: { data: bytes(3000), errorAt: 500 } }) })).toBe('failed')
+
+  expect(await cachedKeys()).toEqual([])
 })

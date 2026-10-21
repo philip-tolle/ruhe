@@ -174,19 +174,36 @@ test('the background sound and the balance act at once and are remembered', asyn
 })
 
 test('the background sound and the balance reach the engine', async ({ page }) => {
-  // Die Engine blendet jeden Klang auf seine Lautstärke ein bzw. fährt sie dorthin (Rampe): Der Test
-  // zeichnet die Ziele der Rampen auf, den Weg bis zum Audio-Graphen also.
+  // Die Engine blendet jeden Klang auf seine Lautstärke ein und fährt sie später mit einer Rampe auf
+  // den neuen Wert. Der Test zeichnet die Ziele der Rampen je AudioParam auf: Der Hintergrund ist der
+  // Regler, dessen erste Rampe 0,7 × Balance ist und dem danach die neuen Werte folgen. Ein anderer
+  // Parameter (Stimme, Sleep-Timer, Ausblenden) erfüllt das nicht.
   await page.addInitScript(() => {
-    const ramps: number[] = []
-    ;(window as unknown as { __ramps: number[] }).__ramps = ramps
+    const ramps: { param: AudioParam; value: number }[] = []
+    ;(window as unknown as { __ramps: typeof ramps }).__ramps = ramps
     const original = AudioParam.prototype.linearRampToValueAtTime
     AudioParam.prototype.linearRampToValueAtTime = function (value: number, endTime: number) {
-      ramps.push(value)
+      ramps.push({ param: this, value })
       return original.call(this, value, endTime)
     }
   })
-  const ramps = () => page.evaluate(() => (window as unknown as { __ramps: number[] }).__ramps)
-  const reached = (target: number) => expect.poll(async () => (await ramps()).some((v) => Math.abs(v - target) < 1e-6))
+  // Je AudioParam die Ziele in der Reihenfolge der Rampen; ein Regler meldet beim Loslassen denselben
+  // Wert nochmals (input, dann change), das zählt einmal.
+  const perParam = (): Promise<number[][]> =>
+    page.evaluate(() => {
+      const byParam = new Map<AudioParam, number[]>()
+      for (const { param, value } of (window as unknown as { __ramps: { param: AudioParam; value: number }[] }).__ramps) {
+        const targets = byParam.get(param) ?? []
+        if (targets.length === 0 || Math.abs(targets[targets.length - 1] - value) > 1e-9) targets.push(value)
+        byParam.set(param, targets)
+      }
+      return [...byParam.values()]
+    })
+  // Ein Parameter, dessen Rampen mit genau diesen Werten beginnen.
+  const startsWith = (expected: number[]) =>
+    expect.poll(async () =>
+      (await perParam()).some((seq) => expected.every((v, i) => seq[i] !== undefined && Math.abs(seq[i] - v) < 1e-6)),
+    )
 
   await openMeditieren(page)
   await entry(page, 'Guten Morgen').click()
@@ -196,22 +213,24 @@ test('the background sound and the balance reach the engine', async ({ page }) =
 
   // Ein neuer Hintergrund beginnt mit 0,7 × Balance (Standard 0,5 → 0,35) …
   await sound.selectOption({ label: 'Regen' })
-  await reached(0.35).toBe(true)
-  // … der Regler fährt ihn auf 0,7 × 0,2 bzw. 0,7 × 1.
+  await startsWith([0.35]).toBe(true)
+  // … und derselbe Parameter fährt danach auf 0,7 × 0,2 und 0,7 × 1.
   await balance.fill('20')
-  await reached(0.14).toBe(true)
+  await startsWith([0.35, 0.14]).toBe(true)
   await balance.fill('100')
-  await reached(0.7).toBe(true)
+  await startsWith([0.35, 0.14, 0.7]).toBe(true)
   await balance.fill('80')
   await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.8)
+  await startsWith([0.35, 0.14, 0.7, 0.56]).toBe(true)
 
-  // Die nächste Meditation beginnt gleich mit der gemerkten Wahl: Regen bei 0,7 × 0,8.
+  // Die nächste Meditation beginnt gleich mit der gemerkten Wahl: Regen bei 0,7 × 0,8, als erste Rampe
+  // eines neuen Parameters.
   await player.getByRole('button', { name: 'Beenden' }).click()
   await page.getByRole('button', { name: 'Fertig' }).click()
-  await page.evaluate(() => (window as unknown as { __ramps: number[] }).__ramps.splice(0))
+  await page.evaluate(() => (window as unknown as { __ramps: unknown[] }).__ramps.splice(0))
   await entry(page, 'Ankommen im Atem').click()
   await expect(player.getByRole('heading', { name: 'Ankommen im Atem' })).toBeVisible()
-  await reached(0.56).toBe(true)
+  await startsWith([0.56]).toBe(true)
 })
 
 test.describe('when the file does not load', () => {

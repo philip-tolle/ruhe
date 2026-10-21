@@ -46,7 +46,9 @@ export default defineConfig({
             options: {
               cacheName: 'ruhe-meditations',
               rangeRequests: true,
-              cacheableResponse: { statuses: [200] },
+              // Nur echtes Audio: Sonst legte der Service Worker auch die Startseite ab, die ein Server
+              // statt einer fehlenden Datei mit 200 ausliefert, und die Datei gälte als gespeichert.
+              cacheableResponse: { statuses: [200], headers: { 'Content-Type': 'audio/mpeg' } },
             },
           },
         ],

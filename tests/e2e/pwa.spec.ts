@@ -75,3 +75,24 @@ test('a saved meditation is served from the cache with range support while offli
   expect(partial.bytes).toHaveLength(100)
   expect(partial.bytes).toEqual(saved.head)
 })
+
+test('the meditation cache takes only audio, never a page in place of a file', async ({ page }) => {
+  await page.goto('./')
+  await page.evaluate(async () => { await navigator.serviceWorker.ready })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+
+  // Der Vorschau-Server liefert für eine unbekannte Adresse die Startseite mit 200 (wie manche Hoster).
+  const missing = new URL('audio/meditations/gibt-es-nicht.mp3?v=0000000000', page.url()).href
+  const answer = await page.evaluate(async (url) => {
+    const response = await fetch(url)
+    return { status: response.status, type: response.headers.get('Content-Type') }
+  }, missing)
+  expect(answer.status).toBe(200)
+  expect(answer.type).toContain('text/html')
+
+  // Der Service Worker schreibt nach der Antwort in den Cache; ihm bleibt etwas Zeit dafür.
+  await page.waitForTimeout(1000)
+  const cached = await page.evaluate(async () => (await (await caches.open('ruhe-meditations')).keys()).map((r) => r.url))
+  expect(cached).toEqual([])
+})

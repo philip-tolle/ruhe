@@ -6,6 +6,12 @@
 // Cache liefert der Service Worker mit Range-Unterstützung aus (vite.config.ts → runtimeCaching),
 // sodass Spulen auch offline geht. Der Offline-Status einer Meditation kommt allein aus dem Cache.
 //
+// Absicherung: Ein unvollständiger Eintrag wird vor dem Laden gelöscht (der Service Worker würde ihn
+// sonst ausliefern); eine Antwort mit Content-Encoding hat keine prüfbare Länge (Content-Length gilt
+// vor dem Entpacken), gezählt werden dann die empfangenen Bytes; was nicht `audio/*` ist (z. B. die
+// Startseite als Ersatz für eine fehlende Datei), wird nie gespeichert und zählt, wo es im Cache
+// liegt (der Service Worker legt jede 200-Antwort ab), nicht als gespeichert.
+//
 // Cache Storage, fetch und StorageManager sind für Tests austauschbar (`OfflineDeps`);
 // ohne Angabe gelten die globalen. Adressen werden gegen `location.href` aufgelöst, damit der
 // Schlüssel im Cache genau die Adresse ist, die auch die Workbox-Route sieht.
@@ -60,6 +66,9 @@ async function savedIn(cache: Cache, address: string): Promise<boolean> {
   const response = await cache.match(address)
   // Nur eine vollständige 200-Antwort zählt, nie ein 206.
   if (!response || response.status !== 200) return false
+  // Der Service Worker legt jede 200-Antwort ab, auch die Startseite, die der Server statt einer
+  // fehlenden Datei liefert. Sie ist keine Meditation; `saveMeditation` löscht sie beim nächsten Speichern.
+  if (!isAudio(response)) return false
   // Ohne prüfbare Länge (fehlt oder Content-Encoding) genügt die 200-Antwort; eine unlesbare
   // Content-Length dagegen gilt als beschädigt.
   if (response.headers.has('Content-Encoding') || !response.headers.has('Content-Length')) return true
