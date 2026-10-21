@@ -14,8 +14,8 @@ export const LEAD_SECONDS = 10
 /** Schläge der Endschalen in Sekunden nach Ende der gezählten Dauer. */
 export const END_STRIKES: readonly number[] = [0, 3, 6]
 
-/** Ausklingzeit in Sekunden nach dem Ende, bis das Programm beendet ist. */
-export const TIMER_TAIL = 12
+/** Ausklingzeit in Sekunden nach dem Ende, bis das Programm beendet ist: Die letzte Endschale klingt 9 s aus. */
+export const TIMER_TAIL = 15
 
 export interface TimerSettings {
   minutes: number

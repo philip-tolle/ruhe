@@ -191,6 +191,8 @@ Das Herzstück. Ziel: zuverlässige Wiedergabe bei gesperrtem Bildschirm und sek
 Normale JavaScript-Timer werden von Android im Hintergrund stark gedrosselt. Deshalb:
 
 - Ein **Timer-Plan** wird als reine Funktion berechnet (Eingabe: Einstellungen → Ausgabe: Liste von Ereignissen mit Zeitpunkt, z. B. „Klangschale bei 0 s“, „Intervall-Schale bei 300 s“, „3 Schalen ab 1200 s“, „Ende bei 1212 s“).
+
+  *Ergänzung vom 21.10.2026:* Das Ausklingen nach der letzten End-Schale dauert jetzt 15 s (tiefere, länger klingende Schale), das Beispiel endet also bei 1215 s.
 - Die Engine plant diese Ereignisse **vorab** auf der Zeitleiste des `AudioContext` (`source.start(when)`), ebenso die Ausblend-Rampe des Sleep-Timers (`gain.linearRampToValueAtTime`).
 - Das **Ende einer Sitzung** wird über das `ended`-Ereignis einer eingeplanten Quelle erkannt. Kommt das Ereignis verzögert an (gedrosselter Hintergrund), wird die Dauer trotzdem korrekt aus der Audio-Uhr berechnet.
 - Die Anzeige (Restzeit, Ring) liest bei sichtbarem Bildschirm `audioContext.currentTime` aus; sie steuert nichts.

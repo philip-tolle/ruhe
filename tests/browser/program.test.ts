@@ -356,7 +356,7 @@ test('timerProgram schedules strikes at the planned times', async () => {
   const start = vi.spyOn(AudioBufferSourceNode.prototype, 'start')
   try {
     const p = timerProgram({ minutes: 1, intervalMin: null, lead: true, sound: null })
-    expect(p).toMatchObject({ kind: 'timer', ref: 'timer', title: 'Meditation · 1 Min', lead: 10, length: 60, finish: 82, background: null })
+    expect(p).toMatchObject({ kind: 'timer', ref: 'timer', title: 'Meditation · 1 Min', lead: 10, length: 60, finish: 85, background: null })
     const stop = p.schedule(ctx, ctx.destination, 2, { strike: buffer })
     expect(start.mock.calls.map(c => c[0])).toEqual([12, 72, 75, 78])
     stop()
