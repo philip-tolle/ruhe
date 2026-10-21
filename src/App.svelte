@@ -14,8 +14,10 @@
 
   let tab = $state<TabId>('heute')
 
-  // Der Mini-Player erscheint, solange Klänge laufen oder pausiert sind – außer im Klänge-Reiter selbst.
-  const miniPlayerVisible = $derived(audio.snap.state !== 'idle' && tab !== 'klaenge')
+  // Solange Klänge laufen oder pausiert sind, liegt über der Reiterleiste eine Wiedergabeleiste:
+  // im Klänge-Reiter dessen eigene Steuerung, sonst der Mini-Player. `main` hält ihr den Platz frei.
+  const sessionActive = $derived(audio.snap.state !== 'idle')
+  const miniPlayerVisible = $derived(sessionActive && tab !== 'klaenge')
 
   // Neue Version: Der Hinweis erscheint nur im Leerlauf, damit er eine laufende Sitzung nie stört.
   const updateToastVisible = $derived(pwa.needRefresh && audio.snap.state === 'idle')
@@ -28,7 +30,7 @@
 
 <Sky />
 
-<main class:with-mini-player={miniPlayerVisible}>
+<main class:with-player-bar={sessionActive}>
   {#if tab === 'heute'}
     <Heute {onNavigate} />
   {:else if tab === 'meditieren'}

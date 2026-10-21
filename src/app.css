@@ -31,8 +31,9 @@
      bei --tabbar-offset dazu; Elemente "über der Leiste" nutzen --tabbar-offset. */
   --tabbar-height: 68px;
   --tabbar-offset: calc(var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
-  /* Mini-Player: schwebt mit etwas Abstand über der Reiterleiste. Bei sichtbarem Mini-Player
-     reserviert `main` die Höhe samt Abstand, damit er keinen Inhalt verdeckt. */
+  /* Wiedergabeleiste (Mini-Player bzw. Steuerung im Klänge-Reiter): schwebt mit etwas Abstand
+     über der Reiterleiste. Ist sie sichtbar, reserviert `main` die Höhe samt Abstand, damit sie
+     keinen Inhalt verdeckt. */
   --miniplayer-height: 64px;
   --miniplayer-gap: 8px;
 
@@ -104,7 +105,7 @@ main {
   padding: calc(env(safe-area-inset-top, 0px) + 40px) var(--gutter) calc(var(--tabbar-offset) + 40px);
 }
 
-main.with-mini-player {
+main.with-player-bar {
   padding-bottom: calc(var(--tabbar-offset) + var(--miniplayer-height) + var(--miniplayer-gap) + 40px);
 }
 
