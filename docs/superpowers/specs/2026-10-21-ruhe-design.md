@@ -483,7 +483,7 @@ Jede Datei unter `src/lib/` hat eine klar umrissene Aufgabe und ist ohne UI test
 | 3 | Geführte Meditationen: Player, Offline-Speicher, Platzhalter-Audio, Vertonungs-Skript (ohne API getestet), die 9 Texte | Texte gegenlesen und freigeben |
 | 4 | *Neue Session mit ElevenLabs-Zugang:* Stimm-Casting, Vertonung der 9 Meditationen (die 8 Loops und der Klangschalen-Schlag sind seit 21.10.2026 fertig) | Fertige App, komplette Checkliste |
 
-*Ergänzung vom 21.10.2026 (Meilenstein 3):* Meilenstein 4 (Vertonung) ist in Meilenstein 3 aufgegangen. Weil der Connector vertont (§5.2), braucht es keine neue Session mit API-Zugang; nach Freigabe der Texte und der Stimmwahl werden die 9 Meditationen im selben Meilenstein vertont, bis dahin spielen Platzhalter. Die Vorbedingung „Vor Meilenstein 4“ in §12 (Freischaltung von `api.elevenlabs.io`, Schlüssel) entfällt damit. Abgenommen wird mit der „Handy-Checkliste Meilenstein 3“ im README.
+*Ergänzung vom 21.10.2026 (Meilenstein 3):* Meilenstein 4 (Vertonung) ist in Meilenstein 3 aufgegangen. Weil der Connector vertont (§5.2), braucht es keine neue Session mit API-Zugang; nach Freigabe der Texte und der Stimmwahl werden die 9 Meditationen im selben Meilenstein vertont, bis dahin spielen Platzhalter. Von der Vorbedingung „Vor Meilenstein 4“ in §12 entfallen damit nur die Freischaltung von `api.elevenlabs.io` und der API-Schlüssel; für neue Texte braucht es weiter das ElevenLabs-Konto mit Credits. Abgenommen wird mit der „Handy-Checkliste Meilenstein 3“ im README.
 
 Für jeden Meilenstein entsteht ein eigener Implementierungsplan, beginnend mit Meilenstein 1. Ergibt der Härtetest in Meilenstein 1, dass Plan B (4.6) nötig ist, wird das vor Meilenstein 2 umgesetzt.
 
