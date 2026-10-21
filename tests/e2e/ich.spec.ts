@@ -441,6 +441,7 @@ test.describe('saving all meditations', () => {
   })
 
   test('a result that arrives while the user is on another tab is shown on return, once', async ({ page }) => {
+    // Das dritte Speichern scheitert am Limit; der Merker zeigt, dass es geschehen ist.
     await page.addInitScript(() => {
       const put = Cache.prototype.put
       let puts = 0
@@ -450,14 +451,23 @@ test.describe('saving all meditations', () => {
         return Promise.reject(new DOMException('voll', 'QuotaExceededError'))
       }
     })
+    // Die dritte Datei hält der Test fest, bis er „Ich“ verlassen hat: So endet der Lauf sicher erst danach.
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let requests = 0
+    await page.route('**/audio/meditations/**', async (route) => {
+      if (++requests === 3) await gate
+      await route.continue()
+    })
     await open(page)
 
     await saveAll(page).click()
+    await expect(page.getByText('Speichere 3 von 9 …')).toBeVisible() // der Lauf steht an der festgehaltenen Datei
     await nav(page, 'Meditieren')
-    // Der Lauf endet, während Ich nicht zu sehen ist (nach der Meldung ist noch ein Durchlauf nötig, bis
-    // die Ergebnisse gesetzt sind).
+    release()
+    // Nach dem Merker bleiben nur Folgen von Promises (kein Timer, keine Ein-/Ausgabe): Bis das nächste
+    // Skript der Seite läuft, ist der Lauf zu Ende und die Meldung gesetzt.
     await page.waitForFunction(() => (window as unknown as { __quotaHit?: boolean }).__quotaHit === true)
-    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)))
 
     await nav(page, 'Ich')
     await expect(offlineStatus(page)).toHaveText('Nicht genug Speicherplatz. Bereits Gespeichertes bleibt erhalten.')

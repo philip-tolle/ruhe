@@ -174,6 +174,12 @@ test('the background sound and the balance act at once and are remembered', asyn
 })
 
 test('the background sound and the balance reach the engine', async ({ page }) => {
+  // Der Klang lädt und dekodiert erst (Netz, Platte, Dekoder), bevor die Engine ihn einblendet; auf einem
+  // langsamen Rechner dauert das. Der Test wartet darum großzügig und nennt bei einem Fehlschlag, was er
+  // gesehen hat.
+  test.setTimeout(120_000)
+  const WAIT = 30_000
+
   // Die Engine blendet jeden Klang auf seine Lautstärke ein und fährt sie später mit einer Rampe auf
   // den neuen Wert. Der Test zeichnet die Ziele der Rampen je AudioParam auf: Der Hintergrund ist der
   // Regler, dessen erste Rampe 0,7 × Balance ist und dem danach die neuen Werte folgen. Ein anderer
@@ -187,6 +193,12 @@ test('the background sound and the balance reach the engine', async ({ page }) =
       return original.call(this, value, endTime)
     }
   })
+  // Was mit den Klangdateien geschah (für die Meldung bei einem Fehlschlag).
+  const soundLog: string[] = []
+  page.on('response', (r) => r.url().includes('/audio/sounds/') && soundLog.push(`${r.status()} ${r.url()}`))
+  page.on('requestfailed', (r) => r.url().includes('/audio/sounds/') && soundLog.push(`failed ${r.url()}`))
+  page.on('pageerror', (e) => soundLog.push(`pageerror ${e.message}`))
+
   // Je AudioParam die Ziele in der Reihenfolge der Rampen; ein Regler meldet beim Loslassen denselben
   // Wert nochmals (input, dann change), das zählt einmal.
   const perParam = (): Promise<number[][]> =>
@@ -199,29 +211,38 @@ test('the background sound and the balance reach the engine', async ({ page }) =
       }
       return [...byParam.values()]
     })
-  // Ein Parameter, dessen Rampen mit genau diesen Werten beginnen.
+  // Wartet, bis ein Parameter existiert, dessen Rampen mit genau diesen Werten beginnen.
   const startsWith = (expected: number[]) =>
-    expect.poll(async () =>
-      (await perParam()).some((seq) => expected.every((v, i) => seq[i] !== undefined && Math.abs(seq[i] - v) < 1e-6)),
-    )
+    expect(async () => {
+      const seen = await perParam()
+      const found = seen.some((seq) => expected.every((v, i) => seq[i] !== undefined && Math.abs(seq[i] - v) < 1e-6))
+      const shown = found ? '' : await page.getByRole('dialog').innerText().catch(() => '(kein Player)')
+      expect(
+        found,
+        `Rampen je AudioParam: ${JSON.stringify(seen)}; erwartet ein Parameter mit Beginn ${JSON.stringify(expected)}; ` +
+          `Klangdateien: ${JSON.stringify(soundLog)}; Player: ${JSON.stringify(shown)}`,
+      ).toBe(true)
+    }).toPass({ timeout: WAIT })
 
   await openMeditieren(page)
   await entry(page, 'Guten Morgen').click()
   const player = page.getByRole('dialog', { name: 'Geführte Meditation' })
+  // Die Sitzung läuft, sobald die Länge der Datei bekannt ist (Spulen geht): erst dann den Hintergrund wählen.
+  await expect(player.getByRole('button', { name: '15 Sekunden vor' })).toBeEnabled({ timeout: WAIT })
   const sound = player.getByRole('combobox', { name: 'Hintergrundklang' })
   const balance = player.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
 
   // Ein neuer Hintergrund beginnt mit 0,7 × Balance (Standard 0,5 → 0,35) …
   await sound.selectOption({ label: 'Regen' })
-  await startsWith([0.35]).toBe(true)
+  await startsWith([0.35])
   // … und derselbe Parameter fährt danach auf 0,7 × 0,2 und 0,7 × 1.
   await balance.fill('20')
-  await startsWith([0.35, 0.14]).toBe(true)
+  await startsWith([0.35, 0.14])
   await balance.fill('100')
-  await startsWith([0.35, 0.14, 0.7]).toBe(true)
+  await startsWith([0.35, 0.14, 0.7])
   await balance.fill('80')
   await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.8)
-  await startsWith([0.35, 0.14, 0.7, 0.56]).toBe(true)
+  await startsWith([0.35, 0.14, 0.7, 0.56])
 
   // Die nächste Meditation beginnt gleich mit der gemerkten Wahl: Regen bei 0,7 × 0,8, als erste Rampe
   // eines neuen Parameters.
@@ -230,7 +251,7 @@ test('the background sound and the balance reach the engine', async ({ page }) =
   await page.evaluate(() => (window as unknown as { __ramps: unknown[] }).__ramps.splice(0))
   await entry(page, 'Ankommen im Atem').click()
   await expect(player.getByRole('heading', { name: 'Ankommen im Atem' })).toBeVisible()
-  await startsWith([0.56]).toBe(true)
+  await startsWith([0.56])
 })
 
 test.describe('when the file does not load', () => {

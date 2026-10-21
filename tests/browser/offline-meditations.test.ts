@@ -290,7 +290,7 @@ test('a truncated entry in the cache is downloaded again', async () => {
   const data = bytes(3000)
   const cache = await caches.open(MEDITATION_CACHE)
   // Antwort, die 3000 Byte verspricht, aber nur 1000 enthält (z. B. ein früher abgebrochener Abruf).
-  await cache.put(a, new Response(data.slice(0, 1000), { status: 200, headers: { 'Content-Length': '3000' } }))
+  await cache.put(a, new Response(data.slice(0, 1000), { status: 200, headers: { ...AUDIO, 'Content-Length': '3000' } }))
   expect(await isSaved(a)).toBe(false)
 
   expect(await saveMeditation(a, undefined, { fetch: fakeFetch({ [a]: { data } }) })).toBe('saved')
@@ -384,7 +384,7 @@ test('an incomplete entry is removed before the download, so a failed download l
   const cache = await caches.open(MEDITATION_CACHE)
   // Ein früher abgebrochener Abruf: 3000 Byte versprochen, 1000 vorhanden. Der Service Worker würde
   // diese Antwort beim Abspielen ausliefern (CacheFirst), also darf sie nicht stehen bleiben.
-  await cache.put(a, new Response(bytes(1000), { status: 200, headers: { 'Content-Length': '3000' } }))
+  await cache.put(a, new Response(bytes(1000), { status: 200, headers: { ...AUDIO, 'Content-Length': '3000' } }))
   expect(await cachedKeys()).toEqual([a])
 
   const fetch = fakeFetch({ [a]: { data: bytes(3000), errorAt: 500 } })
@@ -397,7 +397,7 @@ test('an incomplete entry is removed before the download, so a failed download l
 test('an incomplete entry is removed even when the server has the file no more', async () => {
   const a = url('a')
   const cache = await caches.open(MEDITATION_CACHE)
-  await cache.put(a, new Response(bytes(1000), { status: 200, headers: { 'Content-Length': '3000' } }))
+  await cache.put(a, new Response(bytes(1000), { status: 200, headers: { ...AUDIO, 'Content-Length': '3000' } }))
 
   expect(await saveMeditation(a, undefined, { fetch: fakeFetch({}) })).toBe('failed') // 404
 
