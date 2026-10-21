@@ -4,6 +4,7 @@ import {
   isSaved,
   saveMeditation,
   saveAll,
+  removeStale,
   requestPersistOnce,
   saveInBackground,
 } from '../../src/lib/offline/meditations'
@@ -30,6 +31,12 @@ interface Plan {
   endAt?: number
   noLength?: boolean
   reject?: boolean
+  // Content-Length, die der Server meldet, wenn sie von der Länge des Inhalts abweicht (Kompression).
+  lengthHeader?: number
+  // Content-Encoding des Servers, z. B. 'gzip': Dann ist Content-Length die Länge vor dem Entpacken.
+  encoding?: string
+  // Content-Type des Servers; null lässt ihn weg. Standard: audio/mpeg.
+  contentType?: string | null
 }
 
 function streamOf(plan: Plan): ReadableStream<Uint8Array> {
@@ -58,8 +65,10 @@ function fakeFetch(plans: Record<string, Plan>) {
     const plan = plans[address]
     if (!plan || plan.status === 404) return new Response(null, { status: 404 })
     if (plan.reject) throw new TypeError('Failed to fetch')
-    const headers: Record<string, string> = { 'Content-Type': 'audio/mpeg' }
-    if (!plan.noLength) headers['Content-Length'] = String(plan.data.length)
+    const headers: Record<string, string> = {}
+    if (plan.contentType !== null) headers['Content-Type'] = plan.contentType ?? 'audio/mpeg'
+    if (!plan.noLength) headers['Content-Length'] = String(plan.lengthHeader ?? plan.data.length)
+    if (plan.encoding) headers['Content-Encoding'] = plan.encoding
     return new Response(streamOf(plan), { status: plan.status ?? 200, headers })
   }
   return Object.assign(fn, { calls }) as unknown as typeof fetch & { calls: string[] }
@@ -80,6 +89,9 @@ function fakeCaches(options: { failPutAt?: number } = {}) {
     },
     async keys() {
       return [...entries.keys()].map((address) => ({ url: address }))
+    },
+    async delete(request: string) {
+      return entries.delete(request)
     },
   }
   const storage = { open: async () => cache } as unknown as CacheStorage
@@ -362,4 +374,165 @@ test('a real file from the server is saved completely', async () => {
   const cached = await (await caches.open(MEDITATION_CACHE)).match(real)
   expect(cached?.headers.get('Content-Length')).toBe(String(total))
   expect((await cached!.arrayBuffer()).byteLength).toBe(total)
+})
+
+test('an incomplete entry is removed before the download, so a failed download leaves nothing behind', async () => {
+  const a = url('a')
+  const cache = await caches.open(MEDITATION_CACHE)
+  // Ein früher abgebrochener Abruf: 3000 Byte versprochen, 1000 vorhanden. Der Service Worker würde
+  // diese Antwort beim Abspielen ausliefern (CacheFirst), also darf sie nicht stehen bleiben.
+  await cache.put(a, new Response(bytes(1000), { status: 200, headers: { 'Content-Length': '3000' } }))
+  expect(await cachedKeys()).toEqual([a])
+
+  const fetch = fakeFetch({ [a]: { data: bytes(3000), errorAt: 500 } })
+  expect(await saveMeditation(a, undefined, { fetch })).toBe('failed')
+
+  expect(await cachedKeys()).toEqual([])
+  expect(await isSaved(a)).toBe(false)
+})
+
+test('an incomplete entry is removed even when the server has the file no more', async () => {
+  const a = url('a')
+  const cache = await caches.open(MEDITATION_CACHE)
+  await cache.put(a, new Response(bytes(1000), { status: 200, headers: { 'Content-Length': '3000' } }))
+
+  expect(await saveMeditation(a, undefined, { fetch: fakeFetch({}) })).toBe('failed') // 404
+
+  expect(await cachedKeys()).toEqual([])
+})
+
+test('a complete entry is left alone', async () => {
+  const a = url('a')
+  const data = bytes(2000)
+  const fetch = fakeFetch({ [a]: { data } })
+  await saveMeditation(a, undefined, { fetch })
+
+  // Der zweite Aufruf löscht nichts und lädt nichts; mit einem Netz, das ausfiele, bliebe 'saved'.
+  const down = fakeFetch({ [a]: { data, reject: true } })
+  expect(await saveMeditation(a, undefined, { fetch: down })).toBe('saved')
+
+  expect(down.calls).toEqual([])
+  expect(await isSaved(a)).toBe(true)
+})
+
+test('a compressed response is counted by the bytes received, not compared with Content-Length', async () => {
+  const a = url('a')
+  const data = bytes(5000)
+  // Content-Length gilt vor dem Entpacken (1234), der Strom liefert die entpackten 5000 Byte.
+  const fetch = fakeFetch({ [a]: { data, encoding: 'gzip', lengthHeader: 1234 } })
+  const progress: Array<[number, number]> = []
+
+  expect(await saveMeditation(a, (loaded, total) => progress.push([loaded, total]), { fetch })).toBe('saved')
+
+  expect(progress.at(-1)).toEqual([5000, 0]) // Gesamtlänge unbekannt
+  expect(await isSaved(a)).toBe(true)
+  const cached = await (await caches.open(MEDITATION_CACHE)).match(a)
+  expect(cached?.headers.get('Content-Length')).toBe('5000') // die gespeicherte Antwort trägt die echte Länge
+  expect(cached?.headers.get('Content-Encoding')).toBeNull()
+  expect(new Uint8Array(await cached!.arrayBuffer())).toEqual(data)
+})
+
+test('a compressed response that delivers nothing still fails', async () => {
+  const a = url('a')
+  const fetch = fakeFetch({ [a]: { data: new Uint8Array(0), encoding: 'br', lengthHeader: 10 } })
+
+  expect(await saveMeditation(a, undefined, { fetch })).toBe('failed')
+
+  expect(await cachedKeys()).toEqual([])
+})
+
+test('isSaved does not compare the Content-Length of an entry that has a Content-Encoding', async () => {
+  const a = url('a')
+  const b = url('b')
+  const { storage, entries } = fakeCaches()
+  // Länge vor dem Entpacken (200) ≠ Länge des Inhalts (500): nicht prüfbar, also zählt die 200-Antwort.
+  entries.set(a, new Response(bytes(500), { status: 200, headers: { 'Content-Encoding': 'gzip', 'Content-Length': '200' } }))
+  // Eine Teilantwort zählt trotzdem nie.
+  entries.set(b, new Response(bytes(500), { status: 206, headers: { 'Content-Encoding': 'gzip', 'Content-Length': '200' } }))
+
+  expect(await isSaved(a, { caches: storage })).toBe(true)
+  expect(await isSaved(b, { caches: storage })).toBe(false)
+})
+
+test('a response that is not audio is rejected and nothing is stored', async () => {
+  const page = url('page')
+  const octets = url('octets')
+  const untyped = url('untyped')
+  const fetch = fakeFetch({
+    // z. B. die Startseite als Ersatz für eine fehlende Datei (200 mit text/html)
+    [page]: { data: bytes(3000), contentType: 'text/html; charset=utf-8' },
+    [octets]: { data: bytes(3000), contentType: 'application/octet-stream' },
+    [untyped]: { data: bytes(3000), contentType: null },
+  })
+
+  expect(await saveMeditation(page, undefined, { fetch })).toBe('failed')
+  expect(await saveMeditation(octets, undefined, { fetch })).toBe('failed')
+  expect(await saveMeditation(untyped, undefined, { fetch })).toBe('failed')
+
+  expect(await cachedKeys()).toEqual([])
+})
+
+test('any audio type is accepted, in any case', async () => {
+  const a = url('a')
+  const b = url('b')
+  const fetch = fakeFetch({
+    [a]: { data: bytes(2000), contentType: 'audio/mp3' },
+    [b]: { data: bytes(2000), contentType: 'Audio/MPEG' },
+  })
+
+  expect(await saveMeditation(a, undefined, { fetch })).toBe('saved')
+  expect(await saveMeditation(b, undefined, { fetch })).toBe('saved')
+})
+
+test('removeStale deletes the entries that are not a current address and keeps the others', async () => {
+  const current = [url('a') + '?v=new', url('b') + '?v=new']
+  const old = [url('a') + '?v=old', url('c') + '?v=old', url('b')]
+  const cache = await caches.open(MEDITATION_CACHE)
+  for (const address of [...current, ...old]) await cache.put(address, new Response(bytes(100), { status: 200 }))
+
+  expect(await removeStale(current)).toBe(3)
+
+  expect((await cachedKeys()).sort()).toEqual([...current].sort())
+})
+
+test('removeStale compares against absolute addresses and does nothing when nothing is stale', async () => {
+  const cache = await caches.open(MEDITATION_CACHE)
+  const address = url('a') + '?v=v1'
+  await cache.put(address, new Response(bytes(100), { status: 200 }))
+
+  // relativ übergeben: gilt wie die absolute Adresse
+  expect(await removeStale([`audio/meditations/a.mp3?v=v1`])).toBe(0)
+
+  expect(await cachedKeys()).toEqual([address])
+})
+
+test('removeStale stays silent when Cache Storage refuses to open', async () => {
+  const broken = { open: async () => { throw new Error('denied') } } as unknown as CacheStorage
+  expect(await removeStale([url('a')], { caches: broken })).toBe(0)
+})
+
+test('saveAll tells which files were saved, also the one that was already there', async () => {
+  const fetch = fakeFetch({
+    [url('a')]: { data: bytes(1500) },
+    [url('b')]: { data: bytes(1500), errorAt: 500 },
+    [url('c')]: { data: bytes(1500) },
+  })
+  await saveMeditation(url('a'), undefined, { fetch })
+  const saved: string[] = []
+
+  await saveAll([url('a'), url('b'), url('c')], () => {}, { fetch }, (address) => saved.push(address))
+
+  expect(saved).toEqual([url('a'), url('c')])
+})
+
+test('saveAll does not call onSaved for the file that hit the storage limit', async () => {
+  const names = ['a', 'b', 'c']
+  const plans = Object.fromEntries(names.map((n, i) => [url(n), { data: bytes(1500, i + 1) }]))
+  const { storage } = fakeCaches({ failPutAt: 2 })
+  const saved: string[] = []
+
+  const result = await saveAll(names.map(url), () => {}, { fetch: fakeFetch(plans), caches: storage }, (a) => saved.push(a))
+
+  expect(result).toEqual({ saved: 1, failed: 0, quota: true })
+  expect(saved).toEqual([url('a')])
 })
