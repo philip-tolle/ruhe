@@ -7,10 +7,10 @@
       "description": "Eine erste, ganz einfache Übung, um bei dir und im Moment anzukommen.",
       "minutes": 5,
       "file": "audio/meditations/ankommen-im-atem.mp3",
-      "duration": 300.1,
-      "bytes": 600339,
-      "version": "b258c3f2f7",
-      "placeholder": true
+      "duration": 310,
+      "bytes": 2480188,
+      "version": "82d784c7b1",
+      "placeholder": false
     },
     {
       "id": "gedanken-wie-wolken",
@@ -19,10 +19,10 @@
       "description": "Gedanken kommen und ziehen weiter – du schaust ihnen einfach zu.",
       "minutes": 8,
       "file": "audio/meditations/gedanken-wie-wolken.mp3",
-      "duration": 480.1,
-      "bytes": 960307,
-      "version": "a9dd294b36",
-      "placeholder": true
+      "duration": 498.6,
+      "bytes": 3989230,
+      "version": "7082d9847a",
+      "placeholder": false
     },
     {
       "id": "bodyscan-im-sitzen",
@@ -31,10 +31,10 @@
       "description": "Eine ruhige Reise durch deinen Körper, von den Füßen bis zum Scheitel.",
       "minutes": 10,
       "file": "audio/meditations/bodyscan-im-sitzen.mp3",
-      "duration": 600.1,
-      "bytes": 1200320,
-      "version": "6a0bc64090",
-      "placeholder": true
+      "duration": 600.2,
+      "bytes": 4802161,
+      "version": "23393f6d2b",
+      "placeholder": false
     },
     {
       "id": "drei-minuten-atempause",
@@ -43,10 +43,10 @@
       "description": "Drei kleine Schritte, die dich mitten im Trubel wieder zu dir bringen.",
       "minutes": 3,
       "file": "audio/meditations/drei-minuten-atempause.mp3",
-      "duration": 180.1,
-      "bytes": 360326,
-      "version": "850c8511b2",
-      "placeholder": true
+      "duration": 196.2,
+      "bytes": 1569873,
+      "version": "cc82b48bfc",
+      "placeholder": false
     },
     {
       "id": "nach-einem-vollen-tag",
@@ -55,10 +55,10 @@
       "description": "Am Abend den Tag ablegen, die Schultern sinken lassen und zur Ruhe kommen.",
       "minutes": 10,
       "file": "audio/meditations/nach-einem-vollen-tag.mp3",
-      "duration": 600.1,
-      "bytes": 1200320,
-      "version": "6a0bc64090",
-      "placeholder": true
+      "duration": 583.6,
+      "bytes": 4668832,
+      "version": "ac0c7f54a5",
+      "placeholder": false
     },
     {
       "id": "vor-einem-wichtigen-termin",
@@ -67,10 +67,10 @@
       "description": "Ein paar ruhige Minuten, um mit festem Stand und klarem Kopf loszugehen.",
       "minutes": 5,
       "file": "audio/meditations/vor-einem-wichtigen-termin.mp3",
-      "duration": 300.1,
-      "bytes": 600339,
-      "version": "b258c3f2f7",
-      "placeholder": true
+      "duration": 303.8,
+      "bytes": 2430451,
+      "version": "4d5fa65b9d",
+      "placeholder": false
     },
     {
       "id": "guten-morgen",
@@ -79,10 +79,10 @@
       "description": "Ein sanfter Start mit frischem Atem, etwas Bewegung und einem Wort für den Tag.",
       "minutes": 5,
       "file": "audio/meditations/guten-morgen.mp3",
-      "duration": 300.1,
-      "bytes": 600339,
-      "version": "b258c3f2f7",
-      "placeholder": true
+      "duration": 304.1,
+      "bytes": 2433377,
+      "version": "9c0a6998d3",
+      "placeholder": false
     },
     {
       "id": "fokus-vor-der-arbeit",
@@ -91,10 +91,10 @@
       "description": "Den Kopf sortieren und mit einer einzigen, klaren Absicht anfangen.",
       "minutes": 7,
       "file": "audio/meditations/fokus-vor-der-arbeit.mp3",
-      "duration": 420.1,
-      "bytes": 840352,
-      "version": "584e1db0b7",
-      "placeholder": true
+      "duration": 432.7,
+      "bytes": 3461974,
+      "version": "a28fda7b08",
+      "placeholder": false
     },
     {
       "id": "energie-in-der-mittagspause",
@@ -103,10 +103,10 @@
       "description": "Kurz auftanken, den Atem weit werden lassen und frisch in den Nachmittag gehen.",
       "minutes": 8,
       "file": "audio/meditations/energie-in-der-mittagspause.mp3",
-      "duration": 480.1,
-      "bytes": 960307,
-      "version": "a9dd294b36",
-      "placeholder": true
+      "duration": 479.9,
+      "bytes": 3839810,
+      "version": "6cce24c7a8",
+      "placeholder": false
     }
   ]
 }

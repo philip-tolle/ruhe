@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
 
-// Die Meditationen sind noch Platzhalter und werden später durch echte Aufnahmen ersetzt: Die Tests
-// verlassen sich nie auf genaue Längen, nur auf Unterschiede (Spulen ≈ 15 s, ±2 s).
+// Die Aufnahmen können neu entstehen (andere Länge, wieder ein Platzhalter): Die Tests verlassen sich nie
+// auf genaue Längen, nur auf Unterschiede (Spulen ≈ 15 s, ±2 s), und lesen „Platzhalter“ aus dem Manifest.
+type ManifestEntry = { title: string; placeholder: boolean }
+const MANIFEST: ManifestEntry[] = JSON.parse(readFileSync('src/content/meditations.json', 'utf8')).meditations
+const PLACEHOLDER = new Map(MANIFEST.map((m) => [m.title, m.placeholder]))
 
 // Tiefe der obersten Ebene im aktuellen History-Eintrag (0 = keine Ebene offen).
 const depth = (page: Page) => page.evaluate(() => (history.state as { ruheLayer?: number } | null)?.ruheLayer ?? 0)
@@ -54,8 +58,9 @@ test('the guided meditations are listed by theme with their length', async ({ pa
       await expect(entries.nth(index)).toHaveAccessibleName(new RegExp(`^${escape(title)}, \\d+ Minuten?$`))
       await expect(entries.nth(index)).toContainText(title)
       await expect(entries.nth(index)).toContainText(/\d+ Min/)
-      // Noch Platzhalter: als Vorabversion gekennzeichnet, nicht offline gespeichert.
-      await expect(entries.nth(index)).toContainText('Vorabversion')
+      // Ein Platzhalter ist als Vorabversion gekennzeichnet, eine echte Aufnahme nicht; gespeichert ist noch keine.
+      if (PLACEHOLDER.get(title)) await expect(entries.nth(index)).toContainText('Vorabversion')
+      else await expect(entries.nth(index)).not.toContainText('Vorabversion')
       await expect(entries.nth(index)).not.toContainText('✓ offline')
       await expect(entries.nth(index)).toBeEnabled()
     }
