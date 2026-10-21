@@ -1,12 +1,16 @@
 <script lang="ts">
-  // Auswahl des Hintergrundklangs („Keiner“ oder einer der acht Klänge). Der Timer-Sheet und der
-  // Reiter „Ich“ ändern damit dieselbe Einstellung und teilen sich Liste und Aussehen.
+  // Auswahl des Hintergrundklangs („Keiner“ oder einer der acht Klänge). Der Timer-Sheet, der
+  // Reiter „Ich“ und der Player geführter Meditationen teilen sich Liste und Aussehen.
   import { SOUNDS, type SoundId } from '../lib/sounds/catalog'
 
-  let { label, value = $bindable() }: { label: string; value: SoundId | null } = $props()
+  let {
+    label,
+    value = $bindable(),
+    disabled = false,
+  }: { label: string; value: SoundId | null; disabled?: boolean } = $props()
 </script>
 
-<select aria-label={label} bind:value>
+<select aria-label={label} bind:value {disabled}>
   <option value={null}>Keiner</option>
   {#each SOUNDS as item (item.id)}
     <option value={item.id}>{item.title}</option>

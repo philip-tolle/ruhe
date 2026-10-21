@@ -16,7 +16,7 @@ export async function doubleTap(page: Page, target: Locator, xFraction: number) 
 
 // Der Player läuft: „Pause“ steht da, kein Abschluss, die Engine spielt.
 export async function expectStillRunning(page: Page) {
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Weiter' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Fertig' })).toHaveCount(0)
   expect(await page.evaluate(() => navigator.mediaSession.playbackState)).toBe('playing')

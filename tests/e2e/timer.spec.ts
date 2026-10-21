@@ -21,12 +21,12 @@ test('set up, run, pause, confirm back, end', async ({ page }) => {
   await page.getByLabel('Hintergrundklang').selectOption({ label: 'Regen' })
   await page.getByRole('button', { name: 'Starten' }).click()
   await expect(page.getByText('Ankommen', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Pause' }).click()
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
   await page.getByRole('button', { name: 'Weiter' }).click()
   await page.goBack()
   await expect(page.getByRole('alertdialog', { name: 'Meditation beenden?' })).toBeVisible()
   await page.getByRole('button', { name: 'Weiter meditieren' }).click()
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Beenden' }).click()
   await expect(page.getByText('Unter einer Minute – das zählt noch nicht für die Statistik.')).toBeVisible()
   await page.getByRole('button', { name: 'Fertig' }).click()
@@ -56,7 +56,7 @@ test('back closes the sheet, asks before ending and never leaves extra history e
   // Beim Start ersetzt der Player das Sheet: genau eine Ebene, App darunter unerreichbar.
   await page.getByRole('button', { name: 'Timer einstellen' }).click()
   await page.getByRole('button', { name: 'Starten' }).click()
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
   await expect(sheet).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Meditation · 10 Min' })).toBeVisible()
   await expect.poll(() => depth(page)).toBe(1)
@@ -69,7 +69,7 @@ test('back closes the sheet, asks before ending and never leaves extra history e
   await expect.poll(() => depth(page)).toBe(2)
   await page.goBack()
   await expect(confirm).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
   await expect.poll(() => depth(page)).toBe(1)
 
   // „Beenden“ im Dialog führt zum Abschluss, ohne zweiten Dialog und ohne zusätzlichen Eintrag.
@@ -93,7 +93,7 @@ test('a full one-minute timer is counted', async ({ page }) => {
   await openMeditieren(page)
   await page.getByRole('button', { name: 'Timer einstellen' }).click()
   await page.getByRole('radio', { name: 'Frei' }).click()
-  await page.getByLabel('Minuten').fill('1')
+  await page.getByLabel('Minuten', { exact: true }).fill('1')
   const lead = page.getByRole('switch', { name: '10 Sekunden ankommen' })
   await lead.click()
   await expect(lead).toHaveAttribute('aria-checked', 'false')
@@ -146,7 +146,7 @@ test('pause freezes the display and stops the animation loop', async ({ page }) 
   await expect.poll(frames).toBeGreaterThan(first + 5) // läuft Bild für Bild
   await expect(page.getByText(NO_BOWL)).toHaveCount(0) // die Klangschale ist geladen
 
-  await page.getByRole('button', { name: 'Pause' }).click()
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Weiter' })).toBeVisible()
   await page.waitForTimeout(400) // die Audio-Uhr hält an, die Schleife beruhigt sich
   const paused = { frames: await frames(), remaining: await countdown.innerText() }
@@ -156,7 +156,7 @@ test('pause freezes the display and stops the animation loop', async ({ page }) 
   expect(await countdown.innerText()).toBe(paused.remaining)
 
   await page.getByRole('button', { name: 'Weiter' }).click()
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
   await expect.poll(frames).toBeGreaterThan(paused.frames + 5)
 })
 
@@ -184,7 +184,7 @@ test.describe('when the bowl does not load', () => {
     await page.getByRole('button', { name: 'Starten' }).click()
     await expect(page.getByText(NO_BOWL)).toBeVisible()
     await expect(page.getByText('Ankommen', { exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
     expect(await page.evaluate(() => navigator.mediaSession.playbackState)).toBe('playing')
   })
 })

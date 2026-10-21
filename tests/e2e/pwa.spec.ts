@@ -36,7 +36,7 @@ test('works offline after first visit', async ({ page, context }) => {
   await page.getByRole('button', { name: 'Starten' }).click()
   await expect(page.getByText('Ankommen', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Beenden' }).click()
-  await expect(page.getByRole('button', { name: 'Pause' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toHaveCount(0)
 })
 
 test('a saved meditation is served from the cache with range support while offline', async ({ page, context }) => {

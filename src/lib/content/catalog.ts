@@ -79,9 +79,14 @@ export function suggestionFor(now: Date, list: readonly Meditation[] = MEDITATIO
   return pool[dayOfYear(now) % pool.length]
 }
 
-// „5 Min“, aus der Länge der Datei, auf ganze Minuten gerundet, mindestens 1.
+// Länge der Datei in ganzen Minuten, gerundet, mindestens 1.
+export function durationMinutes(m: Pick<Meditation, 'duration'>): number {
+  return Math.max(1, Math.round(m.duration / 60))
+}
+
+// „5 Min“, aus der Länge der Datei (`durationMinutes`).
 export function durationLabel(m: Meditation): string {
-  return `${Math.max(1, Math.round(m.duration / 60))} Min`
+  return `${durationMinutes(m)} Min`
 }
 
 // Adresse der MP3 mit Version. Player, Offline-Speicher und Tests nehmen immer diese Adresse,

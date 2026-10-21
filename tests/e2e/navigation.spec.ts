@@ -6,16 +6,10 @@ test('tab bar navigates between all five screens', async ({ page }) => {
   await expect(nav.getByRole('button')).toHaveText(['Heute', 'Meditieren', 'Atmen', 'Klänge', 'Ich'])
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Morgen')
   await expect(nav.getByRole('button', { name: 'Heute' })).toHaveAttribute('aria-current', 'page')
-  // Reiter, die noch nicht fertig sind, zeigen einen Platzhaltertext; Atmen und Ich haben Inhalt.
-  const placeholders: [string, string | null][] = [
-    ['Meditieren', 'Kommen mit dem nächsten Update.'],
-    ['Atmen', null],
-    ['Ich', null],
-  ]
-  for (const [label, placeholder] of placeholders) {
+  for (const label of ['Meditieren', 'Atmen', 'Ich']) {
     await nav.getByRole('button', { name: label }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(label)
-    if (placeholder) await expect(page.getByText(placeholder)).toBeVisible()
+    if (label === 'Meditieren') await expect(page.getByRole('region', { name: 'Geführte Meditationen' })).toBeVisible()
   }
   await expect(page.getByRole('heading', { level: 2, name: 'Backup' })).toBeVisible() // Ich
   await nav.getByRole('button', { name: 'Atmen' }).click()

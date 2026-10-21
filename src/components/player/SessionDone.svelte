@@ -24,10 +24,10 @@
     minutes: (n) => `${n} Min geatmet`,
   }
 
-  // Texte je Art der Sitzung; was keine eigenen hat, nimmt die des Timers.
-  const TEXTS: Partial<Record<SessionKind, Texts>> = { timer: TIMER, breath: BREATH }
+  // Texte je Art der Sitzung; eine geführte Meditation ist Meditieren wie der Timer.
+  const TEXTS: Record<SessionKind, Texts> = { timer: TIMER, guided: TIMER, breath: BREATH }
 
-  const texts = $derived(TEXTS[kind] ?? TIMER)
+  const texts = $derived(TEXTS[kind])
   const detail = $derived(
     counted ? texts.minutes(Math.floor(seconds / 60)) : 'Unter einer Minute – das zählt noch nicht für die Statistik.',
   )

@@ -1,5 +1,6 @@
 <script lang="ts">
   import PlayerShell from './PlayerShell.svelte'
+  import ProgressDial from './ProgressDial.svelte'
   import { timerDisplay } from '../../lib/meditation/timer-view'
   import { formatRemaining } from '../../lib/time/format'
   import { doneOf, runningProgram } from '../../lib/ui/player-state'
@@ -12,10 +13,6 @@
 
   const clock = programClock(() => run !== null)
   const view = $derived(run ? timerDisplay(run, clock.elapsed) : null)
-
-  // Ring: Kreis mit Radius R im 200er-Feld, der Fortschritt läuft oben beginnend im Uhrzeigersinn.
-  const R = 92
-  const CIRCUMFERENCE = 2 * Math.PI * R
 </script>
 
 <PlayerShell
@@ -26,30 +23,12 @@
   continueLabel="Weiter meditieren"
 >
   {#if view}
-    <div class="dial">
-      <svg class="ring" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
-        <circle class="track" cx="100" cy="100" r={R} />
-        {#if view.progress > 0}
-          <circle
-            class="progress"
-            cx="100"
-            cy="100"
-            r={R}
-            transform="rotate(-90 100 100)"
-            stroke-dasharray={CIRCUMFERENCE}
-            stroke-dashoffset={CIRCUMFERENCE * (1 - view.progress)}
-          />
-        {/if}
-      </svg>
-      <div class="readout">
-        {#if view.arriving !== null}
-          <p class="phase">Ankommen</p>
-          <p class="big">{view.arriving}</p>
-        {:else}
-          <p class="big" role="timer">{formatRemaining(view.remaining)}</p>
-        {/if}
-      </div>
-    </div>
+    <!-- Im Vorlauf „Ankommen“ mit den Sekunden bis zur ersten Schale, danach die Restzeit. -->
+    <ProgressDial
+      progress={view.progress}
+      caption={view.arriving !== null ? 'Ankommen' : null}
+      value={view.arriving !== null ? String(view.arriving) : formatRemaining(view.remaining)}
+    />
   {/if}
 
   {#if run?.noBowl}
@@ -58,65 +37,9 @@
 </PlayerShell>
 
 <style>
-  .dial {
-    display: grid;
-    flex: 1;
-    place-items: center;
-    width: 100%;
-    min-height: 0;
-  }
-
-  .ring,
-  .readout {
-    grid-area: 1 / 1;
-  }
-
-  .ring {
-    width: min(78vw, 46dvh, 320px);
-    height: auto;
-    overflow: visible;
-  }
-
-  .track,
-  .progress {
-    fill: none;
-    stroke-width: 5;
-  }
-
-  .track {
-    stroke: rgb(238 240 250 / 0.12);
-  }
-
-  .progress {
-    stroke: var(--accent);
-    stroke-linecap: round;
-    filter: drop-shadow(0 0 6px rgb(242 201 138 / 0.45));
-  }
-
-  .readout {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .phase {
-    color: var(--text-muted);
-    font-size: 1.125rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-  }
-
   .notice {
     max-width: 400px;
     color: var(--text-muted);
     text-align: center;
-  }
-
-  .big {
-    font-size: clamp(3rem, 15vw, 4.25rem);
-    font-weight: 300;
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
   }
 </style>

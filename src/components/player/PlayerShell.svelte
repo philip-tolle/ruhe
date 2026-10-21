@@ -4,13 +4,15 @@
   import SessionDone from './SessionDone.svelte'
   import { engine, type ProgramSnapshot } from '../../lib/audio/engine'
   import { audio, togglePause } from '../../lib/audio/engine-store.svelte'
+  import { tapArming } from '../../lib/ui/arming.svelte'
   import { openLayer } from '../../lib/ui/layers.svelte'
   import { clearDone, type SessionDoneInfo } from '../../lib/ui/session-ui.svelte'
 
-  // Rahmen der Vollbild-Player (Timer, Atemübung): Titel, Pause/Beenden, Hinweis „Zum Starten tippen“,
-  // Rückfrage bei der Zurück-Geste und der Abschluss. Die Art der Sitzung zeichnet ihre Laufansicht
-  // selbst (`children`). Eine Instanz zeigt beide Ansichten: Die Engine meldet das Ergebnis und den
-  // neuen Stand im selben Aufruf, also behält der Player beim Übergang seine Ebene.
+  // Rahmen der Vollbild-Player (Timer, Atemübung, geführte Meditation): Titel, Pause/Beenden, Hinweis
+  // „Zum Starten tippen“, Rückfrage bei der Zurück-Geste und der Abschluss. Die Art der Sitzung
+  // zeichnet ihre Laufansicht selbst (`children`, über den Knöpfen; `footer`, darunter). Eine Instanz
+  // zeigt beide Ansichten: Die Engine meldet das Ergebnis und den neuen Stand im selben Aufruf, also
+  // behält der Player beim Übergang seine Ebene.
   let {
     label,
     run,
@@ -18,6 +20,7 @@
     confirmTitle,
     continueLabel,
     children,
+    footer,
   }: {
     /** Name des Dialogs für Screenreader. */
     label: string
@@ -28,6 +31,8 @@
     /** Beschriftung von „Abbrechen“ in der Rückfrage: die Übung geht weiter. */
     continueLabel: string
     children: Snippet
+    /** Weitere Bedienelemente unter Pause/Beenden, nur in der Laufansicht. */
+    footer?: Snippet
   } = $props()
 
   const running = $derived(run !== null)
@@ -54,21 +59,13 @@
     }
   }
 
-  // Ein schneller zweiter Tipp auf „Starten“ (Doppeltipp) landete sonst auf „Pause“ oder „Beenden“,
-  // die sich gerade an dieselbe Stelle gelegt haben: Die Knöpfe nehmen Tipps erst nach kurzer Zeit
-  // an, sichtbar sind sie sofort. Ein reiner Anzeige-Timer, nicht das Ende des Einblendens (bei
-  // reduzierter Bewegung gibt es keins).
-  const ARM_MS = 400
-  let armed = $state(false)
+  // Ein Doppeltipp auf „Starten“ soll nicht auf „Pause“ oder „Beenden“ landen (siehe `tapArming`).
+  const arming = tapArming()
 
   onMount(() => {
     title?.focus()
     closeLayer = openLayer(onBack)
-    const arming = setTimeout(() => (armed = true), ARM_MS)
-    return () => {
-      clearTimeout(arming)
-      closeLayer()
-    }
+    return () => closeLayer()
   })
 
   function end() {
@@ -87,11 +84,13 @@
     {/if}
 
     <div class="controls">
-      <button type="button" class="button" disabled={!armed} onclick={togglePause}>
+      <button type="button" class="button" disabled={!arming.armed} onclick={togglePause}>
         {audio.snap.state === 'playing' ? 'Pause' : 'Weiter'}
       </button>
-      <button type="button" class="button secondary" disabled={!armed} onclick={end}>Beenden</button>
+      <button type="button" class="button secondary" disabled={!arming.armed} onclick={end}>Beenden</button>
     </div>
+
+    {@render footer?.()}
   {:else if done}
     <SessionDone kind={done.kind} seconds={done.seconds} counted={done.counted} onDone={clearDone} />
   {/if}
