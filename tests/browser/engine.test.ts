@@ -17,10 +17,9 @@ test('toggle starts and stops a live sound', async () => {
   expect(e.snapshot()).toMatchObject({ state: 'playing', volumes: { regen: 0.7 } })
   expect(out!.ctx.state).toBe('running')
   await e.toggle('regen')
-  await wait(1200)
+  await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(0)
+  await expect.poll(() => out!.ctx.state, { timeout: 3000 }).toBe('suspended')
   expect(e.snapshot().state).toBe('idle')
-  expect(e.voiceCount()).toBe(0)
-  expect(out!.ctx.state).toBe('suspended')
 })
 
 test('loop sound loads and plays alongside a live sound', async () => {
@@ -33,9 +32,8 @@ test('loop sound loads and plays alongside a live sound', async () => {
 test('rapid toggles never duplicate a voice', async () => {
   const e = make()
   await Promise.all([e.toggle('wald'), e.toggle('wald'), e.toggle('wald')])
-  await wait(1200)
+  await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(1)
   expect(e.snapshot().volumes).toEqual({ wald: 0.7 })
-  expect(e.voiceCount()).toBe(1)
 })
 
 test('sleep timer counts down and pause freezes it', async () => {
@@ -54,20 +52,24 @@ test('sleep timer end returns to idle', async () => {
   const e = make()
   e.setSleepTimer(0.02)                      // 1,2 s
   await e.toggle('regen')
-  await wait(2000)
+  await expect.poll(() => e.snapshot().state, { timeout: 3000 }).toBe('idle')
   expect(e.snapshot()).toMatchObject({ state: 'idle', remainingSec: null, volumes: {} })
   expect(e.voiceCount()).toBe(0)
-  expect(out!.ctx.state).toBe('suspended')
+  await expect.poll(() => out!.ctx.state, { timeout: 3000 }).toBe('suspended')
 })
 
 test('changing sleep timer during fade restores volume', async () => {
   const e = make()
   e.setSleepTimer(0.05)                      // 3 s, Ausblenden ab 0 s
   await e.toggle('regen')
-  await wait(2000)
-  expect(out!.fade.gain.value).toBeLessThan(0.6)
+  await expect.poll(() => out!.fade.gain.value, { timeout: 3000 }).toBeLessThan(0.6)
+  const oldEnd = out!.ctx.currentTime + e.snapshot().remainingSec!
   e.setSleepTimer(null)
-  await wait(1500)
+  await expect.poll(() => out!.fade.gain.value, { timeout: 3000 }).toBeGreaterThan(0.9)
+  // Bis über das alte Ende hinaus (Audio-Uhr): Der verworfene Plan darf nichts mehr beenden.
+  // Endet die Sitzung doch, steht die Uhr; dann sofort weiter zur Prüfung des Zustands.
+  const passedOldEnd = () => e.snapshot().state !== 'playing' || out!.ctx.currentTime > oldEnd + 0.3
+  await expect.poll(passedOldEnd, { timeout: 5000 }).toBe(true)
   expect(e.snapshot().state).toBe('playing')
   expect(out!.fade.gain.value).toBeGreaterThan(0.9)
 })
@@ -77,8 +79,8 @@ test('external pause of the media element pauses the engine', async () => {
   e.setSleepTimer(30)
   await e.toggle('wind')
   out!.element.pause()                       // simuliert Anruf / andere App
-  await wait(100)
-  expect(e.snapshot().state).toBe('paused')
+  await expect.poll(() => e.snapshot().state, { timeout: 3000 }).toBe('paused')
+  await expect.poll(() => out!.ctx.state, { timeout: 3000 }).toBe('suspended')
   const frozen = e.snapshot().remainingSec!
   await wait(400)
   expect(e.snapshot().remainingSec).toBeCloseTo(frozen, 1)
