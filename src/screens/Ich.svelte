@@ -108,9 +108,9 @@
       onToggle={() => updateSettings({ timerLead: !settings.timerLead })}
     />
     <div class="field">
-      <span class="label" aria-hidden="true">Standard-Hintergrundklang</span>
+      <span class="label" aria-hidden="true">Hintergrundklang beim Timer</span>
       <SoundSelect
-        label="Standard-Hintergrundklang"
+        label="Hintergrundklang beim Timer"
         bind:value={() => settings.timerSound, (timerSound) => updateSettings({ timerSound })}
       />
     </div>

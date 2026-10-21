@@ -175,8 +175,10 @@ test('settings are saved at once and shared with the timer sheet', async ({ page
   await open(page)
   const vibration = page.getByRole('switch', { name: 'Vibration bei Atemübungen' })
   const lead = page.getByRole('switch', { name: '10 Sekunden ankommen' })
-  const sound = page.getByRole('combobox', { name: 'Standard-Hintergrundklang' })
+  const sound = page.getByRole('combobox', { name: 'Hintergrundklang beim Timer' })
   await expect(page.getByRole('heading', { level: 2, name: 'Einstellungen' })).toBeVisible()
+  // Die sichtbare Beschriftung nennt dasselbe wie der Name des Felds: Der Klang gilt nur für den Timer.
+  await expect(page.getByText('Hintergrundklang beim Timer', { exact: true })).toBeVisible()
   await expect(vibration).toHaveAttribute('aria-checked', 'true')
   await expect(lead).toHaveAttribute('aria-checked', 'true')
   await expect(sound.locator('option:checked')).toHaveText('Keiner')
@@ -571,7 +573,7 @@ test('touch targets are at least 48px', async ({ page }) => {
     page.getByRole('button', { name: 'Nächster Monat' }),
     page.getByRole('switch', { name: 'Vibration bei Atemübungen' }),
     page.getByRole('switch', { name: '10 Sekunden ankommen' }),
-    page.getByRole('combobox', { name: 'Standard-Hintergrundklang' }),
+    page.getByRole('combobox', { name: 'Hintergrundklang beim Timer' }),
     balanceSlider(page),
     saveAll(page),
     page.getByRole('button', { name: 'Backup exportieren' }),
@@ -620,7 +622,7 @@ test('import merges new sessions, skips known ones and takes over the settings',
   // Einstellungen stammen aus der Datei, auf dem Bildschirm und im Speicher.
   await expect(page.getByRole('switch', { name: 'Vibration bei Atemübungen' })).toHaveAttribute('aria-checked', 'false')
   await expect(page.getByRole('switch', { name: '10 Sekunden ankommen' })).toHaveAttribute('aria-checked', 'false')
-  await expect(page.getByRole('combobox', { name: 'Standard-Hintergrundklang' })).toHaveValue('wald')
+  await expect(page.getByRole('combobox', { name: 'Hintergrundklang beim Timer' })).toHaveValue('wald')
   const data = await stored(page)
   expect(data.settings).toMatchObject({ vibration: false, timerLead: false, timerSound: 'wald' })
   expect(data.sessions).toHaveLength(5)
