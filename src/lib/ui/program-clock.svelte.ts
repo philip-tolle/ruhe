@@ -12,11 +12,14 @@ import { audio } from '../audio/engine-store.svelte'
  */
 export function programClock(active: () => boolean): { readonly elapsed: number } {
   let elapsed = $state(engine.programElapsed() ?? 0)
-  // Als abgeleiteter Wert meldet er nur den Wechsel, nicht jede neue Momentaufnahme der Engine.
+  // Beide als abgeleitete Werte: Sie melden nur ihren Wechsel, nicht jede neue Momentaufnahme der
+  // Engine. Der Sekundentakt ersetzt `audio.snap` auch in der Pause; läse der Effekt `active()` oder
+  // den Zustand direkt, finge er dabei jedes Mal die Schleife neu an, gleich was der Aufrufer übergibt.
+  const isActive = $derived(active())
   const playing = $derived(audio.snap.state === 'playing')
 
   $effect(() => {
-    if (!active()) return
+    if (!isActive) return
     const running = playing
     let previous: number | null = null
     let frame = requestAnimationFrame(function tick() {

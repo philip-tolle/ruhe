@@ -114,3 +114,39 @@ test('a full one-minute timer is counted', async ({ page }) => {
   expect(data.settings).toMatchObject({ timer: { minutes: 1, intervalMin: null }, timerSound: null, timerLead: false })
   expect(data.lastUsed).toEqual({ kind: 'timer', minutes: 1, intervalMin: null, sound: null, lead: false })
 })
+
+test('pause freezes the display and stops the animation loop', async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __frames: number }
+    w.__frames = 0
+    const request = window.requestAnimationFrame.bind(window)
+    window.requestAnimationFrame = (callback) => {
+      w.__frames++
+      return request(callback)
+    }
+  })
+  const frames = () => page.evaluate(() => (window as unknown as { __frames: number }).__frames)
+  await openMeditieren(page)
+  await page.getByRole('button', { name: 'Timer einstellen' }).click()
+  const lead = page.getByRole('switch', { name: '10 Sekunden ankommen' })
+  await lead.click()
+  await expect(lead).toHaveAttribute('aria-checked', 'false')
+  await page.getByRole('button', { name: 'Starten' }).click()
+  const countdown = page.getByRole('timer')
+  await expect(countdown).toBeVisible()
+  const first = await frames()
+  await expect.poll(frames).toBeGreaterThan(first + 5) // läuft Bild für Bild
+
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await expect(page.getByRole('button', { name: 'Weiter' })).toBeVisible()
+  await page.waitForTimeout(400) // die Audio-Uhr hält an, die Schleife beruhigt sich
+  const paused = { frames: await frames(), remaining: await countdown.innerText() }
+  // Der Sekundentakt der Engine ersetzt den Stand auch in der Pause; er darf die Schleife nicht wecken.
+  await page.waitForTimeout(2500)
+  expect(await frames()).toBe(paused.frames)
+  expect(await countdown.innerText()).toBe(paused.remaining)
+
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect.poll(frames).toBeGreaterThan(paused.frames + 5)
+})
