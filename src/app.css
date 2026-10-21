@@ -31,6 +31,10 @@
      bei --tabbar-offset dazu; Elemente "über der Leiste" nutzen --tabbar-offset. */
   --tabbar-height: 68px;
   --tabbar-offset: calc(var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
+  /* Mini-Player: schwebt mit etwas Abstand über der Reiterleiste. Bei sichtbarem Mini-Player
+     reserviert `main` die Höhe samt Abstand, damit er keinen Inhalt verdeckt. */
+  --miniplayer-height: 64px;
+  --miniplayer-gap: 8px;
 
   color-scheme: dark;
 }
@@ -100,6 +104,10 @@ main {
   padding: calc(env(safe-area-inset-top, 0px) + 40px) var(--gutter) calc(var(--tabbar-offset) + 40px);
 }
 
+main.with-mini-player {
+  padding-bottom: calc(var(--tabbar-offset) + var(--miniplayer-height) + var(--miniplayer-gap) + 40px);
+}
+
 .screen {
   display: flex;
   flex-direction: column;
@@ -146,6 +154,13 @@ main {
   color: var(--on-accent);
   font-weight: 700;
   box-shadow: 0 0 36px rgb(242 201 138 / 0.28);
+}
+
+.button.secondary {
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: none;
 }
 
 .button:active {
