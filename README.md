@@ -21,7 +21,7 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 3. Regen + Sleep-Timer 60 Min, Bildschirm sperren → läuft durch und blendet in der letzten Minute sanft aus.
 4. Benachrichtigung bzw. Sperrbildschirm zeigt Titel und Play/Pause, die Steuerung funktioniert.
 
-> Hinweis: Alle acht Klänge sind echte Aufnahmen (ElevenLabs, nahtlose 30-s-Schleifen). Nur der einzelne Klangschalen-Schlag (für den Meditations-Timer ab Meilenstein 2) ist bis Meilenstein 4 noch ein Platzhalter.
+> Hinweis: Alle acht Klänge und der einzelne Klangschalen-Schlag des Meditations-Timers sind echte Aufnahmen (ElevenLabs).
 
 ## Entwicklung
 

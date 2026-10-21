@@ -282,7 +282,7 @@ Atme ein … und lass den Atem ganz von allein wieder gehen.
 
 Ein Platzhalter-Skript erzeugt per ffmpeg für jede Meditation eine Datei in der Ziel-Länge (leise Stille mit synthetischem Glockenton alle 30 s). So sind Player, Offline-Speicher und Statistik vollständig testbar, bevor die Vertonung steht. Die echten Dateien ersetzen die Platzhalter später unter gleichem Namen.
 
-*Änderung vom 21.10.2026:* Die 8 Loops sind jetzt echte Aufnahmen, für sie gibt es keine Platzhalter mehr. Platzhalter ist nur noch der Klangschalen-Schlag (`public/audio/sounds/klangschale.ogg`, synthetisch aus Meilenstein 1). Das bisherige Skript `scripts/placeholders.mjs` (Loops und Klangschale) ist mit den Live-Klängen entfallen; das Skript für die Meditations-Platzhalter entsteht mit Meilenstein 3.
+*Änderung vom 21.10.2026:* Die 8 Loops sind jetzt echte Aufnahmen, für sie gibt es keine Platzhalter mehr. Auch der Klangschalen-Schlag (`public/audio/sounds/klangschale.ogg`) ist seit Meilenstein 2 eine echte Aufnahme (ElevenLabs, vom Nutzer aus 4 Varianten gewählt). Das bisherige Skript `scripts/placeholders.mjs` (Loops und Klangschale) ist mit den Live-Klängen entfallen; das Skript für die Meditations-Platzhalter entsteht mit Meilenstein 3.
 
 ### 5.5 Kosten (Schätzung)
 
@@ -461,7 +461,7 @@ Jede Datei unter `src/lib/` hat eine klar umrissene Aufgabe und ist ohne UI test
 | 1 | Grundgerüst, Gestaltung, Reiterleiste, Audio-Engine, 4 Live-Klänge + Platzhalter-Loops (*21.10.2026:* ersetzt durch 8 echte ElevenLabs-Loops, ein Klang zur Zeit), Sleep-Timer, PWA/Offline, Deployment | Härtetest: 60 Min Regen bei gesperrtem Bildschirm (Checkliste 1–4) |
 | 2 | Meditations-Timer, Atemübungen, Statistik, Einstellungen, Backup | Erste echte Meditationen mit Timer und Atmen |
 | 3 | Geführte Meditationen: Player, Offline-Speicher, Platzhalter-Audio, Vertonungs-Skript (ohne API getestet), die 9 Texte | Texte gegenlesen und freigeben |
-| 4 | *Neue Session mit ElevenLabs-Zugang:* Stimm-Casting, Vertonung der 9 Meditationen, echter Klangschalen-Schlag (die 8 Loops sind seit 21.10.2026 fertig) | Fertige App, komplette Checkliste |
+| 4 | *Neue Session mit ElevenLabs-Zugang:* Stimm-Casting, Vertonung der 9 Meditationen (die 8 Loops und der Klangschalen-Schlag sind seit 21.10.2026 fertig) | Fertige App, komplette Checkliste |
 
 Für jeden Meilenstein entsteht ein eigener Implementierungsplan, beginnend mit Meilenstein 1. Ergibt der Härtetest in Meilenstein 1, dass Plan B (4.6) nötig ist, wird das vor Meilenstein 2 umgesetzt.
 
