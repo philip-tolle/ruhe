@@ -1,0 +1,116 @@
+import { test, expect, type Page } from '@playwright/test'
+
+// Tiefe der obersten Ebene im aktuellen History-Eintrag (0 = keine Ebene offen).
+const depth = (page: Page) => page.evaluate(() => (history.state as { ruheLayer?: number } | null)?.ruheLayer ?? 0)
+
+async function openMeditieren(page: Page) {
+  await page.goto('./')
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Meditieren' }).click()
+}
+
+test('set up, run, pause, confirm back, end', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Meditieren' }).click()
+  await expect(page.getByText('10 Min · ohne Zwischenschale')).toBeVisible()
+  await page.getByRole('button', { name: 'Timer einstellen' }).click()
+  await page.getByRole('radio', { name: '5 Min', exact: true }).click()
+  await page.getByRole('radio', { name: 'Alle 2 Min' }).click()
+  await page.getByLabel('Hintergrundklang').selectOption({ label: 'Regen' })
+  await page.getByRole('button', { name: 'Starten' }).click()
+  await expect(page.getByText('Ankommen', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await page.goBack()
+  await expect(page.getByRole('alertdialog', { name: 'Meditation beenden?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Weiter meditieren' }).click()
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await expect(page.getByText('Unter einer Minute – das zählt noch nicht für die Statistik.')).toBeVisible()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await expect(page.getByText('5 Min · Klangschale alle 2 Min · Regen')).toBeVisible()
+  await page.getByRole('button', { name: 'Timer einstellen' }).click()
+  await expect(page.getByRole('radio', { name: '5 Min', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('radio', { name: 'Alle 2 Min' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByLabel('Hintergrundklang')).toHaveValue('regen')
+  await expect(page.getByRole('switch', { name: '10 Sekunden ankommen' })).toHaveAttribute('aria-checked', 'true')
+})
+
+test('back closes the sheet, asks before ending and never leaves extra history entries', async ({ page }) => {
+  await openMeditieren(page)
+  const sheet = page.getByRole('dialog', { name: 'Meditations-Timer' })
+  const confirm = page.getByRole('alertdialog', { name: 'Meditation beenden?' })
+  const thanks = page.getByRole('heading', { name: 'Schön, dass du dir die Zeit genommen hast.' })
+
+  // Zurück schließt das Sheet, der Reiter bleibt.
+  await page.getByRole('button', { name: 'Timer einstellen' }).click()
+  await expect(sheet).toBeVisible()
+  await expect.poll(() => depth(page)).toBe(1)
+  await page.goBack()
+  await expect(sheet).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Meditieren')
+  await expect.poll(() => depth(page)).toBe(0)
+
+  // Beim Start ersetzt der Player das Sheet: genau eine Ebene, App darunter unerreichbar.
+  await page.getByRole('button', { name: 'Timer einstellen' }).click()
+  await page.getByRole('button', { name: 'Starten' }).click()
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect(sheet).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Meditation · 10 Min' })).toBeVisible()
+  await expect.poll(() => depth(page)).toBe(1)
+  await expect(page.locator('[inert] main')).toHaveCount(1)
+  await expect(page.locator('[inert] nav')).toHaveCount(1)
+
+  // Zurück fragt nach; Zurück im Dialog heißt „Weiter meditieren“.
+  await page.goBack()
+  await expect(confirm).toBeVisible()
+  await expect.poll(() => depth(page)).toBe(2)
+  await page.goBack()
+  await expect(confirm).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect.poll(() => depth(page)).toBe(1)
+
+  // „Beenden“ im Dialog führt zum Abschluss, ohne zweiten Dialog und ohne zusätzlichen Eintrag.
+  await page.goBack()
+  await expect(confirm).toBeVisible()
+  await confirm.getByRole('button', { name: 'Beenden' }).click()
+  await expect(thanks).toBeVisible()
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+  await expect.poll(() => depth(page)).toBe(1)
+
+  // Zurück im Abschluss schließt den Player; man ist wieder im Reiter, von dem man kam.
+  await page.goBack()
+  await expect(thanks).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Meditieren')
+  await expect.poll(() => depth(page)).toBe(0)
+  await expect(page.locator('[inert]')).toHaveCount(0)
+})
+
+test('a full one-minute timer is counted', async ({ page }) => {
+  test.setTimeout(120_000)
+  await openMeditieren(page)
+  await page.getByRole('button', { name: 'Timer einstellen' }).click()
+  await page.getByRole('radio', { name: 'Frei' }).click()
+  await page.getByLabel('Minuten').fill('1')
+  const lead = page.getByRole('switch', { name: '10 Sekunden ankommen' })
+  await lead.click()
+  await expect(lead).toHaveAttribute('aria-checked', 'false')
+  await page.getByRole('button', { name: 'Starten' }).click()
+  await expect(page.getByRole('timer')).toHaveText(/^(1:00|0:[0-5]\d)$/)
+
+  // Läuft die Zeit ab, während die Rückfrage offen ist, schließt sie sich und der Abschluss erscheint.
+  await page.goBack()
+  await expect(page.getByRole('alertdialog', { name: 'Meditation beenden?' })).toBeVisible()
+  await expect(page.getByText('1 Min meditiert')).toBeVisible({ timeout: 75_000 })
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+  await expect.poll(() => depth(page)).toBe(1)
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await expect.poll(() => depth(page)).toBe(0)
+  await expect(page.getByText('1 Min · ohne Zwischenschale')).toBeVisible()
+
+  // Bis der Reiter „Ich“ die Statistik zeigt (Task 9), direkt im Speicher nachsehen.
+  const data = await page.evaluate(() => JSON.parse(localStorage.getItem('ruhe.v1') ?? 'null'))
+  expect(data.sessions).toHaveLength(1)
+  expect(data.sessions[0]).toMatchObject({ kind: 'timer', ref: 'timer', seconds: 60 })
+  expect(data.settings).toMatchObject({ timer: { minutes: 1, intervalMin: null }, timerSound: null, timerLead: false })
+  expect(data.lastUsed).toEqual({ kind: 'timer', minutes: 1, intervalMin: null, sound: null, lead: false })
+})

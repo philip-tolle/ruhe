@@ -6,10 +6,15 @@ test('tab bar navigates between all five screens', async ({ page }) => {
   await expect(nav.getByRole('button')).toHaveText(['Heute', 'Meditieren', 'Atmen', 'Klänge', 'Ich'])
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Morgen')
   await expect(nav.getByRole('button', { name: 'Heute' })).toHaveAttribute('aria-current', 'page')
-  for (const label of ['Meditieren', 'Atmen', 'Ich']) {
+  const placeholders = [
+    ['Meditieren', 'Kommen mit dem nächsten Update.'],
+    ['Atmen', 'Kommt mit dem nächsten Update.'],
+    ['Ich', 'Kommt mit dem nächsten Update.'],
+  ]
+  for (const [label, placeholder] of placeholders) {
     await nav.getByRole('button', { name: label }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(label)
-    await expect(page.getByText('Kommt mit dem nächsten Update.')).toBeVisible()
+    await expect(page.getByText(placeholder)).toBeVisible()
   }
   await nav.getByRole('button', { name: 'Klänge' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Klänge')
