@@ -156,15 +156,17 @@ Das Herzstück. Ziel: zuverlässige Wiedergabe bei gesperrtem Bildschirm und sek
 ```
  Live-Rauschklänge ─┐
  Loops (Opus)  ─────┤
- Klangschalen  ─────┼─► Mischpult (Gain je Quelle) ─► Master-Gain ─► MediaStreamDestination ─► <audio> (versteckt)
- Stimme (MP3)  ─────┘                                                                            │
-   (über MediaElementSource,                                                                       ▼
-    wird gestreamt)                                                              Android: Medienwiedergabe +
-                                                                                 Benachrichtigung (Media Session)
+ Klangschalen  ─────┼─► Mischpult (Gain je Quelle) ─► Master-Gain ─► Begrenzer ─► Lautsprecher (ctx.destination)
+ Stimme (MP3)  ─────┘
+   (über MediaElementSource,
+    wird gestreamt)            Lautloser Anker: <audio loop> mit nahezu stiller Aufnahme
+                               → Android: Medienwiedergabe + Benachrichtigung (Media Session)
 ```
 
 - **Ein `AudioContext`** für die ganze App, erzeugt beim ersten Tipp auf „Start“ (Autoplay-Regel des Browsers).
-- **Ein einziger Ausgang:** Das gemischte Signal läuft über einen versteckten `<audio>`-Player (`srcObject` = MediaStream). Dadurch behandelt Android die App als Medienwiedergabe: Ton läuft bei ausgeschaltetem Bildschirm weiter, Titel und Steuerung erscheinen in Benachrichtigung und Sperrbildschirm.
+- **Ein einziger Klang-Ausgang:** Das gemischte Signal geht direkt an den Lautsprecher (`ctx.destination`).
+- **Lautloser Anker:** Parallel spielt ein verstecktes `<audio>`-Element eine 30 s lange, nahezu stille Aufnahme in Schleife. Dadurch behandelt Android die App als Medienwiedergabe: Ton läuft bei ausgeschaltetem Bildschirm weiter, Titel und Steuerung erscheinen in Benachrichtigung und Sperrbildschirm. Seine `pause`-Ereignisse zeigen Unterbrechungen durch das System an.
+- *Änderung vom 21.10.2026:* Ursprünglich lief die Mischung über einen `MediaStreamAudioDestinationNode` in das `<audio>`-Element. Auf dem Android-Testgerät ruckelte dieser Weg dauerhaft (Diagnose: Weg B ruckelt, Web Audio direkt nicht). Web Audio direkt plus lautloser Anker lief dort bei gesperrtem Bildschirm stabil durch, die Sperrbildschirm-Steuerung funktionierte.
 - **Stimme** wird nicht komplett dekodiert (eine 10-Minuten-Datei wäre > 100 MB im Speicher), sondern über ein `<audio>`-Element gestreamt und per `MediaElementAudioSourceNode` ins Mischpult geführt.
 - **Hintergrund unter der Stimme:** Ein Hintergrundklang in einer geführten Meditation läuft konstant leiser als die Stimme. Der Pegel ist der Wert „Balance Stimme ↔ Hintergrund“ (Standard: Hintergrund auf 50 %). Der Regler im Player und die Einstellung in 6.4 sind derselbe, gemerkte Wert.
 
@@ -207,6 +209,8 @@ Feinabstimmung der Rezepte erfolgt nach Gehör während der Umsetzung.
 **Absicherung:** Meilenstein 1 endet mit einem Härtetest auf dem echten Handy: 60 Min Regen mit Sleep-Timer bei gesperrtem Bildschirm.
 
 **Plan B**, falls der Test scheitert: Die vier Rauschklänge werden per Skript als lange (≈ 5 Min) nahtlose Ogg/Opus-Dateien vorab erzeugt und im Schlafmodus direkt über ein `<audio loop>`-Element abgespielt statt über das Mischpult. Eine Wiederholung nach 5 Minuten ist praktisch nicht hörbar.
+
+*Hinweis aus der Gerätediagnose (21.10.2026):* Ein `<audio loop>`-Element erzeugt auf Android beim Neustart der Schleife einen hörbaren Ruckler. Plan B müsste diese Naht deshalb anders lösen, z. B. durch sehr lange Dateien. Vorrang hat der Weg aus 4.1: Web Audio direkt plus lautloser Anker.
 
 ---
 

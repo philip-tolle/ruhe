@@ -1,7 +1,9 @@
-// Der einzige Audio-Ausgang der App: ein AudioContext, dessen Mischung über einen
-// MediaStream in ein verstecktes <audio>-Element läuft. So behandelt Android die App als
-// Medienwiedergabe (läuft bei gesperrtem Bildschirm, Steuerung im Sperrbildschirm).
-// Nie mit `ctx.destination` verbinden: Dann käme der Ton am Medien-Element vorbei.
+// Der einzige Audio-Ausgang der App: ein AudioContext, dessen Mischung direkt an den
+// Lautsprecher (`ctx.destination`) geht. Daneben spielt ein lautloser Anker (siehe anchor.ts),
+// damit Android die App als Medienwiedergabe behandelt (läuft bei gesperrtem Bildschirm,
+// Steuerung im Sperrbildschirm). Nicht über einen MediaStream ausgeben: Dieser Umweg ruckelt
+// auf Android dauerhaft (auf dem Gerät nachgewiesen, Diagnose Weg B).
+import { createAnchorElement } from './anchor'
 
 export interface Output {
   ctx: AudioContext
@@ -9,6 +11,7 @@ export interface Output {
   input: GainNode
   // Gesamtlautstärke für das Ausblenden des Sleep-Timers; Ruhewert 1.
   fade: GainNode
+  // Der lautlose Anker; seine pause-Ereignisse zeigen Unterbrechungen durch das System an.
   element: HTMLAudioElement
   // Lässt die Audio-Uhr laufen und startet das Medien-Element.
   start(): Promise<void>
@@ -33,11 +36,9 @@ export function createOutput(): Output {
   limiter.ratio.value = 20
   limiter.attack.value = 0.003
   limiter.release.value = 0.25
-  const dest = ctx.createMediaStreamDestination()
-  input.connect(fade).connect(limiter).connect(dest)
+  input.connect(fade).connect(limiter).connect(ctx.destination)
 
-  const element = new Audio()
-  element.srcObject = dest.stream
+  const element = createAnchorElement()
 
   return {
     ctx,

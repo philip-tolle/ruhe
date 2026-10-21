@@ -1,5 +1,5 @@
 // Audio-Engine: Mischpult für bis zu acht Klänge, Sleep-Timer und Wiedergabezustand.
-// Der einzige Output (AudioContext → MediaStream → <audio>) entsteht beim ersten `toggle`,
+// Der einzige Output (AudioContext → Lautsprecher, plus lautloser Anker) entsteht beim ersten `toggle`,
 // also innerhalb einer Nutzergeste. Ein-/Ausblenden, Sleep-Ende und das Abbauen gestoppter
 // Stimmen sind auf der Audio-Uhr eingeplant (Rampen, `onended`), nie über JS-Timer.
 import { holdParam, scheduleMarker, scheduleSleepFade } from './clock'
