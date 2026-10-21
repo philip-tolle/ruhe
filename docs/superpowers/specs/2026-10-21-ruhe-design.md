@@ -102,13 +102,18 @@ Unten eine feste Leiste mit fünf Reitern. Die Android-Zurück-Geste schließt z
 
 ### 3.3 Atmen
 
-Drei Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird der laufende Atemzyklus noch zu Ende geführt.
+Sechs Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird der laufende Atemzyklus noch zu Ende geführt.
 
 | Übung | Ablauf | Zyklus |
 |---|---|---|
 | 4-7-8 | ein 4 s · halten 7 s · aus 8 s | 19 s |
 | Box-Atmung | ein 4 s · halten 4 s · aus 4 s · halten 4 s | 16 s |
 | Kohärentes Atmen | ein 5,5 s · aus 5,5 s | 11 s |
+| Langes Ausatmen | ein 4 s · aus 6 s | 10 s |
+| Physiologischer Seufzer | ein 3 s · nachatmen 1 s · aus 6 s | 10 s |
+| Wechselatmung | links ein 4 s · rechts aus 4 s · rechts ein 4 s · links aus 4 s | 16 s |
+
+*Ergänzung vom 21.10.2026 (auf Nutzerwunsch):* Langes Ausatmen, Physiologischer Seufzer und Wechselatmung kamen dazu. Für sie kann eine Phase einen eigenen Text tragen („Nachatmen“, „Links einatmen“ …), und beim Seufzer wächst der Kreis beim Nachatmen noch ein Stück weiter.
 
 - **Anzeige:** Ein Kreis wächst beim Einatmen, ruht beim Halten, schrumpft beim Ausatmen. Darunter der Text („Einatmen“, „Halten“, „Ausatmen“) und der Sekunden-Countdown der Phase.
 - **Ton:** ein leiser, weicher Ton bei jedem Phasenwechsel (live synthetisiert).

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Meditations-Timer mit echter Klangschale, drei Atemübungen, lokale Statistik (Serie, Minuten, Kalender), Einstellungen und Backup – plus Schnellstart auf „Heute“.
+**Goal:** Meditations-Timer mit echter Klangschale, sechs Atemübungen, lokale Statistik (Serie, Minuten, Kalender), Einstellungen und Backup – plus Schnellstart auf „Heute“.
 
 **Architecture:** Timer und Atemübung sind *Programme* der bestehenden Audio-Engine: Ein Programm plant beim Start alle Klänge (Klangschalen bzw. Atem-Töne) auf der Audio-Uhr ein, hat eine gezählte Länge und meldet am Ende ein `SessionResult`. Pause, Unterbrechung und gesperrter Bildschirm funktionieren dadurch wie bei den Klängen. Alle Berechnungen (Timer-Plan, Atem-Ablauf, Serie, Backup) sind reine Funktionen in Node getestet; Speicherung läuft über genau einen `localStorage`-Schlüssel.
 
@@ -135,19 +135,23 @@ test('clampMinutes', () => {
 
 **Interfaces:**
 - Produces (`src/lib/breath/patterns.ts`):
-  - `type BreathPatternId = '478' | 'box' | 'kohaerent'`; `type PhaseKind = 'ein' | 'halten' | 'aus'`
-  - `interface BreathPattern { id: BreathPatternId; title: string; description: string; phases: readonly { kind: PhaseKind; seconds: number }[] }`
-  - `BREATH_PATTERNS: readonly BreathPattern[]` in Reihenfolge `478`, `box`, `kohaerent`:
+  - `type BreathPatternId = '478' | 'box' | 'kohaerent' | 'langes-ausatmen' | 'seufzer' | 'wechselatmung'`; `type PhaseKind = 'ein' | 'halten' | 'aus'`
+  - `interface BreathPhase { kind: PhaseKind; seconds: number; label?: string; level?: number }` – `label` ersetzt `PHASE_LABEL[kind]` in der Anzeige; `level` = Kreisgröße am Phasenende (0 klein … 1 groß), Standard: ein → 1, aus → 0, halten → unverändert. Jeder Zyklus beginnt und endet bei 0.
+  - `interface BreathPattern { id: BreathPatternId; title: string; description: string; phases: readonly BreathPhase[] }`
+  - `BREATH_PATTERNS: readonly BreathPattern[]` in dieser Reihenfolge (Texte wörtlich):
     - `478`: title „4-7-8“, description „Einatmen 4 s · Halten 7 s · Ausatmen 8 s“, Phasen ein 4, halten 7, aus 8
     - `box`: „Box-Atmung“, „Einatmen 4 s · Halten 4 s · Ausatmen 4 s · Halten 4 s“, ein 4, halten 4, aus 4, halten 4
     - `kohaerent`: „Kohärentes Atmen“, „Einatmen 5,5 s · Ausatmen 5,5 s“, ein 5.5, aus 5.5
+    - `langes-ausatmen`: „Langes Ausatmen“, „Einatmen 4 s · Ausatmen 6 s“, ein 4, aus 6
+    - `seufzer`: „Physiologischer Seufzer“, „Einatmen 3 s · kurz Nachatmen 1 s · langsam Ausatmen 6 s“, ein 3 (level 0.8), ein 1 (label „Nachatmen“, level 1), aus 6
+    - `wechselatmung`: „Wechselatmung“, „Je 4 s: links ein · rechts aus · rechts ein · links aus. Das andere Nasenloch hältst du mit dem Finger zu.“, ein 4 (label „Links einatmen“), aus 4 („Rechts ausatmen“), ein 4 („Rechts einatmen“), aus 4 („Links ausatmen“)
   - `BREATH_MINUTES: readonly number[] = [1, 3, 5, 10]`
   - `PHASE_LABEL: Record<PhaseKind, string> = { ein: 'Einatmen', halten: 'Halten', aus: 'Ausatmen' }`
   - `patternById(id: BreathPatternId): BreathPattern`
   - `interface BreathPlan { cycle: number; cycles: number; length: number; cues: { at: number; kind: PhaseKind }[] }` – `cycles = ceil(minutes·60 / cycle)` (laufender Zyklus wird zu Ende geführt), `length = cycles·cycle`, ein Cue am Beginn jeder Phase.
   - `breathPlan(id: BreathPatternId, minutes: number): BreathPlan`
-  - `interface BreathMoment { kind: PhaseKind; phaseElapsed: number; phaseLength: number; secondsLeft: number; done: boolean }` – `secondsLeft = ceil(phaseLength − phaseElapsed)`.
-  - `breathAt(id: BreathPatternId, elapsed: number, length: number): BreathMoment` – `elapsed < 0` → Beginn der ersten Phase; `elapsed ≥ length` → `done: true` (Phase = letzte).
+  - `interface BreathMoment { kind: PhaseKind; label: string; level: number; phaseElapsed: number; phaseLength: number; secondsLeft: number; done: boolean }` – `secondsLeft = ceil(phaseLength − phaseElapsed)`; `level` linear vom Stand am Phasenbeginn zum Ziel der Phase.
+  - `breathAt(id: BreathPatternId, elapsed: number, length: number): BreathMoment` – `elapsed < 0` → Beginn der ersten Phase; `elapsed ≥ length` → `done: true` (Phase = letzte, `level` 0).
 
 - [ ] **Step 1: Failing tests**
 
@@ -157,8 +161,18 @@ import { test, expect } from 'vitest'
 import { BREATH_PATTERNS, breathPlan, breathAt, PHASE_LABEL } from '../../src/lib/breath/patterns'
 
 test('patterns', () => {
-  expect(BREATH_PATTERNS.map(p => p.title)).toEqual(['4-7-8', 'Box-Atmung', 'Kohärentes Atmen'])
+  expect(BREATH_PATTERNS.map(p => p.title)).toEqual(['4-7-8', 'Box-Atmung', 'Kohärentes Atmen', 'Langes Ausatmen', 'Physiologischer Seufzer', 'Wechselatmung'])
   expect(PHASE_LABEL).toEqual({ ein: 'Einatmen', halten: 'Halten', aus: 'Ausatmen' })
+})
+test('new patterns: lengths, labels and circle level', () => {
+  expect(breathPlan('langes-ausatmen', 3).length).toBe(180)
+  expect([breathPlan('seufzer', 1).cycle, breathPlan('seufzer', 1).length]).toEqual([10, 60])
+  expect(breathPlan('wechselatmung', 1).length).toBe(64)
+  expect(breathAt('seufzer', 1.5, 60)).toMatchObject({ kind: 'ein', label: 'Einatmen', level: expect.closeTo(0.4) })
+  expect(breathAt('seufzer', 3.5, 60)).toMatchObject({ kind: 'ein', label: 'Nachatmen', level: expect.closeTo(0.9) })
+  expect(breathAt('seufzer', 7, 60)).toMatchObject({ kind: 'aus', label: 'Ausatmen', level: expect.closeTo(0.5) })
+  expect([1, 5, 9, 13].map(t => breathAt('wechselatmung', t, 64).label)).toEqual(['Links einatmen', 'Rechts ausatmen', 'Rechts einatmen', 'Links ausatmen'])
+  expect([breathAt('box', 6, 64).level, breathAt('box', 14, 64).level]).toEqual([1, 0]) // Halten nach ein bzw. aus
 })
 test('plans finish the running cycle', () => {
   const p = breathPlan('478', 1)
@@ -169,7 +183,7 @@ test('plans finish the running cycle', () => {
   expect(breathPlan('box', 10).length).toBe(608)
 })
 test('moment at a point in time', () => {
-  expect(breathAt('478', 5, 76)).toEqual({ kind: 'halten', phaseElapsed: 1, phaseLength: 7, secondsLeft: 6, done: false })
+  expect(breathAt('478', 5, 76)).toEqual({ kind: 'halten', label: 'Halten', level: 1, phaseElapsed: 1, phaseLength: 7, secondsLeft: 6, done: false })
   expect(breathAt('kohaerent', -2, 187)).toMatchObject({ kind: 'ein', phaseElapsed: 0, done: false })
   expect(breathAt('478', 76, 76)).toMatchObject({ done: true })
 })
@@ -178,7 +192,7 @@ test('moment at a point in time', () => {
 - [ ] **Step 2:** `npm test -- --project unit breath` → FAIL.
 - [ ] **Step 3:** Implementieren.
 - [ ] **Step 4:** PASS.
-- [ ] **Step 5:** Commit `feat: Atemmuster 4-7-8, Box und kohärent mit Ablaufplan`.
+- [ ] **Step 5:** Commit `feat: sechs Atemmuster mit Ablaufplan und Kreisgröße`.
 
 ---
 
@@ -559,8 +573,8 @@ test('a full one-minute timer is counted', async ({ page }) => {
 **Texte & Verhalten:**
 - Atmen: `<h1>Atmen</h1>`; `role="radiogroup" aria-label="Dauer"` mit „1 Min“, „3 Min“, „5 Min“, „10 Min“ (Standard 3); je Muster eine Karte mit `<h2>{title}</h2>`, `description` und Knopf „Starten“ (`aria-label="{title} starten"`).
 - Player (Vollbild; Laufansicht, solange `program?.kind === 'breath' && !program.ended`, Abschluss, solange `sessionUi.done?.kind === 'breath'`; Ebenen-Ablauf wie in Task 7):
-  - Kreis, der bei „ein“ von Skalierung 0,6 auf 1,0 wächst, bei „halten“ ruht und bei „aus“ auf 0,6 schrumpft. Unter `prefers-reduced-motion: reduce` bleibt er statisch.
-  - darunter `PHASE_LABEL` (z. B. „Einatmen“) und die Restsekunden der Phase
+  - Kreis mit Skalierung `0.6 + 0.4 · moment.level` (wächst beim Einatmen, ruht beim Halten, schrumpft beim Ausatmen; beim Seufzer wächst er beim Nachatmen noch ein Stück). Unter `prefers-reduced-motion: reduce` bleibt er statisch.
+  - darunter `moment.label` (z. B. „Einatmen“, „Nachatmen“, „Links einatmen“) und die Restsekunden der Phase
   - Knöpfe „Pause“/„Weiter“ und „Beenden“ (nach einem Anruf steht die Übung auf Pause und lässt sich so fortsetzen); `needsTap`-Hinweis wie in Task 7
   - Zeitbasis: `breathAt(id, engine.programElapsed(), length)` pro `requestAnimationFrame`. Dadurch stimmt die Anzeige auch nach dem Entsperren sofort wieder.
   - Bei jedem Phasenwechsel (in der Anzeige erkannt) `navigator.vibrate(40)`, wenn `settings.vibration`.
