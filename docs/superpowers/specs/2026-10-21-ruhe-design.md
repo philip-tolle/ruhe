@@ -72,7 +72,7 @@ Unten eine feste Leiste mit fünf Reitern. Die Android-Zurück-Geste schließt z
   2. *Zuletzt genutzt:* die letzte geführte Meditation, Timer- oder Atem-Sitzung erneut starten (gleiche Meditation, gleiche Timer-Einstellungen bzw. gleiche Übung und Dauer). Klänge zählen hier nicht. Ohne bisherige Sitzung: „Ankommen im Atem“.
   3. *3 Min durchatmen:* startet direkt „Kohärentes Atmen“ für 3 Minuten.
 
-*Ergänzung vom 21.10.2026:* Bis Meilenstein 3 gibt es keine Karte „Vorschlag des Tages“, und „Zuletzt genutzt“ bleibt ausgeblendet, solange noch nichts genutzt wurde (der Ersatz „Ankommen im Atem“ braucht die geführten Meditationen).
+*Ergänzung vom 21.10.2026 (Meilenstein 3):* Der „Vorschlag des Tages“ und der Ersatz „Ankommen im Atem“ sind umgesetzt. Die Karten stehen in dieser Reihenfolge: Vorschlag des Tages, Zuletzt genutzt, 3 Min durchatmen, Zur Ruhe kommen. Ohne bisherige Sitzung zeigt „Zuletzt genutzt“ „Ankommen im Atem“ mit dem Knopf „Jetzt starten“ (es gibt noch nichts zu wiederholen); kennt der Katalog die gemerkte Meditation nicht (mehr), gilt derselbe Ersatz. Offline folgen die geführten Starts auf „Heute“ der Regel aus „Meditieren“: Sie sind gesperrt und nennen „Nicht offline verfügbar“, solange die Datei nicht gespeichert ist.
 
 ### 3.2 Meditieren
 
