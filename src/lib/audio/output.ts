@@ -7,7 +7,8 @@ import { createAnchorElement } from './anchor'
 
 export interface Output {
   ctx: AudioContext
-  // Summe aller Stimmen. Gain 0,8 als Reserve: `meer` erreicht bei 48 kHz Spitzen um 1,03.
+  // Summe aller Stimmen: ein Klang (beim Wechsel kurz zwei, die sich überblenden), später auch
+  // Klangschale und Sprechstimme. Gain 0,8 als Reserve.
   input: GainNode
   // Gesamtlautstärke für das Ausblenden des Sleep-Timers; Ruhewert 1.
   fade: GainNode
@@ -27,9 +28,12 @@ export function createOutput(): Output {
   input.gain.value = HEADROOM
   const fade = ctx.createGain()
   fade.gain.value = 1
-  // Spitzenbegrenzer: Alle acht Klänge auf voller Lautstärke erreichen trotz Reserve Spitzen um
-  // 1,39; ohne Begrenzer würde das übersteuern. Darunter bleibt die Mischung unverändert
-  // (bis auf die feste Aufholverstärkung, die der Kompressor laut Web-Audio-Spec mitbringt).
+  // Spitzenbegrenzer als Sicherung gegen Übersteuern: Es läuft nur ein Klang zur Zeit; die
+  // Aufnahmen erreichen bei voller Lautstärke Spitzen bis 0,88 (Kaminfeuer), mit Reserve also
+  // etwa 0,71. Beim Überblenden ist die Summe der beiden Gains nie größer als die höhere der
+  // beiden Lautstärken. Greifen kann er (Schwelle −2 dBFS ≈ 0,79) also erst, wenn später
+  // Klangschale oder Sprechstimme dazukommen. Darunter bleibt die Mischung unverändert (bis auf
+  // die feste Aufholverstärkung, die der Kompressor laut Web-Audio-Spec mitbringt).
   const limiter = ctx.createDynamicsCompressor()
   limiter.threshold.value = -2
   limiter.knee.value = 0
