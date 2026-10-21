@@ -31,11 +31,53 @@ test('toggle starts and stops a sound from its recording', async () => {
   expect(e.snapshot().state).toBe('idle')
 })
 
-test('two recordings load and play together', async () => {
+test('switching to another sound stops the previous one', async () => {
   const e = make()
-  await Promise.all([e.toggle('regen'), e.toggle('wald')])
-  expect(Object.keys(e.snapshot().volumes).sort()).toEqual(['regen', 'wald'])
-  expect(e.voiceCount()).toBe(2)
+  await e.toggle('regen')
+  const states: string[] = []
+  const off = e.subscribe(s => states.push(s.state))
+  await e.toggle('wald')
+  off()
+  expect(e.snapshot().volumes).toEqual({ wald: 0.7 })
+  expect(states.every(s => s === 'playing')).toBe(true) // der Wechsel führt nicht über idle
+  await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(1) // Regen ist ausgeblendet und abgebaut
+  await wait(300)                            // ein irrtümliches Anhalten hätte jetzt gegriffen
+  expect(e.snapshot().state).toBe('playing')
+  expect(out!.ctx.state).toBe('running')
+  expect(out!.element.paused).toBe(false)
+})
+
+test('sleep countdown keeps running across a switch', async () => {
+  const e = make()
+  e.setSleepTimer(15)
+  await e.toggle('regen')
+  await wait(1000)
+  await e.toggle('meer')
+  expect(e.snapshot().volumes).toEqual({ meer: 0.7 })
+  expect(e.snapshot().remainingSec).toBeLessThan(899.5) // kein Neustart des Countdowns
+})
+
+test('switching while the previous sound still loads discards that load', async () => {
+  const finish: (() => void)[] = []
+  const e = make((ctx, url) => new Promise(resolve => finish.push(() => resolve(synthetic(ctx, url)))))
+  const first = e.toggle('wald')
+  const second = e.toggle('regen')
+  expect(e.snapshot()).toMatchObject({ state: 'playing', loading: ['regen'] })
+  for (const done of finish) done()          // auch der Wald wird noch fertig, aber zu spät
+  await Promise.all([first, second])
+  expect(e.snapshot().volumes).toEqual({ regen: 0.7 })
+  expect(e.voiceCount()).toBe(1)
+})
+
+test('switching while paused resumes with only the new sound', async () => {
+  const e = make()
+  await e.toggle('regen')
+  await e.pause()
+  await e.toggle('wald')
+  expect(e.snapshot().state).toBe('playing')
+  expect(e.snapshot().volumes).toEqual({ wald: 0.7 })
+  expect(e.voiceCount()).toBe(1)             // der angehaltene Regen ist sofort abgebaut
+  expect(out!.ctx.state).toBe('running')
 })
 
 test('rapid toggles never duplicate a voice', async () => {
@@ -97,16 +139,22 @@ test('external pause of the media element pauses the engine', async () => {
   expect(e.snapshot().state).toBe('playing')
 })
 
-test('failed loop load marks only that sound as error', async () => {
+test('a failed load marks that sound as error and ends the session', async () => {
   const e = make(async (ctx, url) => {
     if (url.endsWith('/wald.ogg')) throw new Error('Konnte nicht geladen werden: ' + url)
     return synthetic(ctx, url)
   })
   await e.toggle('regen')
-  await e.toggle('wald')
-  expect(e.snapshot()).toMatchObject({ state: 'playing', volumes: { regen: 0.7 }, errors: ['wald'], loading: [] })
+  await e.toggle('wald')                     // Wechsel: Regen blendet aus, Wald scheitert
+  expect(e.snapshot()).toMatchObject({ state: 'idle', errors: ['wald'], loading: [], remainingSec: null })
+  expect(e.snapshot().volumes).toEqual({})
+  await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(0)
+  await expect.poll(() => out!.ctx.state, { timeout: 3000 }).toBe('suspended')
   await e.toggle('wald')                     // neuer Versuch, schlägt wieder fehl
-  expect(e.snapshot().errors).toEqual(['wald'])
+  expect(e.snapshot()).toMatchObject({ state: 'idle', errors: ['wald'] })
+  await e.toggle('regen')                    // ein anderer Klang startet wie gewohnt
+  expect(e.snapshot().state).toBe('playing')
+  expect(e.snapshot().volumes).toEqual({ regen: 0.7 })
 })
 
 test('setVolume changes only that sound and notifies subscribers', async () => {
@@ -214,6 +262,21 @@ test('ending a session clears the media session and releases its controls', asyn
     expect(navigator.mediaSession.metadata).toBeNull()
     expect(navigator.mediaSession.playbackState).toBe('none')
     expect(setHandler.mock.calls).toEqual([['play', null], ['pause', null], ['stop', null]])
+  } finally {
+    setHandler.mockRestore()
+  }
+})
+
+test('a switch keeps the media session and shows only the new title', async () => {
+  const setHandler = vi.spyOn(navigator.mediaSession, 'setActionHandler')
+  try {
+    const e = make()
+    await e.toggle('regen')
+    setHandler.mockClear()
+    await e.toggle('wald')
+    expect(navigator.mediaSession.metadata?.title).toBe('Wald mit Vögeln')
+    expect(navigator.mediaSession.playbackState).toBe('playing')
+    expect(setHandler).not.toHaveBeenCalled()
   } finally {
     setHandler.mockRestore()
   }

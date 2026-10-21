@@ -1,4 +1,4 @@
-// Audio-Engine: Mischpult für bis zu acht Klänge, Sleep-Timer und Wiedergabezustand.
+// Audio-Engine: Wiedergabe der Klänge (immer nur einer zur Zeit), Sleep-Timer und Wiedergabezustand.
 // Der einzige Output (AudioContext → Lautsprecher, plus lautloser Anker) entsteht beim ersten `toggle`,
 // also innerhalb einer Nutzergeste. Ein-/Ausblenden, Sleep-Ende und das Abbauen gestoppter
 // Stimmen sind auf der Audio-Uhr eingeplant (Rampen, `onended`), nie über JS-Timer.
@@ -14,7 +14,7 @@ export type EngineState = 'idle' | 'playing' | 'paused'
 
 export interface EngineSnapshot {
   state: EngineState
-  volumes: Partial<Record<SoundId, number>> // aktive Klänge → Lautstärke 0..1
+  volumes: Partial<Record<SoundId, number>> // laufender Klang (höchstens einer) → Lautstärke 0..1
   loading: SoundId[]
   errors: SoundId[]
   sleepMinutes: number | null // Auswahl, bleibt über Sitzungen erhalten
@@ -61,10 +61,11 @@ export class AudioEngine {
   private starting: Promise<void> = Promise.resolve()
   private startPending = false // der aktuelle Start (resume + play) ist noch nicht durch
   private startFailed = false // der letzte Start wurde abgelehnt
-  private readonly active = new Map<SoundId, Channel>() // klingende Klänge
-  private readonly pending = new Map<SoundId, number>() // ladende Klänge → Nummer des Ladevorgangs
+  // Klingender bzw. ladender Klang; zusammen höchstens einer (Antippen wechselt).
+  private readonly active = new Map<SoundId, Channel>()
+  private readonly pending = new Map<SoundId, number>() // → Nummer des Ladevorgangs
   private readonly errors = new Set<SoundId>()
-  private readonly channels = new Set<Channel>() // alle noch nicht abgebauten Stimmen
+  private readonly channels = new Set<Channel>() // alle noch nicht abgebauten Stimmen, auch ausklingende
   private loads = 0
   private sleepMinutes: number | null = null
   private countdown: Countdown | null = null
@@ -76,9 +77,11 @@ export class AudioEngine {
     this.load = opts.load ?? loadBuffer
   }
 
-  // Startet einen inaktiven Klang bzw. stoppt einen aktiven oder ladenden.
-  // Darf ohne Abwarten mehrfach hintereinander gerufen werden: Je Klang gibt es höchstens eine
-  // aktive Stimme (eine gerade gestoppte klingt höchstens noch 0,8 s aus).
+  // Antippen = Wechseln: Ein aktiver oder ladender Klang wird gestoppt. Jeder andere startet und
+  // löst den bisherigen ab; der blendet in 0,8 s aus, der neue in 1,5 s ein. Beim Wechsel bleibt
+  // die Engine `playing`, der Sleep-Countdown läuft weiter.
+  // Darf ohne Abwarten mehrfach hintereinander gerufen werden: Es gibt höchstens eine aktive
+  // Stimme (abgelöste oder gestoppte klingen höchstens noch 0,8 s aus).
   async toggle(id: SoundId): Promise<void> {
     const out = this.ensureOutput()
     if (this.active.has(id) || this.pending.has(id)) {
@@ -89,9 +92,13 @@ export class AudioEngine {
 
     const sound = soundById(id)
     this.errors.delete(id)
+    const previous = [...this.active.keys(), ...this.pending.keys()]
     const starting = this.ensurePlaying()
     const load = ++this.loads
     this.pending.set(id, load)
+    // Erst ablösen, wenn der neue Klang vorgemerkt ist: So wird die Engine dabei nicht idle (der
+    // Countdown bleibt, keine Marke hält den Output an). Abgelöste Ladevorgänge verfallen über ihre Nummer.
+    this.stop(previous)
     this.emit()
     const [started, loaded] = await Promise.allSettled([starting, this.load(out.ctx, assetUrl(sound.file))])
     // Wurde der Klang inzwischen gestoppt (oder danach neu angestoßen), gilt dieser Ladevorgang nicht mehr.
@@ -255,21 +262,25 @@ export class AudioEngine {
   private release(released: Channel[]): void {
     const { ctx, input } = this.out!
     const now = ctx.currentTime
+    const idle = this.active.size === 0 && this.pending.size === 0
     // Steht die Audio-Uhr (Pause), wäre eine Rampe erst nach dem Fortsetzen zu hören: sofort
     // beenden. In der Pause ist das Medien-Element schon angehalten, das Ende also unhörbar.
+    // Endet damit die Sitzung, gilt das auch für eine Stimme, die ein Wechsel kurz zuvor abgelöst
+    // hat und deren Ausblenden mit der Uhr stehen geblieben ist.
     const frozen = this.state === 'paused' || ctx.state !== 'running'
-    for (const channel of released) {
-      if (frozen) {
+    if (frozen) {
+      for (const channel of idle ? [...this.channels] : released) {
         channel.voice.stop(now)
         this.teardown(channel)
-        continue
       }
-      holdParam(channel.gain.gain, now)
-      channel.gain.gain.linearRampToValueAtTime(0, now + FADE_OUT)
-      channel.voice.stop(now + STOP_AFTER)
+    } else {
+      for (const channel of released) {
+        holdParam(channel.gain.gain, now)
+        channel.gain.gain.linearRampToValueAtTime(0, now + FADE_OUT)
+        channel.voice.stop(now + STOP_AFTER)
+      }
     }
 
-    const idle = this.active.size === 0 && this.pending.size === 0
     if (idle) {
       this.state = 'idle'
       this.discardSleep()

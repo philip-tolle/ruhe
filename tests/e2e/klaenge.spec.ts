@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-test('mix sounds, sleep timer and mini player', async ({ page }) => {
+test('switch sounds, sleep timer and mini player', async ({ page }) => {
   await page.goto('./')
   const nav = page.getByRole('navigation', { name: 'Hauptnavigation' })
   await nav.getByRole('button', { name: 'Klänge' }).click()
@@ -19,16 +19,24 @@ test('mix sounds, sleep timer and mini player', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Weiter' })).toBeVisible()
   await page.getByRole('button', { name: 'Weiter' }).click()
 
+  // Antippen wechselt: Es läuft immer nur ein Klang, der Sleep-Timer läuft weiter.
   await page.getByRole('button', { name: 'Wald mit Vögeln' }).click()
   await expect(page.getByRole('button', { name: 'Wald mit Vögeln' })).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
+  await expect(page.getByRole('button', { name: 'Regen' })).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.locator('button[aria-pressed="true"]')).toHaveCount(1)
+  await expect(page.getByRole('slider')).toHaveCount(1)
+  await expect(page.getByRole('slider', { name: 'Lautstärke Wald mit Vögeln' })).toBeVisible()
+  await expect(page.getByText(/^Noch 1[45]:\d\d$/)).toBeVisible()
 
   await nav.getByRole('button', { name: 'Heute' }).click()
   const mini = page.getByRole('region', { name: 'Wiedergabe' })
-  await expect(mini).toContainText('Regen & Wald mit Vögeln')
+  const miniTitle = mini.getByRole('button', { name: 'Wald mit Vögeln', exact: true })
+  await expect(miniTitle).toBeVisible()
+  await expect(mini).not.toContainText('Regen')
   await mini.getByRole('button', { name: 'Pause' }).click()
   await expect(mini.getByRole('button', { name: 'Weiter' })).toBeVisible()
 
-  await mini.getByText('Regen & Wald mit Vögeln').click()
+  await miniTitle.click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Klänge')
   await page.getByRole('button', { name: 'Alle stoppen' }).click()
   await expect(page.locator('button[aria-pressed="true"]')).toHaveCount(0)

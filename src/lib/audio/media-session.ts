@@ -22,7 +22,7 @@ export function syncMediaSession(snap: EngineSnapshot, actions: MediaActions): v
   const session = navigator.mediaSession
 
   // Ohne Sitzung verschwindet die Benachrichtigung samt Steuerung: „Play“ hätte nichts
-  // fortzusetzen, und den letzten Mix startet die App bewusst nicht von selbst neu.
+  // fortzusetzen, und den letzten Klang startet die App bewusst nicht von selbst neu.
   if (snap.state === 'idle') {
     if (registered) {
       for (const action of ACTIONS) session.setActionHandler(action, null)
@@ -34,7 +34,7 @@ export function syncMediaSession(snap: EngineSnapshot, actions: MediaActions): v
     return
   }
 
-  // Aktive Klänge in Katalog-Reihenfolge, unabhängig von der Reihenfolge des Einschaltens.
+  // Titel des laufenden Klangs; es läuft immer nur einer (Antippen wechselt).
   const titles = SOUNDS.filter((s) => snap.volumes[s.id] !== undefined).map((s) => s.title)
   const title = mediaTitle(titles, snap.sleepMinutes)
   if (title !== lastTitle || !session.metadata) {

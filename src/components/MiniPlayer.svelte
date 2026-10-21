@@ -7,7 +7,7 @@
 
   let { onNavigate }: { onNavigate: (tab: TabId) => void } = $props()
 
-  // Aktive Klänge in Katalog-Reihenfolge, unabhängig von der Reihenfolge des Einschaltens.
+  // Titel des laufenden Klangs; es läuft immer nur einer (Antippen wechselt).
   const title = $derived(
     mediaTitle(
       SOUNDS.filter((s) => audio.snap.volumes[s.id] !== undefined).map((s) => s.title),
