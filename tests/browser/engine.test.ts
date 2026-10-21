@@ -105,3 +105,54 @@ test('setVolume changes only that sound and notifies subscribers', async () => {
   expect(e.snapshot().volumes.regen).toBe(0.3)
   expect(seen.at(-1)).toBe(0.3)
 })
+
+test('switching sounds keeps the output running', async () => {
+  const e = make()
+  await e.toggle('regen')
+  await e.toggle('regen')                    // einziger Klang aus: Engine ist idle
+  await wait(200)
+  await e.toggle('wind')                     // neuer Klang, bevor der alte ausgeklungen ist
+  await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(1) // Marke nach dem Stopp ist gelaufen
+  await wait(300)                            // ein irrtümliches Anhalten hätte jetzt gegriffen
+  expect(out!.ctx.state).toBe('running')
+  expect(out!.element.paused).toBe(false)
+  expect(e.snapshot()).toMatchObject({ state: 'playing', volumes: { wind: 0.7 } })
+})
+
+test('long sleep timer does not fade before its last minute', async () => {
+  const e = make()
+  e.setSleepTimer(1.05)                      // 63 s, Ausblenden erst ab 3 s
+  await e.toggle('regen')
+  await wait(2500)
+  expect(out!.fade.gain.value).toBeCloseTo(1, 3)
+})
+
+test('sleep end, then a new session starts at full fade', async () => {
+  const e = make()
+  e.setSleepTimer(0.02)                      // 1,2 s
+  await e.toggle('regen')
+  await expect.poll(() => e.snapshot().state, { timeout: 3000 }).toBe('idle')
+  expect(e.snapshot().sleepMinutes).toBe(0.02)
+  expect(out!.fade.gain.value).toBe(1)
+  e.setSleepTimer(null)
+  await e.toggle('regen')
+  expect(e.snapshot()).toMatchObject({ state: 'playing', remainingSec: null })
+  await wait(300)                            // eine Rückführung von 0 auf 1 wäre jetzt bei etwa 0,3
+  expect(out!.fade.gain.value).toBe(1)
+})
+
+test('stopAll while paused tears down at once', async () => {
+  const e = make()
+  await e.toggle('regen')
+  await e.toggle('meer')
+  await e.pause()
+  await e.stopAll()
+  expect(e.snapshot()).toMatchObject({ state: 'idle', volumes: {}, remainingSec: null })
+  expect(e.voiceCount()).toBe(0)
+  await e.toggle('wind')
+  expect(e.snapshot().state).toBe('playing')
+  expect(out!.ctx.state).toBe('running')
+  await wait(1200)                           // auch nach Ablauf der Ausklingzeit bleibt es bei einer Stimme
+  expect(e.voiceCount()).toBe(1)
+  expect(e.snapshot().state).toBe('playing')
+})
