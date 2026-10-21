@@ -33,6 +33,21 @@ export default defineConfig({
         // App-Hülle, Schriften, Icons und die Klangdateien: alles offline ab dem ersten Besuch.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,ogg}'],
         cleanupOutdatedCaches: true,
+        // Die Meditationen (MP3) sind zu groß für den Precache und stehen bewusst nicht in
+        // globPatterns. Gespeichert werden sie von src/lib/offline/meditations.ts im Cache
+        // `ruhe-meditations`; von dort liefert der Service Worker mit Range-Unterstützung aus
+        // (Spulen offline). Teilantworten (206) landen nie im Cache, nur vollständige 200er.
+        runtimeCaching: [
+          {
+            urlPattern: /\/audio\/meditations\/.+\.mp3$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'ruhe-meditations',
+              rangeRequests: true,
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],

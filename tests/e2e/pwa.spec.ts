@@ -38,3 +38,39 @@ test('works offline after first visit', async ({ page, context }) => {
   await page.getByRole('button', { name: 'Beenden' }).click()
   await expect(page.getByRole('button', { name: 'Pause' })).toHaveCount(0)
 })
+
+test('a saved meditation is served from the cache with range support while offline', async ({ page, context }) => {
+  await page.goto('./')
+  await page.evaluate(async () => { await navigator.serviceWorker.ready })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+  // Die MP3 liegt nicht im Precache (zu groß); sie kommt erst durch das Speichern in den Cache.
+  const file = new URL('audio/meditations/drei-minuten-atempause.mp3', page.url()).href
+  expect(await page.evaluate(async (url) => (await caches.match(url, { ignoreSearch: true })) === undefined, file)).toBe(true)
+
+  // So speichert die App (src/lib/offline/meditations.ts): vollständig laden, dann als 200 in `ruhe-meditations`.
+  const saved = await page.evaluate(async (url) => {
+    const body = await (await fetch(url)).blob()
+    const cache = await caches.open('ruhe-meditations')
+    await cache.put(url, new Response(body, {
+      status: 200,
+      headers: { 'Content-Type': 'audio/mpeg', 'Content-Length': String(body.size) },
+    }))
+    return { size: body.size, head: Array.from(new Uint8Array(await body.slice(0, 100).arrayBuffer())) }
+  }, file)
+  expect(saved.size).toBeGreaterThan(100)
+
+  await context.setOffline(true)
+  const partial = await page.evaluate(async (url) => {
+    const response = await fetch(url, { headers: { Range: 'bytes=0-99' } })
+    return {
+      status: response.status,
+      contentRange: response.headers.get('Content-Range'),
+      bytes: Array.from(new Uint8Array(await response.arrayBuffer())),
+    }
+  }, file)
+  expect(partial.status).toBe(206)
+  expect(partial.contentRange).toBe(`bytes 0-99/${saved.size}`)
+  expect(partial.bytes).toHaveLength(100)
+  expect(partial.bytes).toEqual(saved.head)
+})
