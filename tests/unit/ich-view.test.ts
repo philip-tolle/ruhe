@@ -1,10 +1,15 @@
-import { test, expect } from 'vitest'
+import { describe, test, expect } from 'vitest'
 import {
   calendarWeeks,
   dayLabel,
   importMessage,
+  megabytes,
   monthTitle,
   MONTH_NAMES,
+  offlineSummary,
+  savePercent,
+  saveResultMessage,
+  savingLabel,
   shiftMonth,
   streakLabel,
   WEEKDAYS,
@@ -98,4 +103,56 @@ test('import message has singular and plural', () => {
     '2 neue Sitzungen importiert.',
     '12 neue Sitzungen importiert.',
   ])
+})
+
+test('megabytes are decimal, with one decimal place and a comma', () => {
+  expect(megabytes(0)).toBe('0 MB')
+  expect(megabytes(600_339)).toBe('0,6 MB')
+  expect(megabytes(1_200_320)).toBe('1,2 MB')
+  expect(megabytes(7_723_456)).toBe('7,7 MB')
+  expect(megabytes(12_000_000)).toBe('12,0 MB')
+})
+
+test('offline summary names the saved meditations and their size', () => {
+  expect(offlineSummary(0, 9, 0)).toBe('0 von 9 Meditationen offline gespeichert (0 MB)')
+  expect(offlineSummary(1, 9, 360_326)).toBe('1 von 9 Meditationen offline gespeichert (0,4 MB)')
+  expect(offlineSummary(9, 9, 7_723_456)).toBe('9 von 9 Meditationen offline gespeichert (7,7 MB)')
+})
+
+test('saving label counts the file in progress, never beyond the total', () => {
+  expect(savingLabel(0, 9)).toBe('Speichere 1 von 9 …')
+  expect(savingLabel(2, 9)).toBe('Speichere 3 von 9 …')
+  expect(savingLabel(8, 9)).toBe('Speichere 9 von 9 …')
+  expect(savingLabel(9, 9)).toBe('Speichere 9 von 9 …')
+})
+
+test('save progress is the share of bytes in whole percent, kept between 0 and 100', () => {
+  expect(savePercent(0, 1000)).toBe(0)
+  expect(savePercent(250, 1000)).toBe(25)
+  expect(savePercent(333, 1000)).toBe(33)
+  expect(savePercent(1000, 1000)).toBe(100)
+  expect(savePercent(1500, 1000)).toBe(100) // zu viel gezählt (nochmal geladen): nie über 100
+  expect(savePercent(-5, 1000)).toBe(0)
+  expect(savePercent(10, 0)).toBe(0) // nichts zu laden
+})
+
+describe('save result message', () => {
+  test('everything saved', () => {
+    expect(saveResultMessage({ saved: 9, failed: 0, quota: false }, 9)).toBe('Alle Meditationen sind offline verfügbar.')
+  })
+
+  test('full storage keeps what was saved', () => {
+    expect(saveResultMessage({ saved: 2, failed: 0, quota: true }, 9)).toBe(
+      'Nicht genug Speicherplatz. Bereits Gespeichertes bleibt erhalten.',
+    )
+    // Speicher voll gewinnt auch dann, wenn vorher eine Datei fehlschlug.
+    expect(saveResultMessage({ saved: 2, failed: 1, quota: true }, 9)).toBe(
+      'Nicht genug Speicherplatz. Bereits Gespeichertes bleibt erhalten.',
+    )
+  })
+
+  test('failed files are counted, the others stay saved', () => {
+    expect(saveResultMessage({ saved: 8, failed: 1, quota: false }, 9)).toBe('8 von 9 gespeichert, 1 fehlgeschlagen.')
+    expect(saveResultMessage({ saved: 0, failed: 9, quota: false }, 9)).toBe('0 von 9 gespeichert, 9 fehlgeschlagen.')
+  })
 })

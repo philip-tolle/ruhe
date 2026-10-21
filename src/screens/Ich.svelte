@@ -1,11 +1,15 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
+  import BalanceSlider from '../components/BalanceSlider.svelte'
   import Calendar from '../components/Calendar.svelte'
   import SoundSelect from '../components/SoundSelect.svelte'
   import Switch from '../components/Switch.svelte'
+  import { offline, refreshSaved } from '../lib/offline/status.svelte'
   import { backupFileName, serializeBackup } from '../lib/stats/backup'
   import { importBackup, stats, updateSettings } from '../lib/stats/store.svelte'
   import { streak, totalMinutes } from '../lib/stats/summary'
-  import { importMessage, streakLabel } from '../lib/ui/ich-view'
+  import { importMessage, offlineSummary, savingLabel, streakLabel } from '../lib/ui/ich-view'
+  import { clearSaveMessage, meditationFiles, saveAllOffline, saveAllUi } from '../lib/ui/offline-ui.svelte'
 
   const sessions = $derived(stats.data.sessions)
   const settings = $derived(stats.data.settings)
@@ -15,6 +19,26 @@
     { label: 'Minuten gesamt', value: String(totalMinutes(sessions)) },
     { label: 'Sitzungen', value: String(sessions.length) },
   ])
+
+  // Die Balance folgt dem Regler beim Ziehen; gespeichert wird beim Loslassen (wie im Player).
+  let dragging = $state<number | null>(null)
+  const balance = $derived(dragging ?? settings.voiceBalance)
+
+  function saveBalance(value: number) {
+    updateSettings({ voiceBalance: value })
+    dragging = null
+  }
+
+  // Offline: Der Stand kommt aus dem Cache (wie in der Liste unter „Meditieren“).
+  const files = meditationFiles()
+  const saved = $derived(files.filter((file) => offline.saved[file.url] === true))
+  const savedBytes = $derived(saved.reduce((sum, file) => sum + file.bytes, 0))
+  const canSave = $derived(offline.online && !saveAllUi.running && saved.length < files.length)
+
+  onMount(() => {
+    clearSaveMessage()
+    void refreshSaved(files.map((file) => file.url))
+  })
 
   let fileInput = $state<HTMLInputElement>()
   // Ergebnis des letzten Imports, als Meldung für Hilfstechnik und Anzeige.
@@ -82,6 +106,10 @@
         bind:value={() => settings.timerSound, (timerSound) => updateSettings({ timerSound })}
       />
     </div>
+    <div class="field">
+      <span class="label" aria-hidden="true">Balance Stimme ↔ Hintergrund</span>
+      <BalanceSlider value={balance} onInput={(value) => (dragging = value)} onChange={saveBalance} />
+    </div>
   </div>
 
   {#if stats.saveFailed}
@@ -89,6 +117,30 @@
       Speichern ist gerade nicht möglich – deine Daten gehen beim Schließen der App verloren. Exportiere ein Backup.
     </p>
   {/if}
+
+  <div class="card">
+    <h2>Offline</h2>
+    <p class="hint">{offlineSummary(saved.length, files.length, savedBytes)}</p>
+    <button type="button" class="button" disabled={!canSave} onclick={() => saveAllOffline().catch(() => {})}>
+      Alle offline speichern
+    </button>
+    {#if saveAllUi.running}
+      <div class="progress">
+        <p id="save-progress">{savingLabel(saveAllUi.done, saveAllUi.total)}</p>
+        <div
+          class="bar"
+          role="progressbar"
+          aria-labelledby="save-progress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow={saveAllUi.percent}
+        >
+          <span style:width="{saveAllUi.percent}%"></span>
+        </div>
+      </div>
+    {/if}
+    <p class="result" role="status">{saveAllUi.message}</p>
+  </div>
 
   <div class="card">
     <h2>Backup</h2>
@@ -165,9 +217,45 @@
     gap: 12px;
   }
 
+  /* Nichts zu speichern oder ohne Netz: wie eine zurückgenommene Schaltfläche, nicht wie eine blasse goldene. */
+  .button:disabled {
+    border: 1px solid var(--surface-border);
+    background: var(--surface);
+    color: var(--text-muted);
+    box-shadow: none;
+    cursor: default;
+  }
+
+  .progress {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .bar {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--surface-border);
+    overflow: hidden;
+  }
+
+  .bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+  }
+
   /* Die Meldung bleibt im Dokument (sonst liest Hilfstechnik sie nicht vor); leer nimmt sie keinen Platz. */
   .result:empty {
     margin-top: -18px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .bar span {
+      transition: width 0.3s ease;
+    }
   }
 
   .notice {

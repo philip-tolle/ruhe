@@ -58,6 +58,20 @@ async function chooseFile(page: Page, file: { name: string; content: string }) {
 
 const heightOf = async (locator: Locator) => (await locator.boundingBox())!.height
 
+// Die Karten „Offline“ und „Backup“ haben je eine eigene Meldung (role=status).
+const card = (page: Page, title: string) =>
+  page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: title, exact: true }) })
+const backupStatus = (page: Page) => card(page, 'Backup').getByRole('status')
+const offlineStatus = (page: Page) => card(page, 'Offline').getByRole('status')
+
+const saveAll = (page: Page) => page.getByRole('button', { name: 'Alle offline speichern' })
+const progress = (page: Page) => page.getByRole('progressbar')
+const summary = (page: Page) => card(page, 'Offline').getByText(/Meditationen offline gespeichert/)
+const SUMMARY = (saved: number) => new RegExp(`^${saved} von 9 Meditationen offline gespeichert \\((0|\\d+,\\d) MB\\)$`)
+const balanceSlider = (page: Page) => page.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
+const nav = (page: Page, name: string) =>
+  page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name }).click()
+
 test('key figures: streak, minutes and sessions', async ({ page }) => {
   await open(page)
   await expect(figure(page, 'Serie')).toHaveCount(1)
@@ -72,7 +86,7 @@ test('a fresh start shows zeros and no marks', async ({ page }) => {
   await expect(value(page, 'Minuten gesamt')).toHaveText('0')
   await expect(value(page, 'Sitzungen')).toHaveText('0')
   await expect(page.getByLabel(', meditiert')).toHaveCount(0)
-  await expect(page.getByRole('status')).toHaveText('')
+  await expect(backupStatus(page)).toHaveText('')
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
 
@@ -208,6 +222,251 @@ test('settings are saved at once and shared with the timer sheet', async ({ page
   await expect(sound.locator('option:checked')).toHaveText('Keiner')
 })
 
+test('the balance slider is saved on release', async ({ page }) => {
+  await open(page)
+  const slider = balanceSlider(page)
+  await expect(page.getByRole('heading', { level: 2, name: 'Einstellungen' })).toBeVisible()
+  await expect(slider).toHaveValue('50')
+  expect(await slider.getAttribute('aria-valuetext')).toBe('50 % Hintergrund')
+
+  // Beim Ziehen folgt die Anzeige, gespeichert wird erst beim Loslassen.
+  await slider.evaluate((el: HTMLInputElement) => {
+    el.value = '30'
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await expect(slider).toHaveAttribute('aria-valuetext', '30 % Hintergrund')
+  await expect(slider).toHaveAttribute('style', /--v: 0\.3/)
+  expect((await stored(page)).settings.voiceBalance).toBe(0.5)
+  await slider.evaluate((el: HTMLInputElement) => el.dispatchEvent(new Event('change', { bubbles: true })))
+  await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.3)
+
+  await slider.fill('85')
+  await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.85)
+  expect((await stored(page)).settings.guidedSound).toBeNull()
+  expect((await stored(page)).sessions).toHaveLength(4)
+
+  await page.reload()
+  await nav(page, 'Ich')
+  await expect(slider).toHaveValue('85')
+})
+
+test('the balance is the same value as in the guided player', async ({ page }) => {
+  await open(page)
+  await balanceSlider(page).fill('20')
+  await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.2)
+
+  await nav(page, 'Meditieren')
+  await page.getByRole('button', { name: /^Guten Morgen, \d+ Minuten?/ }).click()
+  const player = page.getByRole('dialog', { name: 'Geführte Meditation' })
+  await player.getByRole('combobox', { name: 'Hintergrundklang' }).selectOption({ label: 'Regen' })
+  const inPlayer = player.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
+  await expect(inPlayer).toHaveValue('20')
+
+  // Und zurück: Was im Player eingestellt wird, steht danach unter „Ich“.
+  await inPlayer.fill('80')
+  await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.8)
+  await player.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await nav(page, 'Ich')
+  await expect(balanceSlider(page)).toHaveValue('80')
+})
+
+test('an imported backup brings its balance along', async ({ page }) => {
+  await open(page)
+  await expect(balanceSlider(page)).toHaveValue('50')
+  await chooseFile(page, { name: 'b.json', content: JSON.stringify(backupOf([], { ...SETTINGS, voiceBalance: 0.65 })) })
+  await expect(backupStatus(page)).toHaveText('0 neue Sitzungen importiert.')
+  await expect(balanceSlider(page)).toHaveValue('65')
+})
+
+test('the offline card sits above the backup and starts empty', async ({ page }) => {
+  await open(page)
+  const heading = page.getByRole('heading', { level: 2, name: 'Offline', exact: true })
+  await expect(heading).toBeVisible()
+  const offlineBox = (await heading.boundingBox())!
+  const backupBox = (await page.getByRole('heading', { level: 2, name: 'Backup' }).boundingBox())!
+  expect(offlineBox.y).toBeLessThan(backupBox.y)
+
+  await expect(summary(page)).toHaveText('0 von 9 Meditationen offline gespeichert (0 MB)')
+  await expect(saveAll(page)).toBeEnabled()
+  await expect(progress(page)).toHaveCount(0)
+  await expect(offlineStatus(page)).toHaveText('')
+  await expect(backupStatus(page)).toHaveText('')
+})
+
+test('saving is not offered without a network', async ({ page, context }) => {
+  await open(page)
+  await expect(saveAll(page)).toBeEnabled()
+  await context.setOffline(true)
+  await expect(saveAll(page)).toBeDisabled()
+  await context.setOffline(false)
+  await expect(saveAll(page)).toBeEnabled()
+})
+
+test('a meditation saved while playing counts in the summary', async ({ page }) => {
+  await page.goto('./')
+  await nav(page, 'Meditieren')
+  await page.getByRole('button', { name: /^Drei-Minuten-Atempause, \d+ Minuten?/ }).click()
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await nav(page, 'Ich')
+  await expect(summary(page)).toHaveText(/^1 von 9 Meditationen offline gespeichert \(\d+,\d MB\)$/) // die Datei hat eine Größe
+  await expect(saveAll(page)).toBeEnabled()
+})
+
+test.describe('saving all meditations', () => {
+  // Ohne Service Worker: Sonst beantwortete er den Abruf an der Route vorbei (und Playwright sähe ihn nicht).
+  test.use({ serviceWorkers: 'block' })
+
+  const cachedAddresses = (page: Page) =>
+    page.evaluate(async () => (await (await caches.open('ruhe-meditations')).keys()).map((r) => r.url))
+
+  test('shows the progress, ends with a message, and every meditation reads offline', async ({ page }) => {
+    // Die Nachfrage nach dauerhaftem Speicher läuft beim ersten Speichern, genau einmal.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __persist: number }
+      w.__persist = 0
+      StorageManager.prototype.persist = async () => {
+        w.__persist++
+        return true
+      }
+    })
+    // Die dritte Datei hält der Test fest, damit der Zwischenstand zu sehen ist.
+    const requests: string[] = []
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/audio/meditations/**', async (route) => {
+      requests.push(route.request().url())
+      if (requests.length === 3) await gate
+      await route.continue()
+    })
+    await open(page)
+    await expect(summary(page)).toHaveText('0 von 9 Meditationen offline gespeichert (0 MB)')
+
+    await saveAll(page).click()
+    await expect(page.getByText('Speichere 3 von 9 …')).toBeVisible()
+    const bar = progress(page)
+    await expect(bar).toBeVisible()
+    await expect(bar).toHaveAccessibleName('Speichere 3 von 9 …')
+    await expect(bar).toHaveAttribute('aria-valuemin', '0')
+    await expect(bar).toHaveAttribute('aria-valuemax', '100')
+    const now = Number(await bar.getAttribute('aria-valuenow'))
+    expect(now).toBeGreaterThan(0)
+    expect(now).toBeLessThan(100)
+    await expect(saveAll(page)).toBeDisabled()
+    await expect(offlineStatus(page)).toHaveText('')
+
+    // Der Stand gehört der App, nicht dem Reiter: Wer wegwechselt und zurückkommt, sieht ihn weiter.
+    await nav(page, 'Meditieren')
+    await nav(page, 'Ich')
+    await expect(page.getByText('Speichere 3 von 9 …')).toBeVisible()
+    await expect(saveAll(page)).toBeDisabled()
+
+    release()
+    await expect(offlineStatus(page)).toHaveText('Alle Meditationen sind offline verfügbar.')
+    await expect(summary(page)).toHaveText(SUMMARY(9))
+    await expect(progress(page)).toHaveCount(0)
+    await expect(saveAll(page)).toBeDisabled() // es gibt nichts mehr zu speichern
+    expect(requests).toHaveLength(9)
+    expect(await page.evaluate(() => (window as unknown as { __persist: number }).__persist)).toBe(1)
+    expect(await cachedAddresses(page)).toHaveLength(9)
+
+    // „Meditieren“ zeigt überall „✓ offline“, ohne dass eine Datei nochmals geladen wird.
+    await nav(page, 'Meditieren')
+    await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(9)
+    await expect(page.getByText('Nicht offline verfügbar')).toHaveCount(0)
+    expect(requests).toHaveLength(9)
+
+    // Auch nach dem Neuladen kommt der Stand aus dem Cache; die Meldung ist weg.
+    await page.reload()
+    await nav(page, 'Ich')
+    await expect(summary(page)).toHaveText(SUMMARY(9))
+    await expect(offlineStatus(page)).toHaveText('')
+    await expect(saveAll(page)).toBeDisabled()
+  })
+
+  test('full storage stops at once and keeps what was saved', async ({ page }) => {
+    // Das dritte Speichern scheitert mit „Speicher voll“, wie es ein echtes Gerät meldet.
+    await page.addInitScript(() => {
+      const put = Cache.prototype.put
+      let puts = 0
+      Cache.prototype.put = function (...args: Parameters<Cache['put']>) {
+        return ++puts === 3 ? Promise.reject(new DOMException('voll', 'QuotaExceededError')) : put.apply(this, args)
+      }
+    })
+    const requests: string[] = []
+    await page.route('**/audio/meditations/**', (route) => {
+      requests.push(route.request().url())
+      return route.continue()
+    })
+    await open(page)
+
+    await saveAll(page).click()
+    await expect(offlineStatus(page)).toHaveText('Nicht genug Speicherplatz. Bereits Gespeichertes bleibt erhalten.')
+    await expect(summary(page)).toHaveText(SUMMARY(2))
+    await expect(progress(page)).toHaveCount(0)
+    await expect(saveAll(page)).toBeEnabled() // es lässt sich nach dem Aufräumen wiederholen
+    expect(requests).toHaveLength(3) // nach der dritten Datei ist Schluss
+    expect(await cachedAddresses(page)).toHaveLength(2)
+
+    await nav(page, 'Meditieren')
+    await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(2)
+
+    // Wieder bei Ich: Ein neuer Versuch (jetzt ist Platz) lädt nur den Rest und meldet Erfolg.
+    await nav(page, 'Ich')
+    await expect(offlineStatus(page)).toHaveText('') // die alte Meldung ist weg
+    await saveAll(page).click()
+    await expect(offlineStatus(page)).toHaveText('Alle Meditationen sind offline verfügbar.')
+    await expect(summary(page)).toHaveText(SUMMARY(9))
+    expect(requests).toHaveLength(3 + 7)
+  })
+
+  test('a file that fails does not stop the others and is counted', async ({ page }) => {
+    const requests: string[] = []
+    await page.route('**/audio/meditations/**', (route) => {
+      requests.push(route.request().url())
+      // Die dritte Datei: Server meldet „Insufficient Storage“ (507) – für die App ein Fehler dieser einen Datei.
+      return requests.length === 3 ? route.fulfill({ status: 507, body: 'voll' }) : route.continue()
+    })
+    await open(page)
+
+    await saveAll(page).click()
+    await expect(offlineStatus(page)).toHaveText('8 von 9 gespeichert, 1 fehlgeschlagen.')
+    await expect(summary(page)).toHaveText(SUMMARY(8))
+    await expect(saveAll(page)).toBeEnabled()
+    expect(requests).toHaveLength(9)
+
+    await nav(page, 'Meditieren')
+    await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(8)
+
+    // Ein neuer Versuch lädt nur die fehlende Datei.
+    await nav(page, 'Ich')
+    await saveAll(page).click()
+    await expect(offlineStatus(page)).toHaveText('Alle Meditationen sind offline verfügbar.')
+    await expect(summary(page)).toHaveText(SUMMARY(9))
+    expect(requests).toHaveLength(10)
+  })
+
+  test('the entries of an old recording are removed first', async ({ page }) => {
+    await open(page)
+    // Zwei Reste früherer Aufnahmen (andere Version derselben Datei, und eine Datei ohne Version).
+    await page.evaluate(async () => {
+      const cache = await caches.open('ruhe-meditations')
+      for (const name of ['guten-morgen.mp3?v=0000000000', 'guten-morgen.mp3'])
+        await cache.put(new URL(`audio/meditations/${name}`, location.href), new Response(new Uint8Array(500)))
+    })
+    expect(await cachedAddresses(page)).toHaveLength(2)
+
+    await saveAll(page).click()
+    await expect(offlineStatus(page)).toHaveText('Alle Meditationen sind offline verfügbar.')
+
+    const cached = await cachedAddresses(page)
+    expect(cached).toHaveLength(9)
+    expect(cached.filter((address) => address.includes('0000000000'))).toEqual([])
+    expect(cached.every((address) => /\.mp3\?v=[0-9a-f]{10}$/.test(address))).toBe(true)
+  })
+})
+
 test('touch targets are at least 48px', async ({ page }) => {
   await open(page)
   const targets = [
@@ -216,6 +475,8 @@ test('touch targets are at least 48px', async ({ page }) => {
     page.getByRole('switch', { name: 'Vibration bei Atemübungen' }),
     page.getByRole('switch', { name: '10 Sekunden ankommen' }),
     page.getByRole('combobox', { name: 'Standard-Hintergrundklang' }),
+    balanceSlider(page),
+    saveAll(page),
     page.getByRole('button', { name: 'Backup exportieren' }),
     page.getByRole('button', { name: 'Backup importieren' }),
   ]
@@ -247,7 +508,7 @@ test('import merges new sessions, skips known ones and takes over the settings',
       'Sichere deine Sitzungen und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen dazu, die Einstellungen werden aus der Datei übernommen.',
     ),
   ).toBeVisible()
-  const status = page.getByRole('status')
+  const status = backupStatus(page)
   await expect(status).toHaveText('')
   const incoming = backupOf(
     [SESSIONS[0], session('s-new', '2026-09-04T08:00:00+02:00', 'timer', 'timer', 120)],
@@ -286,7 +547,7 @@ test('import merges new sessions, skips known ones and takes over the settings',
 
 test('an invalid file explains itself and changes nothing', async ({ page }) => {
   await open(page)
-  const status = page.getByRole('status')
+  const status = backupStatus(page)
   const before = await storedText(page)
   const invalid: [string, string][] = [
     ['kaputt.json', '{nope'],

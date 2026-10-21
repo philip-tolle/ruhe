@@ -70,3 +70,31 @@ export function streakLabel(days: number): string {
 export function importMessage(added: number): string {
   return added === 1 ? '1 neue Sitzung importiert.' : `${added} neue Sitzungen importiert.`
 }
+
+/** Megabyte (1 MB = 1 000 000 Byte) mit einer Nachkommastelle und Komma: „7,7 MB“; ohne Bytes „0 MB“. */
+export function megabytes(bytes: number): string {
+  return bytes > 0 ? `${(bytes / 1_000_000).toFixed(1).replace('.', ',')} MB` : '0 MB'
+}
+
+/** Stand der Offline-Speicherung: „3 von 9 Meditationen offline gespeichert (2,4 MB)“. */
+export function offlineSummary(saved: number, total: number, bytes: number): string {
+  return `${saved} von ${total} Meditationen offline gespeichert (${megabytes(bytes)})`
+}
+
+/** Während des Speicherns: „Speichere 3 von 9 …“; `done` Dateien sind erledigt, die nächste ist dran. */
+export function savingLabel(done: number, total: number): string {
+  return `Speichere ${Math.min(done + 1, total)} von ${total} …`
+}
+
+/** Anteil der geladenen Bytes in ganzen Prozent, 0 … 100 (nichts zu laden: 0). */
+export function savePercent(bytes: number, totalBytes: number): number {
+  if (totalBytes <= 0) return 0
+  return Math.min(100, Math.max(0, Math.round((bytes / totalBytes) * 100)))
+}
+
+/** Meldung nach „Alle offline speichern“; `total` ist die Zahl aller Meditationen. */
+export function saveResultMessage(result: { saved: number; failed: number; quota: boolean }, total: number): string {
+  if (result.quota) return 'Nicht genug Speicherplatz. Bereits Gespeichertes bleibt erhalten.'
+  if (result.failed > 0) return `${result.saved} von ${total} gespeichert, ${result.failed} fehlgeschlagen.`
+  return 'Alle Meditationen sind offline verfügbar.'
+}
