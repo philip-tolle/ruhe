@@ -34,7 +34,8 @@ export function syncMediaSession(snap: EngineSnapshot, actions: MediaActions): v
     return
   }
 
-  const title = mediaTitle(soundTitles(snap), snap.sleepMinutes)
+  // Ein Programm trägt seinen eigenen Titel, ohne Sleep-Zusatz: Dort gilt kein Sleep-Timer.
+  const title = snap.program ? snap.program.title : mediaTitle(soundTitles(snap), snap.sleepMinutes)
   if (title !== lastTitle || !session.metadata) {
     session.metadata = new MediaMetadata({
       title,
