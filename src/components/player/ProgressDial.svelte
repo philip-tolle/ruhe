@@ -83,7 +83,7 @@
   .progress {
     stroke: var(--accent);
     stroke-linecap: round;
-    filter: drop-shadow(0 0 6px rgb(242 201 138 / 0.45));
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
   }
 
   .readout {

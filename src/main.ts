@@ -8,6 +8,11 @@ import { initPwa } from './lib/pwa/update.svelte'
 import { connectSessions } from './lib/session-wiring'
 import { recordSession } from './lib/stats/store.svelte'
 import { sessionUi } from './lib/ui/session-ui.svelte'
+import { followTageszeit } from './lib/ui/tageszeit.svelte'
+
+// Die Stimmung folgt der Uhr (volle Minute, Rückkehr in die App). Vor dem Einhängen, damit die
+// Bildschirme gleich den aktuellen Wert lesen; für die ganze Lebensdauer der App, darum nie aufgeräumt.
+followTageszeit()
 
 mount(App, { target: document.getElementById('app')! })
 

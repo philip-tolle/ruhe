@@ -54,10 +54,35 @@
   inherits: true;
   initial-value: #3a3163;
 }
+@property --hill-far-bottom {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2a2552;
+}
 @property --hill-near {
   syntax: '<color>';
   inherits: true;
   initial-value: #171a3d;
+}
+@property --lake-top {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2d2757;
+}
+@property --lake-bottom {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #0d1129;
+}
+@property --glint {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f2c98a;
+}
+@property --horizon-glow {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgb(242 201 138 / 0.16);
 }
 @property --star-opacity {
   syntax: '<number>';
@@ -81,9 +106,15 @@
   /* Zierlinien und Zierelemente: in allen Stimmungen Gold, auch wenn der Akzent Pfirsich oder Mint ist */
   --gold: #f2c98a;
 
-  /* Berge (fern, nah) und Sichtbarkeit der Sterne */
+  /* Landschaft (Sky.svelte): Berge fern (oben, unten) und nah, See (oben, unten), Glanz auf dem See,
+     Schein über dem Horizont (nur hinter den Bergen) und Sichtbarkeit der Sterne */
   --hill-far: #3a3163;
+  --hill-far-bottom: #2a2552;
   --hill-near: #171a3d;
+  --lake-top: #2d2757;
+  --lake-bottom: #0d1129;
+  --glint: #f2c98a;
+  --horizon-glow: rgb(242 201 138 / 0.16);
   --star-opacity: 1;
 
   /* Flächen */
@@ -118,13 +149,19 @@
   --sky-bottom: #633e5b;
   --sky-horizon: #c47c7c;
 
-  --accent: #f8b98f;
+  /* Etwas heller als #F8B98F: Der Akzent ist auch Schrift auf Karten (≥ 4,5:1 über --sky-bottom). */
+  --accent: #fcc9a6;
   --on-accent: #2b1b2c;
   --text: #f7f1fb;
   --text-muted: #ddd3e9;
 
   --hill-far: #5a3660;
+  --hill-far-bottom: #482c55;
   --hill-near: #33223f;
+  --lake-top: #4a2f5a;
+  --lake-bottom: #170f28;
+  --glint: #f6b4a6;
+  --horizon-glow: rgb(214 132 128 / 0.22);
   --star-opacity: 0.35;
 }
 
@@ -141,7 +178,12 @@
   --text-muted: #c8dadf;
 
   --hill-far: #2c5163;
+  --hill-far-bottom: #213f53;
   --hill-near: #1a3447;
+  --lake-top: #22465a;
+  --lake-bottom: #08151f;
+  --glint: #e4f4ef;
+  --horizon-glow: rgb(140 196 194 / 0.18);
   --star-opacity: 0;
 }
 
@@ -246,7 +288,7 @@ main.with-player-bar {
   backdrop-filter: blur(14px);
 }
 
-/* Haupt-Schaltfläche: Gold, mit sanftem Leuchten */
+/* Haupt-Schaltfläche: im Akzent der Stimmung, mit sanftem Leuchten */
 .button {
   display: inline-flex;
   align-items: center;
@@ -259,7 +301,7 @@ main.with-player-bar {
   background: var(--accent);
   color: var(--on-accent);
   font-weight: 700;
-  box-shadow: 0 0 36px rgb(242 201 138 / 0.28);
+  box-shadow: 0 0 36px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .button.secondary {
@@ -359,7 +401,12 @@ input[type='range'].range:focus-visible {
       --text 1.5s ease,
       --text-muted 1.5s ease,
       --hill-far 1.5s ease,
+      --hill-far-bottom 1.5s ease,
       --hill-near 1.5s ease,
+      --lake-top 1.5s ease,
+      --lake-bottom 1.5s ease,
+      --glint 1.5s ease,
+      --horizon-glow 1.5s ease,
       --star-opacity 1.5s ease;
   }
 

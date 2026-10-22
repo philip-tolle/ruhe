@@ -42,15 +42,22 @@
     height: var(--miniplayer-height);
     margin: 0 auto;
     padding: 0 8px 0 18px;
-    border: 1px solid rgb(242 201 138 / 0.28);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
     border-radius: 24px;
-    background: rgb(27 35 80 / 0.92);
+    background: color-mix(in srgb, var(--sky-mid) 92%, transparent);
     box-shadow:
       0 10px 32px rgb(5 8 24 / 0.5),
-      0 0 28px rgb(242 201 138 / 0.1);
+      0 0 28px color-mix(in srgb, var(--accent) 10%, transparent);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     pointer-events: auto;
+  }
+
+  /* Ohne color-mix() bliebe die Leiste sonst durchsichtig (siehe PlayerShell): dann deckend. */
+  @supports not (color: color-mix(in srgb, red, red)) {
+    .bar {
+      background: var(--sky-mid);
+    }
   }
 
   .title {

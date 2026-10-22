@@ -1,22 +1,27 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { untrack } from 'svelte'
   import { breathProgram } from '../lib/audio/program'
   import { durationLabel, suggestionFor, type Meditation } from '../lib/content/catalog'
   import { absoluteAudioUrl, startable } from '../lib/meditation/guided-view'
   import { offline, refreshSaved } from '../lib/offline/status.svelte'
-  import { greetingFor } from '../lib/time/greeting'
+  import { GREETING } from '../lib/time/tageszeit'
   import { setLastUsed, stats } from '../lib/stats/store.svelte'
   import { streak } from '../lib/stats/summary'
   import { lastUsedCard, lastUsedStart, streakLine } from '../lib/ui/heute-view'
   import { startGuidedSession, startSession } from '../lib/ui/session-ui.svelte'
   import type { TabId } from '../lib/ui/tabs'
+  import { tageszeitUi } from '../lib/ui/tageszeit.svelte'
 
   let { onNavigate }: { onNavigate: (tab: TabId) => void } = $props()
 
-  const now = new Date()
-  const greeting = greetingFor(now)
-  // Der Vorschlag bleibt den ganzen Tag derselbe; beim Öffnen des Reiters wird er einmal bestimmt.
-  const suggestion = suggestionFor(now)
+  // Begrüßung und Vorschlag folgen der Stimmung, auch bei offener App (Wechsel zur vollen Minute).
+  const greeting = $derived(GREETING[tageszeitUi.current])
+  // Der Vorschlag gilt für eine Tageszeit (Thema nach Uhrzeit, Titel nach Kalendertag): beim Öffnen
+  // des Reiters bestimmt und bei jedem Wechsel der Tageszeit neu.
+  const suggestion = $derived.by(() => {
+    void tageszeitUi.current
+    return suggestionFor(new Date())
+  })
 
   const days = $derived(streak(stats.data.sessions, new Date()))
   // Ohne Gemerktes (oder mit einer unbekannten Meditation) steht hier „Ankommen im Atem“.
@@ -26,10 +31,12 @@
   const urlOf = (m: Meditation) => absoluteAudioUrl(m, location.href)
 
   // Der Status kommt aus dem Cache; geprüft wird beim Öffnen des Reiters, für die höchstens zwei
-  // Meditationen, die hier zu starten sind.
-  onMount(() => {
+  // Meditationen, die hier zu starten sind, und erneut, wenn eine davon wechselt (neuer Vorschlag
+  // mit der Tageszeit). Nur diese beiden lösen die Prüfung aus, nicht der Status selbst.
+  $effect(() => {
     const shown = start.kind === 'guided' ? [suggestion, start.meditation] : [suggestion]
-    void refreshSaved([...new Set(shown.map(urlOf))])
+    const urls = [...new Set(shown.map(urlOf))]
+    untrack(() => void refreshSaved(urls))
   })
 
   // Alle Starts im Tipp selbst, damit der Audio-Start als Nutzergeste gilt.

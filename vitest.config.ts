@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import { playwright } from '@vitest/browser-playwright'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 export default defineConfig({
   test: {
@@ -10,6 +11,8 @@ export default defineConfig({
         // Kein SPA-Fallback: Fehlende Dateien (z. B. Klangdateien) sollen 404 liefern,
         // statt index.html auszuliefern und damit die App zu kompilieren.
         appType: 'custom',
+        // Übersetzt die Runen ($state …) in `.svelte.ts`-Modulen, die Browser-Tests laden.
+        plugins: [svelte()],
         test: {
           name: 'browser',
           include: ['tests/browser/**/*.test.ts'],

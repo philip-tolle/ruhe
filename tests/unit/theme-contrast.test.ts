@@ -39,8 +39,21 @@ const COLOR_TOKENS = [
   'text',
   'text-muted',
   'hill-far',
+  'hill-far-bottom',
   'hill-near',
+  'lake-top',
+  'lake-bottom',
+  'glint',
 ] as const
+
+/** Farben mit Deckkraft, als `rgb(r g b / a)` (Schein über dem Horizont). */
+const GLOW_TOKENS = ['horizon-glow'] as const
+
+/** Alle mit `@property` registrierten Variablen. */
+const REGISTERED = [...css.matchAll(/@property (--[\w-]+)/g)].map((m) => m[1])
+
+/** Hinter Karten liegen beim Scrollen auch Berge und See (der Himmel steht fest, die Karten wandern darüber). */
+const BACKDROPS = ['sky-mid', 'sky-bottom', 'hill-far', 'hill-far-bottom', 'hill-near', 'lake-top', 'lake-bottom'] as const
 
 type Rgb = [number, number, number]
 
@@ -92,13 +105,24 @@ describe('Kontrast je Stimmung (WCAG AA, 4,5:1)', () => {
 
   for (const mood of Object.keys(MOODS) as Tageszeit[]) {
     describe(mood, () => {
-      test.each(['text', 'text-muted'] as const)('--%s auf der Karte über --sky-mid und --sky-bottom', (token) => {
+      test.each(['text', 'text-muted'] as const)('--%s auf der Karte über Himmel, Bergen und See', (token) => {
+        const block = blockOf(MOODS[mood])
+        for (const backdrop of BACKDROPS) {
+          for (const overlay of overlays()) {
+            const card = over(overlay, hex(block, backdrop))
+            const ratio = contrast(hex(block, token), card)
+            expect(ratio, `${mood}: --${token} auf Karte über --${backdrop} (Deckkraft ${overlay.alpha})`).toBeGreaterThanOrEqual(4.5)
+          }
+        }
+      })
+
+      // Der Akzent ist auch Schrift: Serie auf „Heute“, aktive Klangkachel, „… Min meditiert“ im Abschluss.
+      test('--accent als Schrift auf der Karte über --sky-mid und --sky-bottom', () => {
         const block = blockOf(MOODS[mood])
         for (const sky of ['sky-mid', 'sky-bottom'] as const) {
           for (const overlay of overlays()) {
-            const card = over(overlay, hex(block, sky))
-            const ratio = contrast(hex(block, token), card)
-            expect(ratio, `${mood}: --${token} auf Karte über --${sky} (Deckkraft ${overlay.alpha})`).toBeGreaterThanOrEqual(4.5)
+            const ratio = contrast(hex(block, 'accent'), over(overlay, hex(block, sky)))
+            expect(ratio, `${mood}: --accent auf Karte über --${sky} (Deckkraft ${overlay.alpha})`).toBeGreaterThanOrEqual(4.5)
           }
         }
       })
@@ -115,6 +139,7 @@ describe('Farbwerte der drei Stimmungen', () => {
   test.each(Object.keys(MOODS) as Tageszeit[])('%s setzt alle Farben als #RRGGBB und die Stern-Deckkraft', (mood) => {
     const block = blockOf(MOODS[mood])
     for (const token of COLOR_TOKENS) expect(() => hex(block, token), `${mood} --${token}`).not.toThrow()
+    for (const token of GLOW_TOKENS) expect(() => overlayToken(block, token), `${mood} --${token}`).not.toThrow()
     const stars = block.match(/^\s*--star-opacity:\s*([\d.]+)\s*;/m)
     expect(stars, `${mood} --star-opacity`).not.toBeNull()
     expect(Number(stars![1])).toBeGreaterThanOrEqual(0)
@@ -134,6 +159,14 @@ describe('Farbwerte der drei Stimmungen', () => {
     // (#b3b8d2) erreicht 4,66:1; sichtbar ändert sich dadurch fast nichts.
     expect(block).toMatch(/--text-muted:\s*#b3b8d2;/i)
     expect(block).toMatch(/--star-opacity:\s*1\s*;/)
+    // Berge, See, Glanz und Schein wie bisher fest in Sky.svelte eingetragen
+    expect(block).toMatch(/--hill-far:\s*#3a3163;/i)
+    expect(block).toMatch(/--hill-far-bottom:\s*#2a2552;/i)
+    expect(block).toMatch(/--hill-near:\s*#171a3d;/i)
+    expect(block).toMatch(/--lake-top:\s*#2d2757;/i)
+    expect(block).toMatch(/--lake-bottom:\s*#0d1129;/i)
+    expect(block).toMatch(/--glint:\s*#f2c98a;/i)
+    expect(block).toMatch(/--horizon-glow:\s*rgb\(242 201 138 \/ 0\.16\);/)
     expect(block).toMatch(/--surface:\s*rgb\(238 240 250 \/ 0\.07\);/)
     expect(block).toMatch(/--surface-border:\s*rgb\(238 240 250 \/ 0\.12\);/)
   })
@@ -155,6 +188,14 @@ describe('Übergang zwischen den Stimmungen', () => {
     expect(m![1]).toMatch(/initial-value:\s*#[0-9a-f]{6}/i)
   })
 
+  test.each(GLOW_TOKENS)('--%s ist als <color> registriert (erbt, Anfangswert mit Deckkraft)', (token) => {
+    const m = css.match(new RegExp(`@property --${token}\\s*\\{([^}]*)\\}`))
+    expect(m, `@property --${token}`).not.toBeNull()
+    expect(m![1]).toMatch(/syntax:\s*'<color>'/)
+    expect(m![1]).toMatch(/inherits:\s*true/)
+    expect(m![1]).toMatch(/initial-value:\s*rgb\(\d+ \d+ \d+ \/ [\d.]+\)/)
+  })
+
   test('--star-opacity ist als <number> registriert', () => {
     const m = css.match(/@property --star-opacity\s*\{([^}]*)\}/)
     expect(m, '@property --star-opacity').not.toBeNull()
@@ -163,15 +204,29 @@ describe('Übergang zwischen den Stimmungen', () => {
     expect(m![1]).toMatch(/initial-value:\s*1\b/)
   })
 
+  test('der Anfangswert jeder registrierten Variable ist der Abend', () => {
+    const evening = blockOf(MOODS.abend)
+    expect(REGISTERED).toEqual(expect.arrayContaining([...COLOR_TOKENS, ...GLOW_TOKENS, 'star-opacity'].map((t) => `--${t}`)))
+    for (const name of REGISTERED) {
+      const initial = css.match(new RegExp(`@property ${name}\\s*\\{[^}]*initial-value:\\s*([^;]+);`))![1].trim()
+      const value = evening.match(new RegExp(`^\\s*${name}:\\s*([^;]+);`, 'm'))
+      expect(value, `${name} in :root`).not.toBeNull()
+      expect(initial.toLowerCase(), name).toBe(value![1].trim().toLowerCase())
+    }
+  })
+
   test('die 1,5 s langen Übergänge stehen nur unter prefers-reduced-motion: no-preference', () => {
     const media = blockOf(/^@media \(prefers-reduced-motion: no-preference\)\s*\{/m)
     const root = media.match(/:root\s*\{([^}]*)\}/)
     expect(root, ':root im Medienblock').not.toBeNull()
-    for (const token of [...COLOR_TOKENS, 'star-opacity']) {
-      expect(root![1], `Übergang für --${token}`).toMatch(new RegExp(`--${token}\\s+1\\.5s\\s+ease`))
+    for (const name of REGISTERED) {
+      expect(root![1], `Übergang für ${name}`).toMatch(new RegExp(`${name}\\s+1\\.5s\\s+ease`))
     }
-    // Außerhalb des Medienblocks gibt es keinen Übergang auf den Variablen.
-    expect(css.replace(media, '')).not.toMatch(/transition:[^;]*--sky-/)
+    // Außerhalb des Medienblocks gibt es keinen Übergang auf einer der registrierten Variablen.
+    const outside = css.replace(media, '')
+    for (const name of REGISTERED) {
+      expect(outside, `Übergang auf ${name} außerhalb des Medienblocks`).not.toMatch(new RegExp(`transition:[^;]*${name}\\b`))
+    }
   })
 })
 

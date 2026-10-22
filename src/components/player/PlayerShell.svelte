@@ -116,7 +116,7 @@
 
 <style>
   /* Vollbild über allem außer Sheet und Dialog (Reiterleiste 10 < Player 15 < Sheet 20 < Dialog 30),
-     mit eigenem ruhigen Abendhimmel. */
+     mit eigenem ruhigen Himmel der Tageszeit. */
   .player {
     position: fixed;
     inset: 0;
@@ -127,11 +127,19 @@
     gap: 24px;
     padding: calc(env(safe-area-inset-top, 0px) + 48px) var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 40px);
     background:
-      radial-gradient(80% 45% at 50% 42%, rgb(242 201 138 / 0.09), transparent 70%),
+      radial-gradient(80% 45% at 50% 42%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
       linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 58%, var(--sky-bottom) 100%);
     overflow-x: hidden; /* was über den Rand leuchtet (der Schein des Atemkreises), verschiebt nichts */
     overflow-y: auto;
     overscroll-behavior: contain;
+  }
+
+  /* Ohne color-mix() entfiele mit dem Schein der ganze Hintergrund (var() darin: ungültig erst beim
+     Berechnen, eine frühere Angabe greift dann nicht mehr). Der Himmel bleibt, nur ohne Schein. */
+  @supports not (color: color-mix(in srgb, red, red)) {
+    .player {
+      background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 58%, var(--sky-bottom) 100%);
+    }
   }
 
   .title {

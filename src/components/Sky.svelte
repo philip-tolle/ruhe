@@ -18,30 +18,37 @@
 <div class="sky" aria-hidden="true">
   <div class="glow"></div>
 
-  {#each stars as star}
-    <span
-      class="star"
-      class:warm={star.warm}
-      style="left: {star.x}%; top: {star.y}%; width: {star.size}px; height: {star.size}px; --o: {star.opacity}; animation-delay: -{star.delay}s; animation-duration: {star.duration}s;"
-    ></span>
-  {/each}
+  <!-- Sterne: am Abend voll, am Morgen blass, am Tag unsichtbar (--star-opacity) -->
+  <div class="stars">
+    {#each stars as star}
+      <span
+        class="star"
+        class:warm={star.warm}
+        style="left: {star.x}%; top: {star.y}%; width: {star.size}px; height: {star.size}px; --o: {star.opacity}; animation-delay: -{star.delay}s; animation-duration: {star.duration}s;"
+      ></span>
+    {/each}
+  </div>
 
+  <!-- Gestirne als übereinanderliegende Ebenen; sichtbar ist nur das der Stimmung. Die Morgensonne
+       liegt vor den Bergen im Dokument, also hinter ihnen: Sie geht hinter dem Kamm auf. -->
+  <div class="sun-morgen"></div>
+  <div class="sun-tag"></div>
   <div class="moon"></div>
 
   <svg class="land" viewBox="0 0 800 400" preserveAspectRatio="xMidYMax slice" focusable="false">
     <defs>
       <linearGradient id="lake-fill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#2d2757" />
-        <stop offset="1" stop-color="#0d1129" />
+        <stop offset="0" style="stop-color: var(--lake-top)" />
+        <stop offset="1" style="stop-color: var(--lake-bottom)" />
       </linearGradient>
       <linearGradient id="far-fill" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#3a3163" />
-        <stop offset="1" stop-color="#2a2552" />
+        <stop offset="0" style="stop-color: var(--hill-far)" />
+        <stop offset="1" style="stop-color: var(--hill-far-bottom)" />
       </linearGradient>
       <linearGradient id="glint-fill" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stop-color="#f2c98a" stop-opacity="0" />
-        <stop offset="0.5" stop-color="#f2c98a" stop-opacity="0.4" />
-        <stop offset="1" stop-color="#f2c98a" stop-opacity="0" />
+        <stop offset="0" stop-opacity="0" style="stop-color: var(--glint)" />
+        <stop offset="0.5" stop-opacity="0.4" style="stop-color: var(--glint)" />
+        <stop offset="1" stop-opacity="0" style="stop-color: var(--glint)" />
       </linearGradient>
       <clipPath id="lake-clip">
         <rect x="0" y="264" width="800" height="136" />
@@ -57,14 +64,14 @@
     </defs>
 
     <use href="#far-range" fill="url(#far-fill)" />
-    <use href="#near-range" fill="#171a3d" />
+    <use href="#near-range" style="fill: var(--hill-near)" />
 
     <rect x="0" y="264" width="800" height="136" fill="url(#lake-fill)" />
 
     <g clip-path="url(#lake-clip)">
       <g transform="matrix(1 0 0 -1 0 528)" opacity="0.3">
         <use href="#far-range" fill="url(#far-fill)" />
-        <use href="#near-range" fill="#171a3d" />
+        <use href="#near-range" style="fill: var(--hill-near)" />
       </g>
       <g class="shimmer" fill="url(#glint-fill)">
         <rect x="352" y="276" width="96" height="3" rx="1.5" opacity="0.3" />
@@ -92,15 +99,17 @@
     );
   }
 
-  /* Warmer Schimmer am Horizont */
+  /* Schein über dem Horizont, fast ganz hinter den Bergen: abends Gold, morgens Rosé, am Tag kühl */
   .glow {
     position: absolute;
     inset: 0;
-    background: radial-gradient(
-      90% 28% at 50% 80%,
-      rgb(242 201 138 / 0.16),
-      transparent 70%
-    );
+    background: radial-gradient(90% 28% at 50% 80%, var(--horizon-glow), transparent 70%);
+  }
+
+  .stars {
+    position: absolute;
+    inset: 0;
+    opacity: var(--star-opacity);
   }
 
   .star {
@@ -112,6 +121,77 @@
 
   .star.warm {
     background: var(--accent);
+  }
+
+  /* Gestirne: Ohne Stimmung (oder abends) ist der Mond zu sehen. */
+  .sun-morgen,
+  .sun-tag {
+    opacity: 0;
+  }
+
+  :global(:root[data-tageszeit='morgen']) .sun-morgen,
+  :global(:root[data-tageszeit='tag']) .sun-tag {
+    opacity: 1;
+  }
+
+  :global(:root[data-tageszeit='morgen']) .moon,
+  :global(:root[data-tageszeit='tag']) .moon {
+    opacity: 0;
+  }
+
+  /* Morgen: warmer, weicher Schein, der hinter dem mittleren Gipfel aufgeht (ohne Scheibe). Gedämpft:
+     Karten wandern beim Scrollen darüber, ihr Text braucht auch hier 4,5:1. */
+  .sun-morgen {
+    position: absolute;
+    left: 50%;
+    top: 62%;
+    width: min(130vw, 640px);
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      rgb(255 202 160 / 0.13),
+      rgb(250 178 146 / 0.1) 30%,
+      rgb(240 150 140 / 0.04) 62%,
+      transparent
+    );
+  }
+
+  /* Tag: blasse, weiche Sonne oben rechts mit großem Schein, auf Höhe der Begrüßung (tiefer läge sie
+     unter der Zeile darunter). Die Ebene misst die Scheibe; der Schein (::before, ein Verlauf: ein so
+     großer Schatten zeigte an seinem Rand eine Kante) liegt unter ihr (::after). */
+  .sun-tag {
+    position: absolute;
+    top: 6%;
+    right: 9%;
+    width: 44px;
+    height: 44px;
+  }
+
+  .sun-tag::before,
+  .sun-tag::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+  }
+
+  .sun-tag::before {
+    inset: -150px;
+    background: radial-gradient(
+      closest-side,
+      rgb(255 248 222 / 0.12),
+      rgb(236 244 230 / 0.08) 34%,
+      rgb(220 238 232 / 0.035) 66%,
+      transparent
+    );
+  }
+
+  /* Weicher Rand: Die Scheibe läuft in einen schmalen Lichtsaum aus. */
+  .sun-tag::after {
+    inset: -2px;
+    background: radial-gradient(closest-side, #fffcf0, #f5f2e2 84%, rgb(245 242 226 / 0));
+    box-shadow: 0 0 14px 2px rgb(255 248 222 / 0.14);
   }
 
   .moon {
@@ -139,6 +219,13 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
+    /* Wechsel der Stimmung: die Gestirne blenden in 1,5 s über, wie die Farben */
+    .sun-morgen,
+    .sun-tag,
+    .moon {
+      transition: opacity 1.5s ease;
+    }
+
     .star {
       animation-name: twinkle;
       animation-timing-function: ease-in-out;

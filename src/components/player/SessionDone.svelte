@@ -66,7 +66,7 @@
     margin-bottom: 12px;
     border-radius: 50%;
     background: radial-gradient(circle at 38% 36%, #fff4dc, var(--accent) 70%);
-    box-shadow: 0 0 36px 8px rgb(242 201 138 / 0.25);
+    box-shadow: 0 0 36px 8px color-mix(in srgb, var(--accent) 25%, transparent);
   }
 
   /* weiter Lichthof als Verlauf; ein so großer Schatten zeigte an seinem Rand eine Kante */
@@ -76,7 +76,7 @@
     inset: -120px;
     z-index: -1;
     border-radius: 50%;
-    background: radial-gradient(closest-side, rgb(242 201 138 / 0.14), transparent);
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 14%, transparent), transparent);
   }
 
   h2 {
