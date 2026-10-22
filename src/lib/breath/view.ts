@@ -74,6 +74,23 @@ export function rhythmLabel(pattern: BreathPattern): string {
     .join('')
 }
 
+// Weiche Trennstellen (U+00AD) an den Silbengrenzen der langen Wörter in den Titeln.
+const TITLE_BREAKS: Record<string, string> = {
+  Physiologischer: 'Physio\u00ADlogischer',
+  Wechselatmung: 'Wechsel\u00ADatmung',
+  Kohärentes: 'Kohä\u00ADrentes',
+  Ausatmen: 'Aus\u00ADatmen',
+}
+
+/**
+ * Titel für die Kachel: lange Wörter mit weichen Trennstellen, damit sie auf schmalen Bildschirmen und bei
+ * großer Schrift an einer Silbengrenze umbrechen (mit Trennstrich) statt mitten im Wort. Nur zur Anzeige:
+ * Der Name des Knopfes bleibt der Titel selbst. Wörter außerhalb der Liste bleiben, wie sie sind.
+ */
+export function tileTitle(title: string): string {
+  return title.replace(/\p{L}+/gu, (word) => TITLE_BREAKS[word] ?? word)
+}
+
 const PETAL_REST = 0.04 // Blattversatz bei Atemstand 0: knapp nach innen
 const PETAL_SPREAD = 0.17 // Weg nach außen bis zum Atemstand 1
 

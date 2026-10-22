@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { BREATH_PATTERNS, breathAt, breathPlan, patternById, type BreathMoment } from '../../src/lib/breath/patterns'
-import { circleScale, easedLevel, petalOffset, phaseChanged, phaseColor, phaseProgress, rhythmLabel, vibrationPattern } from '../../src/lib/breath/view'
+import { circleScale, easedLevel, petalOffset, phaseChanged, phaseColor, phaseProgress, rhythmLabel, tileTitle, vibrationPattern } from '../../src/lib/breath/view'
 
 const moment = (over: Partial<BreathMoment> = {}): BreathMoment => ({
   kind: 'ein',
@@ -88,6 +88,25 @@ test('rhythm labels join equal phases in a row with + and the others with -, wit
   expect(label('langes-ausatmen')).toBe('4-6')
   expect(label('seufzer')).toBe('3+1-6')
   expect(label('wechselatmung')).toBe('4-4-4-4')
+})
+
+test('tile titles get soft hyphens at the syllables of their long words and stay the same otherwise', () => {
+  const shy = '\u00AD'
+  expect(tileTitle('Physiologischer Seufzer')).toBe(`Physio${shy}logischer Seufzer`)
+  expect(tileTitle('Wechselatmung')).toBe(`Wechsel${shy}atmung`)
+  expect(tileTitle('Kohärentes Atmen')).toBe(`Kohä${shy}rentes Atmen`)
+  expect(tileTitle('Langes Ausatmen')).toBe(`Langes Aus${shy}atmen`)
+  // Kurze Wörter, Zahlen und Wörter außerhalb der Liste bleiben unverändert.
+  expect(tileTitle('4-7-8')).toBe('4-7-8')
+  expect(tileTitle('Box-Atmung')).toBe('Box-Atmung')
+  expect(tileTitle('Unbekanntes Wort')).toBe('Unbekanntes Wort')
+  for (const pattern of BREATH_PATTERNS) {
+    const shown = tileTitle(pattern.title)
+    // Ohne die Trennstellen ist es der Titel selbst; jedes Wort ab 8 Buchstaben hat eine.
+    expect(shown.replaceAll(shy, '')).toBe(pattern.title)
+    const words = (title: string) => title.split(/[\s-]+/)
+    expect(words(shown).filter((word) => word.includes(shy))).toHaveLength(words(pattern.title).filter((word) => word.length >= 8).length)
+  }
 })
 
 test('the petals sit 0.04 inside at rest and 0.13 outside when fully open', () => {

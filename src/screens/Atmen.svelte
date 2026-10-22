@@ -3,7 +3,7 @@
   import Motiv from '../components/Motiv.svelte'
   import { breathProgram } from '../lib/audio/program'
   import { BREATH_MINUTES, BREATH_PATTERNS, type BreathPatternId } from '../lib/breath/patterns'
-  import { rhythmLabel } from '../lib/breath/view'
+  import { rhythmLabel, tileTitle } from '../lib/breath/view'
   import { breathMotiv } from '../lib/content/motive'
   import { setLastUsed } from '../lib/stats/store.svelte'
   import { startSession } from '../lib/ui/session-ui.svelte'
@@ -44,7 +44,7 @@
           onclick={() => start(pattern.id)}
         >
           <Motiv id={breathMotiv(pattern.id)} size={80} />
-          <span class="title">{pattern.title}</span>
+          <span class="title">{tileTitle(pattern.title)}</span>
           {#if rhythm !== pattern.title}
             <span class="rhythm">{rhythm}</span>
           {/if}
@@ -72,12 +72,11 @@
     font-weight: 600;
   }
 
-  /* Zwei Spalten gleicher Breite; alle Zeilen so hoch wie die höchste, damit alle Kacheln gleich groß sind.
+  /* Zwei Spalten gleicher Breite; die beiden Kacheln einer Zeile sind gleich hoch (Gitterzellen strecken sich).
      `minmax(0, 1fr)`: Ein langes Wort weitet die Spalte nicht über den Bildschirm hinaus. */
   .tiles {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 1fr;
     gap: 12px;
     margin: 0;
     padding: 0;
@@ -112,8 +111,9 @@
     font-size: 1.15rem;
     line-height: 1.2;
     letter-spacing: -0.01em;
-    overflow-wrap: anywhere;
-    hyphens: auto;
+    /* Umbruch nur an Leerzeichen, Bindestrichen und den weichen Trennstellen aus `tileTitle` (mit Trennstrich). */
+    overflow-wrap: normal;
+    hyphens: manual;
   }
 
   .rhythm {

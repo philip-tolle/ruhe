@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { expectMotiv } from './motiv'
 import { doubleTap, expectStillRunning } from './taps'
 
@@ -134,6 +134,10 @@ const tileBoxes = (page: Page) =>
     }),
   )
 
+// Was die Kachel an Text zeigt, ohne die weichen Trennstellen (U+00AD) in den langen Wörtern des Titels.
+const tileText = (target: Locator) =>
+  target.evaluate((el) => (el as HTMLElement).innerText.replace(/\u00ad/g, '').replace(/\s+/g, ' ').trim())
+
 test('the screen offers four durations with 3 Min preselected and six exercise tiles', async ({ page }) => {
   await openAtmen(page)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Atmen')
@@ -163,9 +167,9 @@ test('the exercises are tiles in two columns of equal width, two to a row', asyn
     expect(box.x).toBeCloseTo(boxes[i % 2].x, 0)
     expect(box.x).toBeGreaterThanOrEqual(0)
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width)
-    // Zwei je Zeile: gleiche Oberkante wie der Nachbar, alle gleich hoch, die nächste Zeile liegt darunter.
-    expect(box.y).toBeCloseTo(boxes[i - (i % 2)].y, 0)
-    expect(box.height).toBeCloseTo(first.height, 0)
+    // Zwei je Zeile: gleiche Oberkante und Höhe wie der Nachbar, die nächste Zeile liegt darunter.
+    expect(box.y).toBeCloseTo(boxes[i ^ 1].y, 0)
+    expect(box.height).toBeCloseTo(boxes[i ^ 1].height, 0)
     if (i >= 2) expect(box.y).toBeGreaterThan(boxes[i - 2].y + boxes[i - 2].height - 1)
   }
   // Die rechte Spalte beginnt rechts der linken.
@@ -175,7 +179,7 @@ test('the exercises are tiles in two columns of equal width, two to a row', asyn
 test('each tile shows title, rhythm and effect, is named "… starten" and described as before', async ({ page }) => {
   await openAtmen(page)
   for (const t of TILES) {
-    await expect(tile(page, t.title)).toHaveText(t.text, { useInnerText: true })
+    await expect.poll(() => tileText(tile(page, t.title))).toBe(t.text)
     await expect(tile(page, t.title)).toHaveAccessibleDescription(t.description)
   }
   // 4-7-8: Der Titel ist schon der Rhythmus und steht nur einmal da.
@@ -189,7 +193,7 @@ test('the motif sits at the top of its tile, at the start, above the title, and 
     await expectMotiv(target.locator('img'), t.motiv, 80)
     const place = await target.evaluate((el, title) => {
       const rect = (e: Element) => e.getBoundingClientRect()
-      const heading = [...el.querySelectorAll('span')].find((s) => s.textContent === title)!
+      const heading = [...el.querySelectorAll('span')].find((s) => s.textContent!.replace(/\u00ad/g, '') === title)!
       const tileRect = rect(el)
       const motif = rect(el.querySelector('img')!)
       const text = rect(heading)
@@ -260,10 +264,10 @@ test.describe('when the motifs do not load', () => {
       expect(box.width).toBeCloseTo(withImages[i].width, 0)
       expect(box.height).toBeCloseTo(withImages[i].height, 0)
       expect(box.width).toBeCloseTo(without[0].width, 0)
-      expect(box.height).toBeCloseTo(without[0].height, 0)
+      expect(box.height).toBeCloseTo(without[i ^ 1].height, 0)
     }
     for (const t of TILES) {
-      await expect(tile(page, t.title)).toHaveText(t.text, { useInnerText: true })
+      await expect.poll(() => tileText(tile(page, t.title))).toBe(t.text)
       await expect(tile(page, t.title)).toHaveAccessibleDescription(t.description)
     }
   })
@@ -287,6 +291,22 @@ test.describe('on a narrow screen with large system text', () => {
             problems.push(`${el.getAttribute('aria-label')}: ${child.tagName.toLowerCase()} "${child.textContent}" ragt heraus`)
           }
         }
+        // Der Titel bricht nur an Leerzeichen, Bindestrichen und weichen Trennstellen (U+00AD) um, nie mitten im
+        // Wort: Zwei Buchstaben, zwischen denen keine Trennstelle liegt, stehen in derselben Zeile. (Der Buchstabe
+        // direkt hinter einer Trennstelle meldet sein Rechteck samt dem Trennstrich der Zeile davor: übersprungen.)
+        const text = el.querySelector('.title')!.firstChild as Text
+        const range = document.createRange()
+        const topOf = (i: number) => {
+          range.setStart(text, i)
+          range.setEnd(text, i + 1)
+          return range.getBoundingClientRect().top
+        }
+        for (let i = 0; i + 1 < text.data.length; i++) {
+          const [a, b] = [text.data[i], text.data[i + 1]]
+          if (text.data[i - 1] !== '\u00ad' && /\p{L}/u.test(a) && /\p{L}/u.test(b) && topOf(i + 1) > topOf(i) + 2) {
+            problems.push(`${el.getAttribute('aria-label')}: „${text.data}“ bricht mitten im Wort zwischen „${a}“ und „${b}“`)
+          }
+        }
         return problems
       }),
     )
@@ -302,13 +322,13 @@ test.describe('on a narrow screen with large system text', () => {
 
     await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
     await expectFits(page)
-    // Die Kacheln sind weiter zwei je Zeile, gleich groß und innerhalb des Bildschirms.
+    // Die Kacheln sind weiter zwei je Zeile, gleich breit, je Zeile gleich hoch und innerhalb des Bildschirms.
     const large = await tileBoxes(page)
     for (const [i, box] of large.entries()) {
       expect(box.width).toBeCloseTo(large[0].width, 0)
-      expect(box.height).toBeCloseTo(large[0].height, 0)
+      expect(box.height).toBeCloseTo(large[i ^ 1].height, 0)
       expect(box.x + box.width).toBeLessThanOrEqual(360)
-      expect(box.y).toBeCloseTo(large[i - (i % 2)].y, 0)
+      expect(box.y).toBeCloseTo(large[i ^ 1].y, 0)
     }
   })
 })
@@ -588,7 +608,7 @@ test('a double tap on a tile that was scrolled over "Pause" does not reach the p
   await openAtmen(page)
 
   // Weiter gescrollt endet eine Kachel knapp über der Reiterleiste, also dort, wo der Player „Pause“ hat.
-  // Getippt wird im unteren Rand der Kachel (12 px über ihrer Unterkante), ganz links davon.
+  // Getippt wird im unteren Rand der Kachel (12 px über ihrer Unterkante), im ersten Viertel ihrer Breite.
   const start = page.getByRole('button', { name: 'Kohärentes Atmen starten' })
   await start.click({ trial: true }) // wartet, bis die Kachel ruhig steht (Einblenden des Bildschirms)
   const nav = (await page.getByRole('navigation', { name: 'Hauptnavigation' }).boundingBox())!
