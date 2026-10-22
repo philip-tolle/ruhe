@@ -29,6 +29,22 @@ export function soundById(id: SoundId): SoundDef {
   return sound
 }
 
+// Weiche Trennstellen (U+00AD) an den Fugen der langen Zusammensetzungen in den Titeln.
+const TITLE_BREAKS: Record<string, string> = {
+  Meeresrauschen: 'Meeres\u00ADrauschen',
+  Klangschalen: 'Klang\u00ADschalen',
+  Kaminfeuer: 'Kamin\u00ADfeuer',
+}
+
+/**
+ * Titel für die Kachel: lange Zusammensetzungen mit weichen Trennstellen, damit sie auf schmalen Bildschirmen und bei
+ * großer Schrift an der Fuge umbrechen (mit Trennstrich) statt mitten im Wort. Nur zur Anzeige:
+ * Der Name des Knopfes bleibt der Titel selbst. Wörter außerhalb der Liste bleiben, wie sie sind.
+ */
+export function soundTileTitle(title: string): string {
+  return title.replace(/\p{L}+/gu, (word) => TITLE_BREAKS[word] ?? word)
+}
+
 // Macht aus einem Katalogpfad (z. B. 'audio/sounds/wald.ogg') eine URL, die auch
 // unter dem Unterpfad der Veröffentlichung (Vite `base`) funktioniert.
 export function assetUrl(file: string): string {

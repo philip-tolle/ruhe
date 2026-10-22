@@ -1,11 +1,14 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
+import { expectMotiv } from './motiv'
 
 test('switch sounds, sleep timer and mini player', async ({ page }) => {
   await page.goto('./')
   const nav = page.getByRole('navigation', { name: 'Hauptnavigation' })
   await nav.getByRole('button', { name: 'Klänge' }).click()
   const tiles = page.locator('button[aria-pressed]')
-  await expect(tiles).toHaveText(['Regen', 'Meeresrauschen', 'Wind', 'Braunes Rauschen', 'Wald mit Vögeln', 'Kaminfeuer', 'Bach', 'Klangschalen'])
+  expect(await tiles.evaluateAll((els) => els.map((el) => (el as HTMLElement).innerText.replace(/\u00ad/g, '')))).toEqual([
+    'Regen', 'Meeresrauschen', 'Wind', 'Braunes Rauschen', 'Wald mit Vögeln', 'Kaminfeuer', 'Bach', 'Klangschalen',
+  ])
 
   await page.getByRole('button', { name: 'Regen' }).click()
   await expect(page.getByRole('button', { name: 'Regen' })).toHaveAttribute('aria-pressed', 'true')
@@ -59,4 +62,304 @@ test('status text does not claim "Läuft endlos" while paused', async ({ page })
 
   await page.getByRole('button', { name: 'Stoppen', exact: true }).click()
   await expect(page.locator('button[aria-pressed="true"]')).toHaveCount(0)
+})
+
+async function openKlaenge(page: Page) {
+  await page.goto('./')
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Klänge' }).click()
+}
+
+// Die acht Kacheln in der Reihenfolge der Liste: Titel, Motiv.
+const SOUND_TILES = [
+  { title: 'Regen', motiv: 'klang-regen' },
+  { title: 'Meeresrauschen', motiv: 'klang-meer' },
+  { title: 'Wind', motiv: 'klang-wind' },
+  { title: 'Braunes Rauschen', motiv: 'klang-braun' },
+  { title: 'Wald mit Vögeln', motiv: 'klang-wald' },
+  { title: 'Kaminfeuer', motiv: 'klang-kaminfeuer' },
+  { title: 'Bach', motiv: 'klang-bach' },
+  { title: 'Klangschalen', motiv: 'klang-klangschalen' },
+] as const
+
+const soundTile = (page: Page, title: string) => page.getByRole('button', { name: title, exact: true })
+const soundTiles = (page: Page) => page.locator('button[aria-pressed]')
+const MOTIF_SIZE = 128
+
+// Maße aller Kacheln (das Gitterelement `.tile` samt Rand) in einem Zug, unabhängig vom Einblenden des Bildschirms.
+const tileBoxes = (page: Page) =>
+  page.locator('.tile').evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect()
+      return { x: r.x, y: r.y, width: r.width, height: r.height }
+    }),
+  )
+
+test('each tile shows its motif as decoration, centred at the top, and tapping the motif plays the sound', async ({ page }) => {
+  await openKlaenge(page)
+  await expect(soundTiles(page)).toHaveCount(8)
+  for (const t of SOUND_TILES) {
+    const button = soundTile(page, t.title)
+    await expect(button.locator('img')).toHaveCount(1)
+    await expectMotiv(button.locator('img'), t.motiv, MOTIF_SIZE)
+    // Der Name des Knopfes bleibt der Titel: Das Motiv trägt keinen Text bei.
+    await expect(button).toHaveAccessibleName(t.title)
+    expect(await button.evaluate((el) => (el as HTMLElement).innerText.replace(/\u00ad/g, ''))).toBe(t.title)
+    const place = await button.evaluate((el) => {
+      const tileRect = el.getBoundingClientRect()
+      const motif = el.querySelector('img')!.getBoundingClientRect()
+      return {
+        centre: motif.left + motif.width / 2 - (tileRect.left + tileRect.width / 2),
+        fromTop: motif.top - tileRect.top,
+        inside: motif.left >= tileRect.left && motif.right <= tileRect.right && motif.bottom <= tileRect.bottom,
+      }
+    })
+    expect(Math.abs(place.centre)).toBeLessThanOrEqual(1)
+    expect(place.fromTop).toBeLessThanOrEqual(24)
+    expect(place.inside).toBe(true)
+  }
+  // Auf das Motiv getippt: Die ganze Kachel ist der Knopf.
+  await soundTile(page, 'Bach').locator('img').click()
+  await expect(soundTile(page, 'Bach')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('slider', { name: 'Lautstärke Bach' })).toBeVisible()
+})
+
+// Rechnet aus berechneten Farben: rgb(), rgba() und color(srgb …), je mit optionaler Deckkraft.
+type Rgba = [number, number, number, number]
+function parseColor(css: string): Rgba {
+  const m = css.match(/^(rgba?|color)\(\s*(?:srgb\s+)?(.+?)\s*\)$/)
+  if (!m) throw new Error(`Farbe nicht lesbar: ${css}`)
+  const parts = m[2].split(/[\s,/]+/).filter(Boolean).map(Number)
+  const scale = m[1] === 'color' ? 255 : 1
+  return [parts[0] * scale, parts[1] * scale, parts[2] * scale, parts[3] ?? 1]
+}
+const over = ([r, g, b, a]: Rgba, [br, bg, bb]: Rgba): Rgba => [r * a + br * (1 - a), g * a + bg * (1 - a), b * a + bb * (1 - a), 1]
+function luminance([r, g, b]: Rgba): number {
+  const lin = (c: number) => ((c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+function contrast(a: Rgba, b: Rgba): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+// Die berechnete Farbe eines Ausdrucks (`var(--tile-scrim)` usw.), gelesen über ein Hilfselement in der Kachel.
+const resolveColor = (target: Locator, expression: string) =>
+  target.evaluate((el, value) => {
+    const probe = document.createElement('div')
+    probe.style.backgroundColor = value
+    el.appendChild(probe)
+    const color = getComputedStyle(probe).backgroundColor
+    probe.remove()
+    return color
+  }, expression)
+
+test.describe('the title stays readable over the picture, in every mood', () => {
+  test.use({ timezoneId: 'Europe/Berlin' })
+
+  for (const [time, mood] of [
+    ['08:00:00', 'morgen'],
+    ['14:00:00', 'tag'],
+    ['20:00:00', 'abend'],
+  ] as const) {
+    test(`the title has at least 4.5:1 against its gradient: ${time} → ${mood}`, async ({ page }) => {
+      await page.clock.setFixedTime(new Date(`2026-10-22T${time}+02:00`))
+      await openKlaenge(page)
+      await expect(page.locator('html')).toHaveAttribute('data-tageszeit', mood)
+      await expect(soundTiles(page)).toHaveCount(8)
+
+      const tile = page.locator('.tile').first()
+      const scrim = parseColor(await resolveColor(tile, 'var(--tile-scrim)'))
+      const skyBottom = parseColor(await resolveColor(tile, 'var(--sky-bottom)'))
+      // Der Verlauf deckt kräftig: Dahinter liegt ein Motiv, kein Himmel.
+      expect(scrim[3]).toBeGreaterThanOrEqual(0.75)
+      expect(scrim[3]).toBeLessThan(1)
+
+      // Der Titel steht auf der vollen Farbe des Verlaufs: Unter dem Auslauf (`--tile-fade`), nicht darin.
+      const titles = await page.locator('.title').evaluateAll((els) =>
+        els.map((el) => {
+          const label = el.parentElement!
+          const fade = parseFloat(getComputedStyle(label).paddingTop)
+          return {
+            color: getComputedStyle(el).color,
+            gradient: getComputedStyle(label).backgroundImage.startsWith('linear-gradient'),
+            belowFade: el.getBoundingClientRect().top - label.getBoundingClientRect().top >= fade - 0.5,
+            fade,
+          }
+        }),
+      )
+      expect(titles).toHaveLength(8)
+      for (const title of titles) {
+        expect(title.gradient).toBe(true)
+        expect(title.belowFade).toBe(true)
+        expect(title.fade).toBeGreaterThan(0)
+        const text = parseColor(title.color)
+        // Schlimmster Fall: ein helles Motiv (weiß) unter dem Verlauf; dazu der Himmel unten.
+        expect(contrast(text, over(scrim, [255, 255, 255, 1]))).toBeGreaterThanOrEqual(4.5)
+        expect(contrast(text, over(scrim, skyBottom))).toBeGreaterThanOrEqual(4.5)
+      }
+    })
+  }
+})
+
+test('an active tile keeps its height, shows the accent, and keeps its title clear of the slider', async ({ page }) => {
+  await openKlaenge(page)
+  await expect(soundTiles(page)).toHaveCount(8)
+  const before = await tileBoxes(page)
+
+  await soundTile(page, 'Meeresrauschen').click()
+  const slider = page.getByRole('slider', { name: 'Lautstärke Meeresrauschen' })
+  await expect(slider).toBeVisible()
+  // Höhe wie vorher, auch wenn der Regler erscheint (die Zeile bleibt, nichts springt).
+  await expect
+    .poll(async () => (await tileBoxes(page)).every((box, i) => Math.abs(box.height - before[i].height) <= 1))
+    .toBe(true)
+
+  // Die aktive Kachel erkennt man am Akzent (Rand); die anderen haben ihn nicht.
+  const active = page.locator('.tile.active')
+  await expect(active).toHaveCount(1)
+  await expect(active.getByRole('button', { name: 'Meeresrauschen', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  const accent = parseColor(await resolveColor(active, 'var(--accent)'))
+  await expect.poll(async () => parseColor(await active.evaluate((el) => getComputedStyle(el).borderTopColor))).toEqual(accent)
+  const idle = page.locator('.tile:not(.active)').first()
+  expect(parseColor(await idle.evaluate((el) => getComputedStyle(el).borderTopColor))).not.toEqual(accent)
+
+  // Titel und Regler liegen übereinander, nicht ineinander, beide in der Kachel; der Titel bleibt sichtbar.
+  const place = await active.evaluate((el) => {
+    const tileRect = el.getBoundingClientRect()
+    const title = el.querySelector('.title')!.getBoundingClientRect()
+    const range = el.querySelector('input')!.getBoundingClientRect()
+    return {
+      titleAboveRange: range.top - title.bottom,
+      titleTop: title.top - tileRect.top,
+      rangeBottom: tileRect.bottom - range.bottom,
+    }
+  })
+  expect(place.titleAboveRange).toBeGreaterThanOrEqual(-1)
+  expect(place.titleTop).toBeGreaterThan(0)
+  expect(place.rangeBottom).toBeGreaterThanOrEqual(0)
+
+  // Und wieder aus: Tippen auf dieselbe Kachel stoppt, der Regler geht, die Höhe bleibt.
+  await soundTile(page, 'Meeresrauschen').click()
+  await expect(slider).toHaveCount(0)
+  await expect(page.locator('.tile.active')).toHaveCount(0)
+  await expect
+    .poll(async () => (await tileBoxes(page)).every((box, i) => Math.abs(box.height - before[i].height) <= 1))
+    .toBe(true)
+})
+
+test.describe('when the motifs do not load', () => {
+  // Der Service Worker des ersten Besuchs würde die Bilder aus dem Speicher liefern, an `page.route` vorbei.
+  test.use({ serviceWorkers: 'block' })
+
+  test('the tiles keep their size and names, and tapping still toggles', async ({ page }) => {
+    await openKlaenge(page)
+    await expect(soundTiles(page)).toHaveCount(8)
+    for (const t of SOUND_TILES) await expectMotiv(soundTile(page, t.title).locator('img'), t.motiv, MOTIF_SIZE)
+    const withImages = await tileBoxes(page)
+
+    await page.route('**/images/motive/**', (route) => route.fulfill({ status: 404 }))
+    await openKlaenge(page)
+    await expect(soundTiles(page)).toHaveCount(8)
+    // Die Bilder sind wirklich ausgefallen (sonst prüfte der Test nichts), die Flächen bleiben.
+    await expect
+      .poll(() =>
+        page.locator('img.motiv').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth === 0)),
+      )
+      .toBe(true)
+    expect(await page.locator('img.motiv').count()).toBe(8)
+    for (const img of await page.locator('img.motiv').all()) {
+      expect(await img.evaluate((el: HTMLImageElement) => [el.offsetWidth, el.offsetHeight])).toEqual([MOTIF_SIZE, MOTIF_SIZE])
+    }
+
+    // Alle acht gleich groß, je Zeile gleiche Höhe, nicht anders als mit Bildern.
+    const without = await tileBoxes(page)
+    expect(without).toHaveLength(8)
+    for (const [i, box] of without.entries()) {
+      expect(box.width).toBeCloseTo(withImages[i].width, 0)
+      expect(box.height).toBeCloseTo(withImages[i].height, 0)
+      expect(box.width).toBeCloseTo(without[0].width, 0)
+      expect(box.height).toBeCloseTo(without[0].height, 0)
+      expect(box.y).toBeCloseTo(without[i ^ 1].y, 0)
+    }
+    await expect(soundTiles(page)).toHaveText(SOUND_TILES.map((t) => t.title))
+
+    // Bedienbar: Tippen spielt, der Regler erscheint, noch einmal tippen stoppt.
+    const regen = soundTile(page, 'Regen')
+    await regen.click()
+    await expect(regen).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('slider', { name: 'Lautstärke Regen' })).toBeVisible()
+    await regen.click()
+    await expect(regen).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByRole('slider')).toHaveCount(0)
+  })
+})
+
+test.describe('on a narrow screen with large system text', () => {
+  test.use({ viewport: { width: 360, height: 640 } })
+
+  // Nichts läuft seitlich über, und kein Text, Motiv oder Regler ragt aus seiner Kachel.
+  async function expectFits(page: Page) {
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    const problems = await page.locator('.tile').evaluateAll((els) =>
+      els.flatMap((el) => {
+        const outer = el.getBoundingClientRect()
+        const name = el.querySelector('.title')!.textContent
+        const found: string[] = []
+        for (const part of [el, el.querySelector('button')!]) {
+          if (part.scrollWidth > part.clientWidth) found.push(`${name}: scrollWidth ${part.scrollWidth} > ${part.clientWidth}`)
+          if (part.scrollHeight > part.clientHeight) found.push(`${name}: scrollHeight ${part.scrollHeight} > ${part.clientHeight}`)
+        }
+        for (const child of el.querySelectorAll('*')) {
+          const r = child.getBoundingClientRect()
+          if (r.left < outer.left - 0.5 || r.right > outer.right + 0.5 || r.top < outer.top - 0.5 || r.bottom > outer.bottom + 0.5) {
+            found.push(`${name}: ${child.tagName.toLowerCase()} ragt heraus`)
+          }
+        }
+        // Der Titel bricht nur an Leerzeichen und weichen Trennstellen (U+00AD) um, nie mitten im Wort: Zwei
+        // Buchstaben, zwischen denen keine Trennstelle liegt, stehen in derselben Zeile. (Der Buchstabe direkt
+        // hinter einer Trennstelle meldet sein Rechteck samt dem Trennstrich der Zeile davor: übersprungen.)
+        const text = el.querySelector('.title')!.firstChild as Text
+        const range = document.createRange()
+        const topOf = (i: number) => {
+          range.setStart(text, i)
+          range.setEnd(text, i + 1)
+          return range.getBoundingClientRect().top
+        }
+        for (let i = 0; i + 1 < text.data.length; i++) {
+          const [a, b] = [text.data[i], text.data[i + 1]]
+          if (text.data[i - 1] !== '\u00ad' && /\p{L}/u.test(a) && /\p{L}/u.test(b) && topOf(i + 1) > topOf(i) + 2) {
+            found.push(`${name}: „${text.data}“ bricht mitten im Wort zwischen „${a}“ und „${b}“`)
+          }
+        }
+        return found
+      }),
+    )
+    expect(problems).toEqual([])
+  }
+
+  test('nothing overflows its tile or the page, at normal size and at 130 %, idle and active', async ({ page }) => {
+    await openKlaenge(page)
+    await expect(soundTiles(page)).toHaveCount(8)
+    const normal = await tileBoxes(page)
+    expect(normal[0].width).toBeCloseTo(normal[1].width, 0)
+    await expectFits(page)
+
+    await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+    await expectFits(page)
+    // Zwei je Zeile, gleich breit, je Zeile gleich hoch und innerhalb des Bildschirms.
+    const large = await tileBoxes(page)
+    expect(large).toHaveLength(8)
+    for (const [i, box] of large.entries()) {
+      expect(box.width).toBeCloseTo(large[0].width, 0)
+      expect(box.height).toBeCloseTo(large[i ^ 1].height, 0)
+      expect(box.y).toBeCloseTo(large[i ^ 1].y, 0)
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(360)
+    }
+
+    // Auch die aktive Kachel mit Regler (längster Titel, größte Schrift).
+    await soundTile(page, 'Braunes Rauschen').click()
+    await expect(page.getByRole('slider', { name: 'Lautstärke Braunes Rauschen' })).toBeVisible()
+    await expectFits(page)
+  })
 })

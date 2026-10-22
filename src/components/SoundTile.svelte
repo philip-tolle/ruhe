@@ -1,8 +1,9 @@
 <script lang="ts">
   import { engine } from '../lib/audio/engine'
   import { audio } from '../lib/audio/engine-store.svelte'
-  import type { SoundDef } from '../lib/sounds/catalog'
-  import { SOUND_ICONS } from './icons'
+  import { soundMotiv } from '../lib/content/motive'
+  import { soundTileTitle, type SoundDef } from '../lib/sounds/catalog'
+  import Motiv from './Motiv.svelte'
 
   let { sound }: { sound: SoundDef } = $props()
 
@@ -28,27 +29,15 @@
 <div class="tile" class:active>
   <button
     type="button"
+    aria-label={sound.title}
     aria-pressed={pressed}
     aria-busy={loading ? 'true' : undefined}
     aria-describedby={failed ? errorId : undefined}
     class:roomy={active || failed}
     onclick={toggle}
   >
-    <svg
-      viewBox="0 0 24 24"
-      width="30"
-      height="30"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path d={SOUND_ICONS[sound.id]} />
-    </svg>
-    <span class="title">{sound.title}</span>
+    <span class="motif"><Motiv id={soundMotiv(sound.id)} size={128} /></span>
+    <span class="label"><span class="title">{soundTileTitle(sound.title)}</span></span>
   </button>
 
   {#if failed}
@@ -73,9 +62,12 @@
 
 <style>
   .tile {
+    /* Länge des Auslaufs im Verlauf hinter dem Titel; der Titel steht darunter, auf der vollen Farbe. */
+    --tile-fade: 20px;
+
     position: relative;
     display: flex;
-    min-height: 120px;
+    min-height: 196px;
     border: 1px solid var(--surface-border);
     border-radius: 24px;
     background: linear-gradient(160deg, rgb(238 240 250 / 0.09), rgb(238 240 250 / 0.03));
@@ -83,36 +75,57 @@
 
   .tile.active {
     border-color: var(--accent);
-    background: linear-gradient(160deg, rgb(242 201 138 / 0.17), rgb(242 201 138 / 0.05));
-    box-shadow: 0 0 30px rgb(242 201 138 / 0.18);
+    background: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--accent) 17%, transparent),
+      color-mix(in srgb, var(--accent) 5%, transparent)
+    );
+    box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 18%, transparent);
   }
 
+  /* Zwei Ebenen in einer Gitterzelle: oben das Motiv, unten der Titel auf seinem Verlauf. Der Rand des
+     Knopfes schneidet den Verlauf rund ab; sein Fokusring liegt außerhalb und bleibt sichtbar. */
   button {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    display: grid;
+    grid-template-areas: 'stack';
+    grid-template-columns: minmax(0, 1fr);
     min-width: 0;
-    padding: 12px 10px;
+    padding: 0;
     border: 0;
     border-radius: inherit;
+    overflow: hidden;
     background: none;
-    color: var(--text-muted);
+    color: var(--text);
     text-align: center;
   }
 
-  /* Platz für Regler bzw. Fehlertext; der Inhalt rückt nach oben, die Kachel bleibt gleich hoch. */
-  button.roomy {
-    padding-bottom: 56px;
+  button > * {
+    grid-area: stack;
   }
 
-  .tile.active button {
-    color: var(--accent);
+  .motif {
+    justify-self: center;
+    align-self: start;
+    margin-top: 10px;
   }
 
+  .label {
+    align-self: end;
+    padding: var(--tile-fade) 10px 10px;
+    background: linear-gradient(to bottom, transparent, var(--tile-scrim) var(--tile-fade));
+  }
+
+  /* Platz für Regler bzw. Fehlertext: Der Titel rückt nach oben, der Verlauf reicht weiter bis zum Kachelrand
+     und trägt auch den Regler. Die Kachel bleibt gleich hoch. */
+  button.roomy .label {
+    padding-bottom: 66px;
+  }
+
+  /* Umbruch an Leerzeichen und an den weichen Trennstellen aus `soundTileTitle` (mit Trennstrich); `anywhere`
+     fängt nur ab, was bei extremer Schrift gar nicht mehr passt, statt es abzuschneiden. */
   .title {
+    display: block;
     color: var(--text);
     font-size: 0.9375rem;
     font-weight: 600;
@@ -145,13 +158,11 @@
         box-shadow 0.4s ease;
     }
 
-    button {
-      transition:
-        color 0.3s ease,
-        padding-bottom 0.3s ease;
+    .label {
+      transition: padding-bottom 0.3s ease;
     }
 
-    button[aria-busy='true'] svg {
+    button[aria-busy='true'] .motif {
       animation: tile-pulse 1.6s ease-in-out infinite;
     }
 

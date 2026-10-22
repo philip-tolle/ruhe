@@ -121,6 +121,9 @@
   --surface: rgb(238 240 250 / 0.07);
   --surface-border: rgb(238 240 250 / 0.12);
   --focus-ring: var(--accent);
+  /* Verlauf hinter dem Titel einer Klang-Kachel (SoundTile): der Himmel der Stimmung, kräftig deckend –
+     ein helles Motiv darunter lässt die Schrift nicht verblassen. Folgt der Stimmung von selbst. */
+  --tile-scrim: color-mix(in srgb, var(--sky-mid) 82%, transparent);
 
   /* Schrift */
   --font-display: 'Fraunces Variable';
