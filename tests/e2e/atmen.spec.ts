@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { expectMotiv } from './motiv'
 import { doubleTap, expectStillRunning } from './taps'
 
 // Tiefe der obersten Ebene im aktuellen History-Eintrag (0 = keine Ebene offen).
@@ -84,33 +85,232 @@ test('breathing shows the phases in order and can be ended', async ({ page }) =>
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Atmen')
 })
 
-test('the screen offers six exercises and four durations, 3 Min preselected', async ({ page }) => {
+// Die sechs Kacheln in der Reihenfolge der Liste: was sie der Reihe nach zeigen (Titel, Rhythmus, Wirkung),
+// ihr Motiv und die Beschreibung, die Hilfstechnik zum Namen „… starten“ vorliest. 4-7-8 zeigt den Rhythmus
+// nicht noch einmal, er wäre der Titel.
+const TILES = [
+  { title: '4-7-8', text: '4-7-8 Einschlafen', motiv: 'atem-478', description: 'Einatmen 4 s · Halten 7 s · Ausatmen 8 s' },
+  {
+    title: 'Box-Atmung',
+    text: 'Box-Atmung 4-4-4-4 Konzentration',
+    motiv: 'atem-box',
+    description: 'Einatmen 4 s · Halten 4 s · Ausatmen 4 s · Halten 4 s',
+  },
+  {
+    title: 'Kohärentes Atmen',
+    text: 'Kohärentes Atmen 5,5-5,5 Balance',
+    motiv: 'atem-kohaerent',
+    description: 'Einatmen 5,5 s · Ausatmen 5,5 s',
+  },
+  {
+    title: 'Langes Ausatmen',
+    text: 'Langes Ausatmen 4-6 Entspannung',
+    motiv: 'atem-langes-ausatmen',
+    description: 'Einatmen 4 s · Ausatmen 6 s',
+  },
+  {
+    title: 'Physiologischer Seufzer',
+    text: 'Physiologischer Seufzer 3+1-6 Schnell beruhigen',
+    motiv: 'atem-seufzer',
+    description: 'Einatmen 3 s · kurz Nachatmen 1 s · langsam Ausatmen 6 s',
+  },
+  {
+    title: 'Wechselatmung',
+    text: 'Wechselatmung 4-4-4-4 Ausgleich',
+    motiv: 'atem-wechselatmung',
+    description: 'Je 4 s: links ein · rechts aus · rechts ein · links aus. Das andere Nasenloch hältst du mit dem Finger zu.',
+  },
+] as const
+
+const tile = (page: Page, title: string) => page.getByRole('button', { name: `${title} starten` })
+const tiles = (page: Page) => page.getByRole('button', { name: /starten$/ })
+
+// Maße aller Kacheln in einem Zug (ein Bild der Seite), unabhängig vom Einblenden des Bildschirms.
+const tileBoxes = (page: Page) =>
+  tiles(page).evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect()
+      return { x: r.x, y: r.y, width: r.width, height: r.height }
+    }),
+  )
+
+test('the screen offers four durations with 3 Min preselected and six exercise tiles', async ({ page }) => {
   await openAtmen(page)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Atmen')
   const group = page.getByRole('radiogroup', { name: 'Dauer' })
   await expect(group.getByRole('radio')).toHaveText(['1 Min', '3 Min', '5 Min', '10 Min'])
   await expect(group.getByRole('radio', { name: '3 Min' })).toHaveAttribute('aria-checked', 'true')
 
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText([
-    '4-7-8',
-    'Box-Atmung',
-    'Kohärentes Atmen',
-    'Langes Ausatmen',
-    'Physiologischer Seufzer',
-    'Wechselatmung',
-  ])
-  await expect(page.getByText('Einatmen 4 s · Halten 7 s · Ausatmen 8 s')).toBeVisible()
-  await expect(page.getByText('Einatmen 3 s · kurz Nachatmen 1 s · langsam Ausatmen 6 s')).toBeVisible()
-
-  const starts = page.getByRole('button', { name: /starten$/ })
-  await expect(starts).toHaveCount(6)
-  await expect(starts).toHaveText(Array(6).fill('Starten'))
-  await expect(page.getByRole('button', { name: 'Physiologischer Seufzer starten' })).toBeVisible()
-  for (const target of [...(await starts.all()), ...(await group.getByRole('radio').all())]) {
+  await expect(tiles(page)).toHaveCount(6)
+  for (const t of TILES) await expect(tile(page, t.title)).toBeVisible()
+  for (const target of [...(await tiles(page).all()), ...(await group.getByRole('radio').all())]) {
     const box = await target.boundingBox()
     expect(box!.height).toBeGreaterThanOrEqual(48)
     expect(box!.width).toBeGreaterThanOrEqual(48)
   }
+})
+
+test('the exercises are tiles in two columns of equal width, two to a row', async ({ page }) => {
+  await openAtmen(page)
+  await expect(tiles(page)).toHaveCount(6)
+  const boxes = await tileBoxes(page)
+  const viewport = page.viewportSize()!
+  const [first] = boxes
+  expect(first.width).toBeGreaterThan(viewport.width / 3)
+  for (const [i, box] of boxes.entries()) {
+    // Gleiche Breite, links bzw. rechts in derselben Spalte, innerhalb des Bildschirms.
+    expect(box.width).toBeCloseTo(first.width, 0)
+    expect(box.x).toBeCloseTo(boxes[i % 2].x, 0)
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width)
+    // Zwei je Zeile: gleiche Oberkante wie der Nachbar, alle gleich hoch, die nächste Zeile liegt darunter.
+    expect(box.y).toBeCloseTo(boxes[i - (i % 2)].y, 0)
+    expect(box.height).toBeCloseTo(first.height, 0)
+    if (i >= 2) expect(box.y).toBeGreaterThan(boxes[i - 2].y + boxes[i - 2].height - 1)
+  }
+  // Die rechte Spalte beginnt rechts der linken.
+  expect(boxes[1].x).toBeGreaterThan(boxes[0].x + boxes[0].width - 1)
+})
+
+test('each tile shows title, rhythm and effect, is named "… starten" and described as before', async ({ page }) => {
+  await openAtmen(page)
+  for (const t of TILES) {
+    await expect(tile(page, t.title)).toHaveText(t.text, { useInnerText: true })
+    await expect(tile(page, t.title)).toHaveAccessibleDescription(t.description)
+  }
+  // 4-7-8: Der Titel ist schon der Rhythmus und steht nur einmal da.
+  await expect(tile(page, '4-7-8').getByText('4-7-8', { exact: true })).toHaveCount(1)
+})
+
+test('the motif sits at the top of its tile, at the start, above the title, and is decoration', async ({ page }) => {
+  await openAtmen(page)
+  for (const t of TILES) {
+    const target = tile(page, t.title)
+    await expectMotiv(target.locator('img'), t.motiv, 80)
+    const place = await target.evaluate((el, title) => {
+      const rect = (e: Element) => e.getBoundingClientRect()
+      const heading = [...el.querySelectorAll('span')].find((s) => s.textContent === title)!
+      const tileRect = rect(el)
+      const motif = rect(el.querySelector('img')!)
+      const text = rect(heading)
+      return {
+        fromStart: motif.left - tileRect.left,
+        fromTop: motif.top - tileRect.top,
+        sameStart: motif.left - text.left,
+        above: text.top - motif.bottom,
+      }
+    }, t.title)
+    expect(place.fromStart).toBeLessThanOrEqual(24)
+    expect(place.fromTop).toBeLessThanOrEqual(24)
+    expect(Math.abs(place.sameStart)).toBeLessThanOrEqual(1)
+    expect(place.above).toBeGreaterThanOrEqual(0)
+  }
+})
+
+test('tapping anywhere on a tile starts it with the chosen duration', async ({ page }) => {
+  await openAtmen(page)
+  await page.getByRole('radio', { name: '10 Min' }).click()
+  // Auf die Wirkung statt auf die Mitte des Knopfes: Die ganze Kachel ist der Knopf.
+  await page.getByText('Konzentration', { exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Atmen · Box-Atmung' })).toBeVisible()
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ruhe.v1') ?? 'null').lastUsed)).toEqual({
+    kind: 'breath',
+    pattern: 'box',
+    minutes: 10,
+  })
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+
+  // Und auf das Motiv.
+  await tile(page, 'Langes Ausatmen').locator('img').click()
+  await expect(page.getByRole('heading', { name: 'Atmen · Langes Ausatmen' })).toBeVisible()
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ruhe.v1') ?? 'null').lastUsed)).toEqual({
+    kind: 'breath',
+    pattern: 'langes-ausatmen',
+    minutes: 10,
+  })
+})
+
+test.describe('when the motifs do not load', () => {
+  // Der Service Worker des ersten Besuchs würde die Bilder aus dem Speicher liefern, an `page.route` vorbei.
+  test.use({ serviceWorkers: 'block' })
+
+  test('the tiles keep their size, names and texts', async ({ page }) => {
+    await openAtmen(page)
+    await expect(tiles(page)).toHaveCount(6)
+    for (const t of TILES) await expectMotiv(tile(page, t.title).locator('img'), t.motiv, 80)
+    const withImages = await tileBoxes(page)
+
+    await page.route('**/images/motive/**', (route) => route.fulfill({ status: 404 }))
+    await openAtmen(page)
+    await expect(tiles(page)).toHaveCount(6)
+    // Die Bilder sind wirklich ausgefallen (sonst prüfte der Test nichts), die Flächen bleiben.
+    await expect
+      .poll(() =>
+        page.locator('img.motiv').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth === 0)),
+      )
+      .toBe(true)
+    expect(await page.locator('img.motiv').count()).toBe(6)
+    for (const img of await page.locator('img.motiv').all()) {
+      expect(await img.evaluate((el: HTMLImageElement) => [el.offsetWidth, el.offsetHeight])).toEqual([80, 80])
+    }
+
+    const without = await tileBoxes(page)
+    for (const [i, box] of without.entries()) {
+      expect(box.width).toBeCloseTo(withImages[i].width, 0)
+      expect(box.height).toBeCloseTo(withImages[i].height, 0)
+      expect(box.width).toBeCloseTo(without[0].width, 0)
+      expect(box.height).toBeCloseTo(without[0].height, 0)
+    }
+    for (const t of TILES) {
+      await expect(tile(page, t.title)).toHaveText(t.text, { useInnerText: true })
+      await expect(tile(page, t.title)).toHaveAccessibleDescription(t.description)
+    }
+  })
+})
+
+test.describe('on a narrow screen with large system text', () => {
+  test.use({ viewport: { width: 360, height: 640 } })
+
+  // Nichts läuft seitlich über, und kein Text (oder Motiv) ragt aus seiner Kachel.
+  async function expectFits(page: Page) {
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    const overflow = await tiles(page).evaluateAll((els) =>
+      els.flatMap((el) => {
+        const outer = el.getBoundingClientRect()
+        const problems: string[] = []
+        if (el.scrollWidth > el.clientWidth) problems.push(`${el.getAttribute('aria-label')}: scrollWidth ${el.scrollWidth} > ${el.clientWidth}`)
+        if (el.scrollHeight > el.clientHeight) problems.push(`${el.getAttribute('aria-label')}: scrollHeight ${el.scrollHeight} > ${el.clientHeight}`)
+        for (const child of el.querySelectorAll('*')) {
+          const r = child.getBoundingClientRect()
+          if (r.left < outer.left - 0.5 || r.right > outer.right + 0.5 || r.top < outer.top - 0.5 || r.bottom > outer.bottom + 0.5) {
+            problems.push(`${el.getAttribute('aria-label')}: ${child.tagName.toLowerCase()} "${child.textContent}" ragt heraus`)
+          }
+        }
+        return problems
+      }),
+    )
+    expect(overflow).toEqual([])
+  }
+
+  test('nothing overflows its tile or the page, at normal size and at 130 %', async ({ page }) => {
+    await openAtmen(page)
+    await expect(tiles(page)).toHaveCount(6)
+    const normal = await tileBoxes(page)
+    expect(normal[0].width).toBeCloseTo(normal[1].width, 0)
+    await expectFits(page)
+
+    await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+    await expectFits(page)
+    // Die Kacheln sind weiter zwei je Zeile, gleich groß und innerhalb des Bildschirms.
+    const large = await tileBoxes(page)
+    for (const [i, box] of large.entries()) {
+      expect(box.width).toBeCloseTo(large[0].width, 0)
+      expect(box.height).toBeCloseTo(large[0].height, 0)
+      expect(box.x + box.width).toBeLessThanOrEqual(360)
+      expect(box.y).toBeCloseTo(large[i - (i % 2)].y, 0)
+    }
+  })
 })
 
 test('starting remembers the exercise and duration, and the labels follow the pattern', async ({ page }) => {
@@ -380,13 +580,28 @@ test('a double tap on a start button does not reach the player that opens over i
   await page.getByRole('button', { name: 'Beenden' }).click()
   await page.getByRole('button', { name: 'Fertig' }).click()
   await expect(done).toHaveCount(0)
+})
 
-  // Weiter gescrollt liegt eine Karte knapp über der Reiterleiste, also dort, wo der Player „Pause“ hat.
+test('a double tap on a tile that was scrolled over "Pause" does not reach the player', async ({ page }) => {
+  // Auf einem niedrigeren Bildschirm lässt sich eine Kachel bis knapp über die Reiterleiste schieben.
+  await page.setViewportSize({ width: 412, height: 640 })
+  await openAtmen(page)
+
+  // Weiter gescrollt endet eine Kachel knapp über der Reiterleiste, also dort, wo der Player „Pause“ hat.
+  // Getippt wird im unteren Rand der Kachel (12 px über ihrer Unterkante), ganz links davon.
   const start = page.getByRole('button', { name: 'Kohärentes Atmen starten' })
+  await start.click({ trial: true }) // wartet, bis die Kachel ruhig steht (Einblenden des Bildschirms)
   const nav = (await page.getByRole('navigation', { name: 'Hauptnavigation' }).boundingBox())!
   const box = (await start.boundingBox())!
-  await page.evaluate((dy) => window.scrollBy(0, dy), box.y + box.height / 2 - (nav.y - 20))
-  await doubleTap(page, start, 0.25)
+  await page.evaluate((dy) => window.scrollBy(0, dy), box.y + box.height - (nav.y - 4))
+  const tapped = await doubleTap(page, start, 0.25, (box.height - 12) / box.height)
   await expectStillRunning(page)
   await expect(page.getByRole('heading', { name: 'Atmen · Kohärentes Atmen' })).toBeVisible()
+
+  // Die Stelle lag wirklich auf „Pause“: Sonst bewiese der Test nichts.
+  const pause = (await page.getByRole('button', { name: 'Pause', exact: true }).boundingBox())!
+  expect(tapped.x).toBeGreaterThanOrEqual(pause.x)
+  expect(tapped.x).toBeLessThanOrEqual(pause.x + pause.width)
+  expect(tapped.y).toBeGreaterThanOrEqual(pause.y)
+  expect(tapped.y).toBeLessThanOrEqual(pause.y + pause.height)
 })

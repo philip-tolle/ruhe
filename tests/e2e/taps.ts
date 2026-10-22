@@ -2,16 +2,18 @@ import { expect, type Locator, type Page } from '@playwright/test'
 
 // Ein Doppeltipp auf einen Start-Knopf: Der zweite Tipp kommt 150 ms später an derselben Stelle
 // an. Dann liegt dort schon der Player; `xFraction` wählt, wohin im Knopf getippt wird (links
-// sitzt im Player „Pause“, rechts „Beenden“).
-export async function doubleTap(page: Page, target: Locator, xFraction: number) {
+// sitzt im Player „Pause“, rechts „Beenden“), `yFraction` (Standard: Mitte) die Höhe darin. Gibt die
+// getippte Stelle zurück.
+export async function doubleTap(page: Page, target: Locator, xFraction: number, yFraction = 0.5) {
   await target.click({ trial: true }) // wartet, bis der Knopf ruhig steht (Einblenden des Sheets)
   const box = (await target.boundingBox())!
   const x = box.x + box.width * xFraction
-  const y = box.y + box.height / 2
+  const y = box.y + box.height * yFraction
   await page.touchscreen.tap(x, y)
   await page.waitForTimeout(150)
   await page.touchscreen.tap(x, y)
   await page.waitForTimeout(500) // was der zweite Tipp ausgelöst hätte, wäre jetzt zu sehen
+  return { x, y }
 }
 
 // Der Player läuft: „Pause“ steht da, kein Abschluss, die Engine spielt.
