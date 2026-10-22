@@ -16,6 +16,7 @@
   let {
     label,
     run,
+    subtitle,
     done,
     confirmTitle,
     continueLabel,
@@ -26,6 +27,8 @@
     label: string
     /** Das laufende Programm; `null`, wenn nur noch der Abschluss zu sehen ist. */
     run: ProgramSnapshot | null
+    /** Zeile unter dem Titel in der Laufansicht, etwa die Beschreibung der Atemübung. */
+    subtitle?: string
     done: SessionDoneInfo | null
     confirmTitle: string
     /** Beschriftung von „Abbrechen“ in der Rückfrage: die Übung geht weiter. */
@@ -76,6 +79,9 @@
 <div class="player" role="dialog" aria-modal="true" aria-label={label}>
   {#if run}
     <h2 class="title" tabindex="-1" bind:this={title}>{run.title}</h2>
+    {#if subtitle}
+      <p class="subtitle">{subtitle}</p>
+    {/if}
 
     {@render children()}
 
@@ -129,7 +135,7 @@
     background:
       radial-gradient(80% 45% at 50% 42%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
       linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 58%, var(--sky-bottom) 100%);
-    overflow-x: hidden; /* was über den Rand leuchtet (der Schein des Atemkreises), verschiebt nichts */
+    overflow-x: hidden; /* was über den Rand ragt, verschiebt nichts */
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -145,6 +151,17 @@
   .title {
     padding: 0 8px;
     font-size: 1.375rem;
+    text-align: center;
+  }
+
+  /* Rückt an den Titel heran (statt des vollen Abstands der Spalte). */
+  .subtitle {
+    max-width: 32ch;
+    margin-top: -16px;
+    padding: 0 8px;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.45;
     text-align: center;
   }
 

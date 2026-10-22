@@ -1,23 +1,23 @@
-// Atemübung in der Oberfläche: Kreisgröße, Phasenring, Farbe, Leuchten, Vibration und Phasenwechsel
-// aus dem Stand der Anzeige. Reine Funktionen, ohne Audio- und Speicherzugriff.
+// Atemübung in der Oberfläche: Größe und Spreizung der Atem-Blüte, Farbe, Vibration und Phasenwechsel
+// aus dem Stand der Anzeige, dazu die Texte der Kacheln. Reine Funktionen, ohne Audio- und Speicherzugriff.
 import { softBreaks } from '../text'
 import type { BreathMoment, BreathPattern, PhaseKind } from './patterns'
 
-const SMALLEST = 0.45 // Skalierung des Kreises bei Atemstand 0 (ausgeatmet)
+const SMALLEST = 0.45 // Skalierung der Blüte bei Atemstand 0 (ausgeatmet)
 const RANGE = 0.55 // bis zur vollen Größe bei Atemstand 1
 
-/** Skalierung des Kreises: wächst beim Einatmen, ruht beim Halten, schrumpft beim Ausatmen. */
+/** Skalierung der Blüte: wächst beim Einatmen, ruht beim Halten, schrumpft beim Ausatmen. */
 export function circleScale(level: number): number {
   return SMALLEST + RANGE * level
 }
 
-/** Anteil der laufenden Phase, 0 … 1: Daran füllt sich der Phasenring. */
+/** Anteil der laufenden Phase, 0 … 1. */
 export function phaseProgress(m: BreathMoment): number {
   return Math.min(1, Math.max(0, m.phaseElapsed / m.phaseLength))
 }
 
 /**
- * Atemstand mit sanftem Ein- und Ausschwingen in jeder Phase (Sinus statt linear): Der Kreis
+ * Atemstand mit sanftem Ein- und Ausschwingen in jeder Phase (Sinus statt linear): Die Blüte
  * beginnt und endet eine Phase langsam und ist auf halber Strecke am schnellsten.
  */
 export function easedLevel(m: BreathMoment): number {
@@ -30,7 +30,7 @@ const PHASE_COLOR: Record<PhaseKind, string> = {
   aus: '#8FD0D6', // Türkis
 }
 
-/** Farbe von Blüte, Leuchten und Phasenring. */
+/** Farbe der Phase für den Schein hinter der Blüte; die Blätter tragen sie gemalt. */
 export function phaseColor(kind: PhaseKind): string {
   return PHASE_COLOR[kind]
 }

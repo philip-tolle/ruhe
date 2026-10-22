@@ -15,7 +15,7 @@ const moment = (over: Partial<BreathMoment> = {}): BreathMoment => ({
   ...over,
 })
 
-test('the circle scales between 0.45 and 1 with the breath level', () => {
+test('the flower scales between 0.45 and 1 with the breath level', () => {
   expect(circleScale(0)).toBeCloseTo(0.45)
   expect(circleScale(0.5)).toBeCloseTo(0.725)
   expect(circleScale(1)).toBeCloseTo(1)
@@ -64,12 +64,12 @@ test('the eased level follows the patterns without jumps, also across phase boun
   expect(bad).toEqual([])
 })
 
-test('the phase ring fills with the phase and starts over with the next one', () => {
+test('the phase progress runs from 0 to 1 and starts over with the next phase', () => {
   expect(phaseProgress(breathAt('478', 0, 76))).toBe(0)
   expect(phaseProgress(breathAt('478', 2, 76))).toBeCloseTo(0.5)
   expect(phaseProgress(breathAt('478', 4, 76))).toBe(0) // Halten beginnt
   expect(phaseProgress(breathAt('478', 7.5, 76))).toBeCloseTo(0.5)
-  expect(phaseProgress(breathAt('478', 76, 76))).toBe(1) // fertig: Ring voll
+  expect(phaseProgress(breathAt('478', 76, 76))).toBe(1) // fertig: die letzte Phase ist durchlaufen
   expect(phaseProgress(moment({ phaseElapsed: 5 }))).toBe(1)
   expect(phaseProgress(moment({ phaseElapsed: -1 }))).toBe(0)
 })

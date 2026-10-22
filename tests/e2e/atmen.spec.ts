@@ -1,4 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { breathAt, type PhaseKind } from '../../src/lib/breath/patterns'
+import { circleScale, easedLevel, petalOffset } from '../../src/lib/breath/view'
 import { expectMotiv } from './motiv'
 import { doubleTap, expectStillRunning } from './taps'
 
@@ -44,28 +46,62 @@ async function spyOnDevice(page: Page) {
 const vibrations = (page: Page) => page.evaluate(() => (window as unknown as Spy).__vibrations)
 const locks = (page: Page) => page.evaluate(() => (window as unknown as Spy).__locks.map((l) => l.released))
 
-// Skalierung des Atemkreises (die Zahl vor der Matrix: matrix(s, 0, 0, s, 0, 0)); 1 ohne Transform.
-const circleTransform = (page: Page) =>
-  page.getByTestId('breath-circle').evaluate((el) => getComputedStyle(el).transform)
-async function circleScale(page: Page) {
-  const transform = await circleTransform(page)
-  return transform === 'none' ? 1 : parseFloat(transform.slice('matrix('.length))
-}
+// Die Atem-Blüte. Größe (`--scale`) und Spreizung (`--offset`, Anteil der Blattlänge) setzt der Player
+// je Bild aus der Audio-Uhr an ihre Wurzel.
+const flower = (page: Page) => page.getByTestId('breath-flower')
+const flowerVar = (page: Page, name: '--scale' | '--offset') =>
+  flower(page).evaluate((el, name) => Number(getComputedStyle(el).getPropertyValue(name)), name)
+const flowerScale = (page: Page) => flowerVar(page, '--scale')
 
-// Phasenfarbe des Kreises (eingetragene Farbe, also als rgb() berechnet).
+// Was gezeichnet wird, in einem Bild gelesen: die Vorgaben und daneben die Skalierung der Blüte (die Zahl
+// vor der Matrix: matrix(s, 0, 0, s, 0, 0)) und die Verschiebung des obersten Blattes in Blattlängen.
+const drawn = (page: Page) =>
+  flower(page).evaluate((el) => {
+    const matrix = (e: Element) => new DOMMatrix(getComputedStyle(e).transform)
+    const petal = el.querySelector<HTMLElement>('.petal')!
+    return {
+      scale: Number(getComputedStyle(el).getPropertyValue('--scale')),
+      offset: Number(getComputedStyle(el).getPropertyValue('--offset')),
+      bloom: matrix(el.querySelector('.bloom')!).a,
+      spread: matrix(petal).f / petal.offsetHeight,
+    }
+  })
+
+// Die berechneten Transformationen von Drehung, Blüte und den sechs Blättern in einem Zug.
+const flowerTransforms = (page: Page) =>
+  flower(page).evaluate((el) => [...el.querySelectorAll('.spin, .bloom, .petal')].map((e) => getComputedStyle(e).transform))
+
+// Die Drehung der Blüte (CSS-Animation): Zustand und Stand in Millisekunden.
+const spin = (page: Page) =>
+  flower(page)
+    .locator('.spin')
+    .evaluate((el) => el.getAnimations().map((a) => ({ playState: a.playState, currentTime: Number(a.currentTime) })))
+
+// Phasenfarbe des Scheins (eingetragene Farbe, also als rgb() berechnet).
 const LAVENDER = 'rgb(183, 168, 240)' // Einatmen, #B7A8F0
 const GOLD = 'rgb(242, 201, 138)' // Halten, #F2C98A
 const TEAL = 'rgb(143, 208, 214)' // Ausatmen, #8FD0D6
-const phaseColor = (page: Page) =>
-  page.getByTestId('breath-circle').evaluate((el) => getComputedStyle(el).getPropertyValue('--phase-color').trim())
+const phaseColor = (page: Page) => flower(page).evaluate((el) => getComputedStyle(el).getPropertyValue('--phase-color').trim())
 
-// Füllstand des Phasenrings, 0 … 1; zu Beginn einer Phase ist noch nichts gezeichnet.
-const ringProgress = (page: Page) =>
-  page.evaluate(() => {
-    const arc = document.querySelector('[data-testid="phase-ring"]')
-    if (!arc) return 0
-    return 1 - Number(arc.getAttribute('stroke-dashoffset')) / Number(arc.getAttribute('stroke-dasharray'))
+// Deckkraft der Farbebenen je Phase, über alle Blätter.
+const layerOpacities = (page: Page) =>
+  flower(page).evaluate((el) => {
+    const layers: Record<string, number[]> = { ein: [], halten: [], aus: [] }
+    for (const img of el.querySelectorAll<HTMLElement>('img[data-layer]')) layers[img.dataset.layer!].push(Number(getComputedStyle(img).opacity))
+    return layers
   })
+
+// Auf allen sechs Blättern ist die Ebene der Phase zu sehen (über 0,5), die beiden anderen nicht (unter 0,1).
+async function expectLayer(page: Page, kind: PhaseKind) {
+  const layers = await layerOpacities(page)
+  for (const [layer, values] of Object.entries(layers)) {
+    expect(values, layer).toHaveLength(6)
+    for (const value of values) {
+      if (layer === kind) expect(value, layer).toBeGreaterThan(0.5)
+      else expect(value, layer).toBeLessThan(0.1)
+    }
+  }
+}
 
 // Die Vibrationsmuster je Phase.
 const IN = [200]
@@ -405,7 +441,7 @@ test('back asks before ending and never leaves extra history entries', async ({ 
   await expect(page.locator('[inert]')).toHaveCount(0)
 })
 
-test('pause freezes countdown and circle and stops the animation loop', async ({ page }) => {
+test('pause freezes countdown and flower and stops the animation loop', async ({ page }) => {
   await page.addInitScript(() => {
     const w = window as unknown as { __frames: number }
     w.__frames = 0
@@ -428,21 +464,21 @@ test('pause freezes countdown and circle and stops the animation loop', async ({
   const paused = {
     frames: await frames(),
     seconds: await page.getByRole('timer').innerText(),
-    transform: await circleTransform(page),
-    ring: await ringProgress(page),
+    transforms: await flowerTransforms(page),
+    layers: await layerOpacities(page),
   }
   await page.waitForTimeout(1500)
   expect(await frames()).toBe(paused.frames)
   expect(await page.getByRole('timer').innerText()).toBe(paused.seconds)
-  expect(await circleTransform(page)).toBe(paused.transform)
-  expect(await ringProgress(page)).toBe(paused.ring)
+  expect(await flowerTransforms(page)).toEqual(paused.transforms)
+  expect(await layerOpacities(page)).toEqual(paused.layers)
 
   await page.getByRole('button', { name: 'Weiter' }).click()
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
   await expect.poll(frames).toBeGreaterThan(paused.frames + 5)
 })
 
-test('the circle grows while breathing in, rests on hold and shrinks while breathing out, each phase in its colour', async ({ page }) => {
+test('the flower opens while breathing in, rests while holding and closes while breathing out', async ({ page }) => {
   test.setTimeout(45_000)
   await openAtmen(page)
   await page.getByRole('button', { name: 'Box-Atmung starten' }).click()
@@ -450,45 +486,160 @@ test('the circle grows while breathing in, rests on hold and shrinks while breat
   const hold = page.getByText('Halten', { exact: true })
   const exhale = page.getByText('Ausatmen', { exact: true })
 
-  // Ausgeatmet ist der Kreis knapp halb so groß; er wächst sanft an.
+  // Ausgeatmet ist die Blüte knapp halb so groß und geschlossen; sie wächst sanft und spreizt sich.
   await expect(inhale).toBeVisible()
-  const early = await circleScale(page)
-  expect(early).toBeGreaterThanOrEqual(0.44)
-  expect(early).toBeLessThan(0.75)
-  await expect.poll(() => circleScale(page)).toBeGreaterThan(early + 0.1)
-  await expect.poll(() => phaseColor(page)).toBe(LAVENDER)
-  await expect.poll(() => ringProgress(page)).toBeGreaterThan(0.25)
+  const early = await drawn(page)
+  expect(early.scale).toBeGreaterThanOrEqual(circleScale(0) - 0.01)
+  expect(early.scale).toBeLessThan(0.75)
+  await expect.poll(() => flowerScale(page)).toBeGreaterThan(early.scale + 0.1)
+  const opening = await drawn(page)
+  expect(opening.offset).toBeLessThan(early.offset)
+  // Gezeichnet wird, was der Player vorgibt: Größe der Blüte, Verschiebung der Blätter nach außen.
+  expect(opening.bloom).toBeCloseTo(opening.scale, 3)
+  expect(opening.spread).toBeCloseTo(opening.offset, 2)
 
   await expect(hold).toBeVisible({ timeout: 6000 })
-  await expect.poll(() => circleScale(page)).toBeGreaterThan(0.97)
-  await expect.poll(() => phaseColor(page)).toBe(GOLD)
+  await expect.poll(() => flowerScale(page)).toBeGreaterThan(0.97)
   await page.waitForTimeout(1000)
-  expect(await circleScale(page)).toBeCloseTo(1, 2)
+  const open = await drawn(page)
+  expect(open.scale).toBeCloseTo(circleScale(1), 2)
+  expect(open.offset).toBeCloseTo(petalOffset(1), 2)
+  expect(open.bloom).toBeCloseTo(open.scale, 3)
+  expect(open.spread).toBeCloseTo(open.offset, 2)
 
   await expect(exhale).toBeVisible({ timeout: 6000 })
-  const start = await circleScale(page)
+  const start = await flowerScale(page)
   expect(start).toBeGreaterThan(0.85)
-  await expect.poll(() => circleScale(page)).toBeLessThan(start - 0.1)
-  await expect.poll(() => phaseColor(page)).toBe(TEAL)
+  await expect.poll(() => flowerScale(page)).toBeLessThan(start - 0.1)
+  expect(await flowerVar(page, '--offset')).toBeGreaterThan(open.offset)
 })
 
-test('under reduced motion the circle stays static while colour, ring, text and countdown still change', async ({ page }) => {
+test('petals change colour with the phase', async ({ page }) => {
+  test.setTimeout(45_000)
+  await openAtmen(page)
+  await page.getByRole('button', { name: 'Box-Atmung starten' }).click()
+  for (const [label, kind, color] of [
+    ['Einatmen', 'ein', LAVENDER],
+    ['Halten', 'halten', GOLD],
+    ['Ausatmen', 'aus', TEAL],
+  ] as const) {
+    await expect(page.getByText(label, { exact: true })).toBeVisible({ timeout: 6000 })
+    await expect(flower(page)).toHaveAttribute('data-phase', kind)
+    // Nach dem Überblenden (0,6 s): die Ebene der Phase auf allen Blättern, der Schein in ihrer Farbe.
+    await page.waitForTimeout(1000)
+    await expectLayer(page, kind)
+    expect(await phaseColor(page)).toBe(color)
+  }
+})
+
+test('the old circle and phase ring are gone', async ({ page }) => {
+  await openAtmen(page)
+  await page.getByRole('button', { name: '4-7-8 starten' }).click()
+  await expect(flower(page)).toBeVisible()
+  await expect(page.getByTestId('breath-circle')).toHaveCount(0)
+  await expect(page.getByTestId('phase-ring')).toHaveCount(0)
+
+  // An ihrer Stelle sechs gemalte Blätter, je um 60° gedreht, jedes mit den drei Farbebenen. Alles Schmuck:
+  // Phasenwort und Countdown tragen die Bedeutung.
+  await expect(flower(page)).toHaveAttribute('aria-hidden', 'true')
+  const petals = flower(page).locator('.petal')
+  await expect(petals).toHaveCount(6)
+  const angles = await petals.evaluateAll((els) =>
+    els.map((el) => {
+      const m = new DOMMatrix(getComputedStyle(el).transform)
+      return Math.round(((Math.atan2(m.b, m.a) * 180) / Math.PI + 360) % 360)
+    }),
+  )
+  expect(angles).toEqual([0, 60, 120, 180, 240, 300])
+  for (const kind of ['ein', 'halten', 'aus'] as const) {
+    const layers = flower(page).locator(`img[data-layer="${kind}"]`)
+    await expect(layers).toHaveCount(6)
+    for (const img of await layers.all()) {
+      await expect(img).toHaveAttribute('src', new RegExp(`/images/motive/blatt-${kind}\\.webp$`))
+      await expect(img).toHaveAttribute('alt', '')
+      await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true)
+    }
+  }
+})
+
+test('with reduced motion the flower stands still', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await openAtmen(page)
   await page.getByRole('button', { name: '4-7-8 starten' }).click()
   await expect(page.getByText('Einatmen', { exact: true })).toBeVisible()
-  const still = await circleTransform(page)
+  const animations = () => flower(page).evaluate((el) => el.getAnimations({ subtree: true }).length)
+
+  // Mittlere Größe und Spreizung (Atemstand 0,5), keine Drehung, keine laufende Animation.
+  const still = await flowerTransforms(page)
+  const middle = await drawn(page)
+  expect(middle.bloom).toBeCloseTo(circleScale(0.5), 3)
+  expect(middle.spread).toBeCloseTo(petalOffset(0.5), 2)
+  expect(still[0]).toBe('none')
+  expect(await animations()).toBe(0)
   expect(await phaseColor(page)).toBe(LAVENDER)
-  const ring = await ringProgress(page)
-  await page.waitForTimeout(1500)
-  expect(await circleTransform(page)).toBe(still)
-  expect(await ringProgress(page)).toBeGreaterThan(ring + 0.2)
+  await expectLayer(page, 'ein')
+  await page.waitForTimeout(3000)
+  expect(await flowerTransforms(page)).toEqual(still)
+
+  // Ohne Übergang: Farbe und Ebene wechseln mit dem Text, die Blüte bleibt, wie sie ist.
   await expect(page.getByText('Halten', { exact: true })).toBeVisible({ timeout: 6000 })
-  // Ohne Übergang: Die Farbe wechselt mit dem Text, der Ring beginnt von vorn.
   expect(await phaseColor(page)).toBe(GOLD)
-  expect(await ringProgress(page)).toBeLessThan(0.5)
-  expect(await circleTransform(page)).toBe(still)
+  await expectLayer(page, 'halten')
+  expect(await flowerTransforms(page)).toEqual(still)
+  expect(await animations()).toBe(0)
   await expect(page.getByRole('timer')).toHaveText(/^[5-7]$/)
+})
+
+// Die Audio-Uhr selbst ist hier nicht lesbar. Im Halten von 4-7-8 steht der Atemstand aber fest bei 1;
+// danach zeigt der Beginn des Ausatmens, ob die Blüte wieder mitläuft (Ruling R7).
+test('paused flower stands still and is in time after resume', async ({ page }) => {
+  test.setTimeout(45_000)
+  await openAtmen(page)
+  await page.getByRole('radio', { name: '1 Min' }).click() // 76 s, vier Zyklen
+  await page.getByRole('button', { name: '4-7-8 starten' }).click()
+  const hold = page.getByText('Halten', { exact: true })
+  const full = circleScale(1)
+
+  await expect(hold).toBeVisible({ timeout: 6000 })
+  await expect.poll(() => flowerScale(page)).toBeGreaterThan(full - 0.05)
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await expect(page.getByRole('button', { name: 'Weiter' })).toBeVisible()
+  await expect.poll(async () => (await spin(page)).map((a) => a.playState)).toEqual(['paused'])
+  const paused = { transforms: await flowerTransforms(page), scale: await flowerScale(page), spin: await spin(page) }
+  expect(Math.abs(paused.scale - full)).toBeLessThan(0.05)
+  await page.waitForTimeout(2000)
+  expect(await flowerTransforms(page)).toEqual(paused.transforms)
+  expect(await flowerScale(page)).toBe(paused.scale)
+  expect(await spin(page)).toEqual(paused.spin)
+
+  // Weiter: noch im Halten, also voll geöffnet; die Drehung läuft weiter, wo sie stand.
+  await page.getByRole('button', { name: 'Weiter' }).click()
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  await expect(hold).toBeVisible()
+  expect(Math.abs((await flowerScale(page)) - full)).toBeLessThan(0.05)
+  await expect.poll(async () => (await spin(page)).map((a) => a.playState)).toEqual(['running'])
+  await expect.poll(async () => (await spin(page))[0].currentTime).toBeGreaterThan(paused.spin[0].currentTime)
+
+  // Mit dem Ausatmen (8 s, sanft beginnend) schließt sie sich: Nach 1,5 s ist sie kleiner als nach 1 s Ausatmen.
+  const afterOneSecond = circleScale(easedLevel(breathAt('478', 4 + 7 + 1, 76)))
+  await expect(page.getByText('Ausatmen', { exact: true })).toBeVisible({ timeout: 8000 })
+  await expect.poll(() => flowerScale(page), { timeout: 1500 }).toBeLessThan(afterOneSecond)
+})
+
+test('the player shows the description of the exercise under the title', async ({ page }) => {
+  for (const t of [TILES[0], TILES[5]]) {
+    await openAtmen(page)
+    await tile(page, t.title).click()
+    const player = page.getByRole('dialog', { name: 'Atemübung' })
+    const title = player.getByRole('heading', { level: 2, name: `Atmen · ${t.title}` })
+    const description = player.getByText(t.description, { exact: true })
+    await expect(description).toBeVisible()
+    const [above, below, stage] = await Promise.all([title.boundingBox(), description.boundingBox(), flower(page).boundingBox()])
+    expect(below!.y).toBeGreaterThanOrEqual(above!.y + above!.height - 1)
+    expect(below!.y + below!.height).toBeLessThanOrEqual(stage!.y + 1)
+    await page.getByRole('button', { name: 'Beenden' }).click()
+    await page.getByRole('button', { name: 'Fertig' }).click()
+  }
 })
 
 test('it vibrates on each real phase change and not on the first frame', async ({ page }) => {
@@ -594,7 +745,7 @@ test('a double tap on a start button does not reach the player that opens over i
   await openAtmen(page)
   const done = page.getByRole('heading', { name: 'Gut gemacht.' })
 
-  // An seinem Platz liegt „4-7-8 starten“ über dem Atemkreis des Players.
+  // An seinem Platz liegt „4-7-8 starten“ über der Atem-Blüte des Players.
   await doubleTap(page, page.getByRole('button', { name: '4-7-8 starten' }), 0.25)
   await expectStillRunning(page)
   await page.getByRole('button', { name: 'Beenden' }).click()
