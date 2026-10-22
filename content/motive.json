@@ -1,0 +1,372 @@
+{
+  "model": "gpt-image-2.5-sunburst",
+  "background": "#1b2350",
+  "style": "Light transparent washes with subtle pigment granulation, and a few delicate hairline strokes of metallic gold ink tracing parts of each contour, like an elegant gilded illustration. Sophisticated, calm, luxurious, premium wellness aesthetic, no text, no shadows, no paper border.",
+  "prompt": "Three minimal icons in refined watercolor with fine gold accents, side by side in one wide horizontal row on a plain, flat, dark navy blue background (#1b2350), each centered in its third with lots of breathing room. Icon 1: … Icon 2: … Icon 3: … <style>",
+  "motive": [
+    {
+      "id": "atem-478",
+      "subject": "a slender crescent moon",
+      "flow": "UFZkQbmytpM5zWiLv5Md",
+      "generation": "YwupmVQWMEyIZNl7xeJY",
+      "crop": [
+        60,
+        168,
+        353,
+        347
+      ],
+      "size": 240
+    },
+    {
+      "id": "atem-box",
+      "subject": "four rounded petals arranged in a square",
+      "flow": "UFZkQbmytpM5zWiLv5Md",
+      "generation": "YwupmVQWMEyIZNl7xeJY",
+      "crop": [
+        477,
+        193,
+        322,
+        310
+      ],
+      "size": 240
+    },
+    {
+      "id": "atem-kohaerent",
+      "subject": "two equal circles side by side just touching",
+      "flow": "UFZkQbmytpM5zWiLv5Md",
+      "generation": "YwupmVQWMEyIZNl7xeJY",
+      "crop": [
+        859,
+        235,
+        388,
+        224
+      ],
+      "size": 240
+    },
+    {
+      "id": "atem-langes-ausatmen",
+      "subject": "a long, gently curving wind line that tapers off",
+      "flow": "rS8rbkR7qqO5RsagG0bv",
+      "generation": "ehVYB6pwpuuGCvO7KXul",
+      "crop": [
+        9,
+        232,
+        435,
+        235
+      ],
+      "size": 240
+    },
+    {
+      "id": "atem-seufzer",
+      "subject": "a small soft cloud dissolving into wisps",
+      "flow": "rS8rbkR7qqO5RsagG0bv",
+      "generation": "ehVYB6pwpuuGCvO7KXul",
+      "crop": [
+        440,
+        226,
+        472,
+        252
+      ],
+      "size": 240
+    },
+    {
+      "id": "atem-wechselatmung",
+      "subject": "two leaves curving into each other",
+      "flow": "rS8rbkR7qqO5RsagG0bv",
+      "generation": "ehVYB6pwpuuGCvO7KXul",
+      "crop": [
+        922,
+        191,
+        317,
+        305
+      ],
+      "size": 240
+    },
+    {
+      "id": "atmen",
+      "subject": "two overlapping translucent circles",
+      "flow": "FjcZHUenrc2TajssE5ea",
+      "generation": "XkJKuBbAKlJzejpnGeN3",
+      "crop": [
+        436,
+        150,
+        400,
+        400
+      ],
+      "size": 168
+    },
+    {
+      "id": "blatt-aus",
+      "subject": "a single flower petal in soft teal and powder blue",
+      "flow": "Xg68RH1ZHNte8buN0sSL",
+      "generation": "4FxjINyRQfptlPLbHhth",
+      "crop": [
+        846,
+        100,
+        420,
+        520
+      ],
+      "size": 360
+    },
+    {
+      "id": "blatt-ein",
+      "subject": "a single flower petal in pale lavender and soft violet",
+      "flow": "Xg68RH1ZHNte8buN0sSL",
+      "generation": "4FxjINyRQfptlPLbHhth",
+      "crop": [
+        24,
+        100,
+        420,
+        520
+      ],
+      "size": 360
+    },
+    {
+      "id": "blatt-halten",
+      "subject": "a single flower petal in warm peach and soft apricot gold",
+      "flow": "Xg68RH1ZHNte8buN0sSL",
+      "generation": "4FxjINyRQfptlPLbHhth",
+      "crop": [
+        436,
+        100,
+        420,
+        520
+      ],
+      "size": 360
+    },
+    {
+      "id": "ich",
+      "subject": "a single open lotus blossom seen from the side",
+      "flow": "2tC2iSEwIdLJEntAOn9U",
+      "generation": "vADCrN1ioFErg1FGHnrs",
+      "crop": [
+        603,
+        154,
+        614,
+        407
+      ],
+      "size": 168
+    },
+    {
+      "id": "klaenge",
+      "subject": "two slender, gently curving waves",
+      "flow": "FjcZHUenrc2TajssE5ea",
+      "generation": "XkJKuBbAKlJzejpnGeN3",
+      "crop": [
+        850,
+        160,
+        400,
+        400
+      ],
+      "size": 168
+    },
+    {
+      "id": "klang-bach",
+      "subject": "smooth pebbles in gently flowing stream water",
+      "flow": "WjHp7YsV8OESCAGRYo3c",
+      "generation": "Pwhmxta4ke4JDftHJ9m8",
+      "crop": [
+        12,
+        192,
+        652,
+        373
+      ],
+      "size": 480
+    },
+    {
+      "id": "klang-braun",
+      "subject": "a warm, soft sand dune with smooth curves",
+      "flow": "kdx8gQYK6NqviODWZJVC",
+      "generation": "9KepZ9nspfV9JNZuQA3H",
+      "crop": [
+        14,
+        271,
+        463,
+        283
+      ],
+      "size": 480
+    },
+    {
+      "id": "klang-kaminfeuer",
+      "subject": "a single calm flame without a candle",
+      "flow": "kdx8gQYK6NqviODWZJVC",
+      "generation": "9KepZ9nspfV9JNZuQA3H",
+      "crop": [
+        971,
+        127,
+        251,
+        451
+      ],
+      "size": 480
+    },
+    {
+      "id": "klang-klangschalen",
+      "subject": "a singing bowl seen from the side",
+      "flow": "WjHp7YsV8OESCAGRYo3c",
+      "generation": "Pwhmxta4ke4JDftHJ9m8",
+      "crop": [
+        664,
+        142,
+        585,
+        416
+      ],
+      "size": 480
+    },
+    {
+      "id": "klang-meer",
+      "subject": "a single breaking ocean wave",
+      "flow": "t84JtbKxDzl58oYuCyVt",
+      "generation": "ekSM1t2T3cA3OOyXTfuW",
+      "crop": [
+        379,
+        187,
+        478,
+        366
+      ],
+      "size": 480
+    },
+    {
+      "id": "klang-regen",
+      "subject": "a few falling raindrops of different sizes",
+      "flow": "t84JtbKxDzl58oYuCyVt",
+      "generation": "ekSM1t2T3cA3OOyXTfuW",
+      "crop": [
+        72,
+        135,
+        243,
+        464
+      ],
+      "size": 480
+    },
+    {
+      "id": "klang-wald",
+      "subject": "three slender fir trees of different heights",
+      "flow": "kdx8gQYK6NqviODWZJVC",
+      "generation": "9KepZ9nspfV9JNZuQA3H",
+      "crop": [
+        479,
+        125,
+        374,
+        445
+      ],
+      "size": 480
+    },
+    {
+      "id": "klang-wind",
+      "subject": "slender grass blades bending in the wind",
+      "flow": "t84JtbKxDzl58oYuCyVt",
+      "generation": "ekSM1t2T3cA3OOyXTfuW",
+      "crop": [
+        881,
+        137,
+        377,
+        455
+      ],
+      "size": 480
+    },
+    {
+      "id": "meditieren",
+      "subject": "three slender smooth pebbles balanced above a thin crescent-shaped dish",
+      "flow": "FjcZHUenrc2TajssE5ea",
+      "generation": "XkJKuBbAKlJzejpnGeN3",
+      "crop": [
+        20,
+        150,
+        400,
+        400
+      ],
+      "size": 168
+    },
+    {
+      "id": "thema-achtsamkeit",
+      "subject": "a single floating feather",
+      "flow": "kJUSY3y8e9kEOohRI493",
+      "generation": "QNsCxuzuStY1kR1Z4OFg",
+      "crop": [
+        25,
+        138,
+        378,
+        401
+      ],
+      "size": 192
+    },
+    {
+      "id": "thema-fokus",
+      "subject": "a single mountain peak with a small sun beside it",
+      "flow": "kJUSY3y8e9kEOohRI493",
+      "generation": "QNsCxuzuStY1kR1Z4OFg",
+      "crop": [
+        852,
+        181,
+        428,
+        339
+      ],
+      "size": 192
+    },
+    {
+      "id": "thema-stress",
+      "subject": "concentric water ripples on still water",
+      "flow": "kJUSY3y8e9kEOohRI493",
+      "generation": "QNsCxuzuStY1kR1Z4OFg",
+      "crop": [
+        398,
+        268,
+        479,
+        237
+      ],
+      "size": 192
+    },
+    {
+      "id": "timer",
+      "subject": "a slender, elegant hourglass with fine flowing sand",
+      "flow": "2tC2iSEwIdLJEntAOn9U",
+      "generation": "vADCrN1ioFErg1FGHnrs",
+      "crop": [
+        170,
+        67,
+        304,
+        555
+      ],
+      "size": 168
+    },
+    {
+      "id": "vorschlag-abend",
+      "subject": "a slender crescent moon with two small stars",
+      "flow": "LRFwxrjzQMYQBNF4AIX2",
+      "generation": "M2BVT2XkPtIrZnZY6x01",
+      "crop": [
+        936,
+        191,
+        308,
+        316
+      ],
+      "size": 288
+    },
+    {
+      "id": "vorschlag-morgen",
+      "subject": "a sun rising over soft rolling hills",
+      "flow": "LRFwxrjzQMYQBNF4AIX2",
+      "generation": "M2BVT2XkPtIrZnZY6x01",
+      "crop": [
+        6,
+        174,
+        439,
+        348
+      ],
+      "size": 288
+    },
+    {
+      "id": "vorschlag-tag",
+      "subject": "a soft round sun partly behind a small cloud",
+      "flow": "LRFwxrjzQMYQBNF4AIX2",
+      "generation": "M2BVT2XkPtIrZnZY6x01",
+      "crop": [
+        458,
+        199,
+        409,
+        314
+      ],
+      "size": 288
+    }
+  ]
+}
