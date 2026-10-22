@@ -57,6 +57,8 @@ Jede Stimmung ist ein Satz CSS-Variablen unter `:root[data-tageszeit='…']` in 
 
 Dazu, für alle Stimmungen gleich: `--gold: #F2C98A` für Goldlinien und Zierelemente (bleibt Gold, auch wenn der Akzent Pfirsich oder Mint ist), Flächen `--surface` und `--surface-border` wie bisher.
 
+*Ergänzung vom 22.10.2026 (Abschluss):* `--sky-horizon` und `--gold` gibt es in `src/app.css` nicht mehr, weil nichts sie malte: Den Schein über dem Horizont malt `--horizon-glow`, die Goldlinien stecken in den Motiven selbst.
+
 ### 2.3 Himmel (`Sky.svelte`)
 
 Berge, See und Sterne bleiben; je Stimmung ändern sich Farben und Gestirn:

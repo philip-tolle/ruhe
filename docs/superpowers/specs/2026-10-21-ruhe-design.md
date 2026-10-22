@@ -155,7 +155,7 @@ Sechs Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird 
 - **Sleep-Timer:** 15 / 30 / 45 / 60 / 90 Min oder endlos. Die letzte Minute wird sanft ausgeblendet, danach stoppt die Wiedergabe. Ein Wechsel des Klangs startet den Countdown nicht neu.
 - Klang-Sitzungen zählen **nicht** zur Statistik.
 
-*Ergänzung vom 22.10.2026 (Meilenstein 4):* Die acht Klänge sind Kacheln mit einem gemalten Motiv; der Titel steht gut lesbar auf einem Verlauf darüber. Antippen, Lautstärke, Sleep-Timer und Mini-Player bleiben unverändert (siehe `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §4.4).
+*Ergänzung vom 22.10.2026 (Meilenstein 4):* Die acht Klänge sind Kacheln mit einem gemalten Motiv; der Titel steht gut lesbar über dem Motiv, auf einem Verlauf. Antippen, Lautstärke, Sleep-Timer und Mini-Player bleiben unverändert (siehe `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §4.4).
 
 ### 3.5 Ich
 
@@ -396,7 +396,7 @@ Name und Kurzname „Ruhe“, `display: standalone`, Hochformat, `lang: de`, `st
 - **Schrift:** weiche Serifenschrift für Überschriften (Vorschlag: Fraunces), runde, gut lesbare Sans für Text (Vorschlag: Nunito Sans), beide lokal gebündelt.
 - **Bedienung:** Tippflächen ≥ 48 px, Kontrast mindestens WCAG AA.
 
-*Ergänzung vom 22.10.2026 (Meilenstein 4):* Die App hat drei Stimmungen nach lokaler Uhrzeit: morgen (5–11 Uhr), tag (11–17 Uhr) und abend (17–5 Uhr); der Abend entspricht den Farben oben. Der Himmel bleibt in allen dreien dunkel, nur Farbton, Akzent (Pfirsich, Mint, Gold) und Gestirn wandern mit; das Gold der Zierlinien bleibt in jeder Stimmung. Die Stimmung wird als `data-tageszeit` am `<html>`-Element gesetzt, die Farbwerte stehen in `src/app.css`. Hinzu kommen 28 gemalte Aquarell-Motive als WebP unter `public/images/motive/` (Stil „zart mit feiner Goldlinie“); sie sind Schmuck, die Bedeutung trägt immer der Text. Näheres in `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §2 (Stimmungen und Farbwerte), §3 (Motive) und §4 (wo sie erscheinen).
+*Ergänzung vom 22.10.2026 (Meilenstein 4):* Die App hat drei Stimmungen nach lokaler Uhrzeit: morgen (5–11 Uhr), tag (11–17 Uhr) und abend (17–5 Uhr); der Abend entspricht den Farben oben, nur der gedämpfte Text ist jetzt `#B3B8D2` statt `#A9AFCB` (erst so hat er auf den Karten mindestens 4,5:1, WCAG AA). Der Himmel bleibt in allen dreien dunkel, nur Farbton, Akzent (Pfirsich, Mint, Gold) und Gestirn wandern mit; das Gold der Zierlinien bleibt in jeder Stimmung. Die Stimmung wird als `data-tageszeit` am `<html>`-Element gesetzt, die Farbwerte stehen in `src/app.css`. Hinzu kommen 28 gemalte Aquarell-Motive als WebP unter `public/images/motive/` (Stil „zart mit feiner Goldlinie“); sie sind Schmuck, die Bedeutung trägt immer der Text. Näheres in `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §2 (Stimmungen und Farbwerte), §3 (Motive) und §4 (wo sie erscheinen).
 
 ---
 
@@ -504,4 +504,4 @@ Für jeden Meilenstein entsteht ein eigener Implementierungsplan, beginnend mit 
 | Wann | Was |
 |---|---|
 | Vor dem ersten Deployment (Meilenstein 1) | Im Repo unter *Settings → Pages → Source* „GitHub Actions“ wählen |
-| Vor Meilenstein 4 | In der Cloud-Umgebung `api.elevenlabs.io` unter *Allowed domains* freischalten und den Schlüssel als `ELEVENLABS_API_KEY` (Network secrets bzw. Umgebungsvariable) hinterlegen; ElevenLabs-Abo *Creator*; dann eine neue Session starten |
+| Vor Meilenstein 4 *(überholt)* | ~~In der Cloud-Umgebung `api.elevenlabs.io` unter *Allowed domains* freischalten und den Schlüssel als `ELEVENLABS_API_KEY` (Network secrets bzw. Umgebungsvariable) hinterlegen; ElevenLabs-Abo *Creator*; dann eine neue Session starten~~ *Ergänzung vom 22.10.2026:* Entfällt. Vertont wird seit Meilenstein 3 über den ElevenLabs-Connector in einer Claude-Sitzung (§5.2, §11): kein API-Schlüssel, keine Freischaltung von `api.elevenlabs.io`, keine neue Session. Für neue Texte braucht es weiter das ElevenLabs-Konto mit Credits. |
