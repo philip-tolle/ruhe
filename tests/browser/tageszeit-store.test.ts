@@ -122,6 +122,79 @@ test('a hidden page does not switch on visibilitychange', () => {
   expect(root.dataset.tageszeit).toBe('tag')
 })
 
+test('visibilitychange restarts the minute chain without piling up timers', () => {
+  setClock(10, 59, 30)
+  stop = followTageszeit(now)
+  expect(vi.getTimerCount()).toBe(1)
+
+  document.dispatchEvent(new Event('visibilitychange'))
+  document.dispatchEvent(new Event('visibilitychange'))
+  expect(vi.getTimerCount()).toBe(1)
+  expect(root.dataset.tageszeit).toBe('morgen')
+
+  // Der eine Takt trifft weiter die nächste volle Minute und schaltet über die Grenze.
+  advance(29_999) // 10:59:59.999
+  expect(root.dataset.tageszeit).toBe('morgen')
+  advance(1) // 11:00:00
+  expect(root.dataset.tageszeit).toBe('tag')
+  expect(tageszeitUi.current).toBe('tag')
+  expect(vi.getTimerCount()).toBe(1)
+})
+
+test('a failing theme-color computation neither throws nor stops the attribute or the next tick', () => {
+  setClock(10, 59, 30)
+  vi.spyOn(window, 'getComputedStyle').mockImplementationOnce(() => {
+    throw new Error('Stil nicht lesbar')
+  })
+
+  expect(() => {
+    stop = followTageszeit(now)
+  }).not.toThrow()
+  // Stimmung und Attribut stehen trotzdem, und der Takt läuft.
+  expect(root.dataset.tageszeit).toBe('morgen')
+  expect(tageszeitUi.current).toBe('morgen')
+  expect(vi.getTimerCount()).toBe(1)
+
+  advance(30_000) // 11:00:00
+  expect(root.dataset.tageszeit).toBe('tag')
+  expect(tageszeitUi.current).toBe('tag')
+  expect(meta.content).toBe(settledSkyTop())
+  expect(vi.getTimerCount()).toBe(1)
+})
+
+test('theme-color keeps its value when the computed colour is empty', () => {
+  setClock(8)
+  const before = meta.content
+  // Weder ein berechneter Wert noch eine laufende Überblendung liefert eine Farbe.
+  vi.spyOn(window, 'getComputedStyle').mockImplementationOnce(
+    () => ({ getPropertyValue: () => '' }) as unknown as CSSStyleDeclaration,
+  )
+  vi.spyOn(root, 'getAnimations').mockReturnValue([])
+
+  stop = followTageszeit(now)
+  expect(root.dataset.tageszeit).toBe('morgen')
+  expect(meta.content).toBe(before)
+})
+
+test('a failing tick still schedules the next one', () => {
+  setClock(10, 59, 30)
+  // now() wird in dieser Reihenfolge gerufen: apply, schedule (Start), apply (Takt) – dort bricht es ab –, schedule.
+  let calls = 0
+  const flaky = () => {
+    if (++calls === 3) throw new Error('Uhr nicht lesbar')
+    return clock
+  }
+  stop = followTageszeit(flaky)
+  expect(vi.getTimerCount()).toBe(1)
+
+  expect(() => advance(30_000)).toThrow('Uhr nicht lesbar')
+  // Der Takt ist trotzdem neu gestellt und schaltet beim nächsten Mal.
+  expect(vi.getTimerCount()).toBe(1)
+  advance(60_000) // 11:01:00
+  expect(root.dataset.tageszeit).toBe('tag')
+  expect(tageszeitUi.current).toBe('tag')
+})
+
 test('cleanup removes the timer and the listener', () => {
   setClock(16, 59, 30)
   const cleanup = followTageszeit(now)

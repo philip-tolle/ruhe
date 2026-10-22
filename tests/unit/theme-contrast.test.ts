@@ -117,12 +117,12 @@ describe('Kontrast je Stimmung (WCAG AA, 4,5:1)', () => {
       })
 
       // Der Akzent ist auch Schrift: Serie auf „Heute“, aktive Klangkachel, „… Min meditiert“ im Abschluss.
-      test('--accent als Schrift auf der Karte über --sky-mid und --sky-bottom', () => {
+      test('--accent als Schrift auf der Karte über Himmel, Bergen und See', () => {
         const block = blockOf(MOODS[mood])
-        for (const sky of ['sky-mid', 'sky-bottom'] as const) {
+        for (const backdrop of BACKDROPS) {
           for (const overlay of overlays()) {
-            const ratio = contrast(hex(block, 'accent'), over(overlay, hex(block, sky)))
-            expect(ratio, `${mood}: --accent auf Karte über --${sky} (Deckkraft ${overlay.alpha})`).toBeGreaterThanOrEqual(4.5)
+            const ratio = contrast(hex(block, 'accent'), over(overlay, hex(block, backdrop)))
+            expect(ratio, `${mood}: --accent auf Karte über --${backdrop} (Deckkraft ${overlay.alpha})`).toBeGreaterThanOrEqual(4.5)
           }
         }
       })

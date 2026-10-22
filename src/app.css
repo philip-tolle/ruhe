@@ -177,7 +177,8 @@
   --text: #eef6f8;
   --text-muted: #c8dadf;
 
-  --hill-far: #2c5163;
+  /* Etwas dunkler als #2C5163: Der Akzent ist auch Schrift auf Karten, die über den Bergen liegen (≥ 4,5:1). */
+  --hill-far: #2b4f61;
   --hill-far-bottom: #213f53;
   --hill-near: #1a3447;
   --lake-top: #22465a;

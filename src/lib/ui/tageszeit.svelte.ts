@@ -36,12 +36,21 @@ export function followTageszeit(now: () => Date = () => new Date()): () => void 
   let timer: ReturnType<typeof setTimeout> | undefined
 
   function apply() {
+    // Stimmung und Attribut zuerst: Sie tragen die Oberfläche und dürfen an der Statusleiste nicht scheitern.
     const mood = tageszeit(now())
     tageszeitUi.current = mood
     if (root.dataset.tageszeit !== mood) root.dataset.tageszeit = mood
-    // Die Statusleiste (Android) bekommt die Farbe oben am Himmel.
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-    if (meta) meta.content = settledValue(root, '--sky-top')
+    // Die Statusleiste (Android) bekommt die Farbe oben am Himmel. Lässt sie sich nicht bestimmen, bleibt
+    // theme-color, wie es war.
+    try {
+      const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+      if (meta) {
+        const color = settledValue(root, '--sky-top')
+        if (color !== '') meta.content = color
+      }
+    } catch {
+      // Nur die Statusleiste bleibt in der alten Farbe; die Stimmung steht schon.
+    }
   }
 
   // Nächste Prüfung zur nächsten vollen Minute; danach wieder.
@@ -50,8 +59,12 @@ export function followTageszeit(now: () => Date = () => new Date()): () => void 
     const t = now()
     const delay = 60_000 - (t.getSeconds() * 1000 + t.getMilliseconds())
     timer = setTimeout(() => {
-      apply()
-      schedule()
+      // Auch wenn apply scheitert, läuft der Takt weiter.
+      try {
+        apply()
+      } finally {
+        schedule()
+      }
     }, delay)
   }
 
