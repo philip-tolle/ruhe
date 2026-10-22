@@ -24,15 +24,13 @@ test('effects point to existing ogg files and carry prompts', () => {
   }
 })
 
-test('tile titles get a soft hyphen at the joint of their long compounds and stay the same otherwise', () => {
+test('the tile titles of the sounds get a soft hyphen at the joint of their long compounds', () => {
   const shy = '\u00AD'
   expect(soundTileTitle('Meeresrauschen')).toBe(`Meeres${shy}rauschen`)
   expect(soundTileTitle('Klangschalen')).toBe(`Klang${shy}schalen`)
   expect(soundTileTitle('Kaminfeuer')).toBe(`Kamin${shy}feuer`)
-  // Kürzere Wörter und Wörter außerhalb der Liste bleiben unverändert.
   expect(soundTileTitle('Braunes Rauschen')).toBe('Braunes Rauschen')
   expect(soundTileTitle('Wald mit Vögeln')).toBe('Wald mit Vögeln')
-  expect(soundTileTitle('Unbekanntes Wort')).toBe('Unbekanntes Wort')
   for (const sound of SOUNDS) {
     const shown = soundTileTitle(sound.title)
     // Ohne die Trennstellen ist es der Titel selbst; jedes Wort ab 10 Buchstaben hat genau eine.

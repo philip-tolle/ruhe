@@ -1,6 +1,7 @@
 // Katalog aller Klänge: acht echte Aufnahmen (ElevenLabs, nahtlose 30-s-Schleifen), dazu der
 // Einzelanschlag der Klangschale. Die Daten stehen in content/sounds.json.
 import catalog from '../../../content/sounds.json'
+import { softBreaks } from '../text'
 
 export type SoundId = 'regen' | 'meer' | 'wind' | 'braun' | 'wald' | 'kaminfeuer' | 'bach' | 'klangschalen'
 
@@ -36,13 +37,9 @@ const TITLE_BREAKS: Record<string, string> = {
   Kaminfeuer: 'Kamin\u00ADfeuer',
 }
 
-/**
- * Titel für die Kachel: lange Zusammensetzungen mit weichen Trennstellen, damit sie auf schmalen Bildschirmen und bei
- * großer Schrift an der Fuge umbrechen (mit Trennstrich) statt mitten im Wort. Nur zur Anzeige:
- * Der Name des Knopfes bleibt der Titel selbst. Wörter außerhalb der Liste bleiben, wie sie sind.
- */
+/** Titel für die Kachel mit weichen Trennstellen in den langen Zusammensetzungen. Nur zur Anzeige: Der Name des Knopfes bleibt der Titel selbst. */
 export function soundTileTitle(title: string): string {
-  return title.replace(/\p{L}+/gu, (word) => TITLE_BREAKS[word] ?? word)
+  return softBreaks(title, TITLE_BREAKS)
 }
 
 // Macht aus einem Katalogpfad (z. B. 'audio/sounds/wald.ogg') eine URL, die auch

@@ -1,5 +1,6 @@
 // Atemübung in der Oberfläche: Kreisgröße, Phasenring, Farbe, Leuchten, Vibration und Phasenwechsel
 // aus dem Stand der Anzeige. Reine Funktionen, ohne Audio- und Speicherzugriff.
+import { softBreaks } from '../text'
 import type { BreathMoment, BreathPattern, PhaseKind } from './patterns'
 
 const SMALLEST = 0.45 // Skalierung des Kreises bei Atemstand 0 (ausgeatmet)
@@ -82,13 +83,9 @@ const TITLE_BREAKS: Record<string, string> = {
   Ausatmen: 'Aus\u00ADatmen',
 }
 
-/**
- * Titel für die Kachel: lange Wörter mit weichen Trennstellen, damit sie auf schmalen Bildschirmen und bei
- * großer Schrift an einer Silbengrenze umbrechen (mit Trennstrich) statt mitten im Wort. Nur zur Anzeige:
- * Der Name des Knopfes bleibt der Titel selbst. Wörter außerhalb der Liste bleiben, wie sie sind.
- */
+/** Titel für die Kachel mit weichen Trennstellen in den langen Wörtern. Nur zur Anzeige: Der Name des Knopfes bleibt der Titel selbst. */
 export function tileTitle(title: string): string {
-  return title.replace(/\p{L}+/gu, (word) => TITLE_BREAKS[word] ?? word)
+  return softBreaks(title, TITLE_BREAKS)
 }
 
 const PETAL_REST = 0.04 // Blattversatz bei Atemstand 0: knapp nach innen

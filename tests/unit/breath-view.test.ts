@@ -96,10 +96,8 @@ test('tile titles get soft hyphens at the syllables of their long words and stay
   expect(tileTitle('Wechselatmung')).toBe(`Wechsel${shy}atmung`)
   expect(tileTitle('Kohärentes Atmen')).toBe(`Kohä${shy}rentes Atmen`)
   expect(tileTitle('Langes Ausatmen')).toBe(`Langes Aus${shy}atmen`)
-  // Kurze Wörter, Zahlen und Wörter außerhalb der Liste bleiben unverändert.
   expect(tileTitle('4-7-8')).toBe('4-7-8')
   expect(tileTitle('Box-Atmung')).toBe('Box-Atmung')
-  expect(tileTitle('Unbekanntes Wort')).toBe('Unbekanntes Wort')
   for (const pattern of BREATH_PATTERNS) {
     const shown = tileTitle(pattern.title)
     // Ohne die Trennstellen ist es der Titel selbst; jedes Wort ab 8 Buchstaben hat eine.

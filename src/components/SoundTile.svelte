@@ -64,6 +64,10 @@
   .tile {
     /* Länge des Auslaufs im Verlauf hinter dem Titel; der Titel steht darunter, auf der vollen Farbe. */
     --tile-fade: 20px;
+    /* Abstand des Reglers zum unteren Rand, und der Platz, den der Titel ihm lässt: Abstand + 48 px Höhe
+       des Reglers (`.range` in app.css) + 12 px Luft zum Titel. */
+    --slider-bottom: 6px;
+    --slider-room: calc(var(--slider-bottom) + 48px + 12px);
 
     position: relative;
     display: flex;
@@ -119,11 +123,11 @@
   /* Platz für Regler bzw. Fehlertext: Der Titel rückt nach oben, der Verlauf reicht weiter bis zum Kachelrand
      und trägt auch den Regler. Die Kachel bleibt gleich hoch. */
   button.roomy .label {
-    padding-bottom: 66px;
+    padding-bottom: var(--slider-room);
   }
 
-  /* Umbruch an Leerzeichen und an den weichen Trennstellen aus `soundTileTitle` (mit Trennstrich); `anywhere`
-     fängt nur ab, was bei extremer Schrift gar nicht mehr passt, statt es abzuschneiden. */
+  /* Umbruch nur an Leerzeichen und den weichen Trennstellen aus `soundTileTitle` (mit Trennstrich), wie bei den
+     Atem-Kacheln; `anywhere` fängt nur ab, was bei extremer Schrift gar nicht mehr passt, statt es abzuschneiden. */
   .title {
     display: block;
     color: var(--text);
@@ -131,7 +135,7 @@
     font-weight: 600;
     line-height: 1.25;
     overflow-wrap: anywhere;
-    hyphens: auto;
+    hyphens: manual;
   }
 
   .error {
@@ -147,7 +151,7 @@
   /* Aussehen des Reglers: Klasse `range` in app.css; hier nur seine Lage in der Kachel. */
   input[type='range'] {
     position: absolute;
-    inset: auto 10px 6px;
+    inset: auto 10px var(--slider-bottom);
     width: calc(100% - 20px);
   }
 

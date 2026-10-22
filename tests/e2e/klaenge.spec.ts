@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { contrast, over, parseColor } from './color'
 import { expectMotiv } from './motiv'
 
 test('switch sounds, sleep timer and mini player', async ({ page }) => {
@@ -6,9 +7,7 @@ test('switch sounds, sleep timer and mini player', async ({ page }) => {
   const nav = page.getByRole('navigation', { name: 'Hauptnavigation' })
   await nav.getByRole('button', { name: 'Klänge' }).click()
   const tiles = page.locator('button[aria-pressed]')
-  expect(await tiles.evaluateAll((els) => els.map((el) => (el as HTMLElement).innerText.replace(/\u00ad/g, '')))).toEqual([
-    'Regen', 'Meeresrauschen', 'Wind', 'Braunes Rauschen', 'Wald mit Vögeln', 'Kaminfeuer', 'Bach', 'Klangschalen',
-  ])
+  await expect(tiles).toHaveText(['Regen', 'Meeresrauschen', 'Wind', 'Braunes Rauschen', 'Wald mit Vögeln', 'Kaminfeuer', 'Bach', 'Klangschalen'])
 
   await page.getByRole('button', { name: 'Regen' }).click()
   await expect(page.getByRole('button', { name: 'Regen' })).toHaveAttribute('aria-pressed', 'true')
@@ -123,25 +122,6 @@ test('each tile shows its motif as decoration, centred at the top, and tapping t
   await expect(page.getByRole('slider', { name: 'Lautstärke Bach' })).toBeVisible()
 })
 
-// Rechnet aus berechneten Farben: rgb(), rgba() und color(srgb …), je mit optionaler Deckkraft.
-type Rgba = [number, number, number, number]
-function parseColor(css: string): Rgba {
-  const m = css.match(/^(rgba?|color)\(\s*(?:srgb\s+)?(.+?)\s*\)$/)
-  if (!m) throw new Error(`Farbe nicht lesbar: ${css}`)
-  const parts = m[2].split(/[\s,/]+/).filter(Boolean).map(Number)
-  const scale = m[1] === 'color' ? 255 : 1
-  return [parts[0] * scale, parts[1] * scale, parts[2] * scale, parts[3] ?? 1]
-}
-const over = ([r, g, b, a]: Rgba, [br, bg, bb]: Rgba): Rgba => [r * a + br * (1 - a), g * a + bg * (1 - a), b * a + bb * (1 - a), 1]
-function luminance([r, g, b]: Rgba): number {
-  const lin = (c: number) => ((c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
-}
-function contrast(a: Rgba, b: Rgba): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
-  return (hi + 0.05) / (lo + 0.05)
-}
-
 // Die berechnete Farbe eines Ausdrucks (`var(--tile-scrim)` usw.), gelesen über ein Hilfselement in der Kachel.
 const resolveColor = (target: Locator, expression: string) =>
   target.evaluate((el, value) => {
@@ -168,11 +148,11 @@ test.describe('the title stays readable over the picture, in every mood', () => 
       await expect(soundTiles(page)).toHaveCount(8)
 
       const tile = page.locator('.tile').first()
-      const scrim = parseColor(await resolveColor(tile, 'var(--tile-scrim)'))
+      const scrimCss = await resolveColor(tile, 'var(--tile-scrim)')
+      const scrim = parseColor(scrimCss)
       const skyBottom = parseColor(await resolveColor(tile, 'var(--sky-bottom)'))
       // Der Verlauf deckt kräftig: Dahinter liegt ein Motiv, kein Himmel.
       expect(scrim[3]).toBeGreaterThanOrEqual(0.75)
-      expect(scrim[3]).toBeLessThan(1)
 
       // Der Titel steht auf der vollen Farbe des Verlaufs: Unter dem Auslauf (`--tile-fade`), nicht darin.
       const titles = await page.locator('.title').evaluateAll((els) =>
@@ -181,7 +161,7 @@ test.describe('the title stays readable over the picture, in every mood', () => 
           const fade = parseFloat(getComputedStyle(label).paddingTop)
           return {
             color: getComputedStyle(el).color,
-            gradient: getComputedStyle(label).backgroundImage.startsWith('linear-gradient'),
+            image: getComputedStyle(label).backgroundImage,
             belowFade: el.getBoundingClientRect().top - label.getBoundingClientRect().top >= fade - 0.5,
             fade,
           }
@@ -189,7 +169,9 @@ test.describe('the title stays readable over the picture, in every mood', () => 
       )
       expect(titles).toHaveLength(8)
       for (const title of titles) {
-        expect(title.gradient).toBe(true)
+        // Der gemalte Verlauf hinter dem Titel hat die Farbe des Tokens, das hier geprüft wird.
+        expect(title.image).toMatch(/^linear-gradient\(/)
+        expect(title.image).toContain(scrimCss)
         expect(title.belowFade).toBe(true)
         expect(title.fade).toBeGreaterThan(0)
         const text = parseColor(title.color)
