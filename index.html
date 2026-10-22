@@ -6,6 +6,19 @@
     <meta name="theme-color" content="#0B1026" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <title>Ruhe</title>
+    <!--
+      Stimmung vor dem ersten Zeichnen: Ohne dieses Skript blitzte beim Start kurz der Abend auf.
+      Klassisches Skript ohne Import, damit es vor jedem Modul läuft; die Stundengrenzen (5/11/17 Uhr,
+      lokale Zeit) stehen deshalb hier ausgeschrieben und werden in tests/unit/theme-prepaint.test.ts
+      mit tageszeit() aus src/lib/time/tageszeit.ts abgeglichen.
+    -->
+    <script id="tageszeit-vorab">
+      ;(function () {
+        var hour = new Date().getHours()
+        document.documentElement.dataset.tageszeit =
+          hour >= 5 && hour < 11 ? 'morgen' : hour >= 11 && hour < 17 ? 'tag' : 'abend'
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

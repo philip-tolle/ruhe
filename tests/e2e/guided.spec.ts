@@ -34,8 +34,17 @@ async function expectRemainingNear(page: Page, target: number, tolerance = 2) {
   await expect.poll(async () => Math.abs((await remaining(page)) - target)).toBeLessThanOrEqual(tolerance)
 }
 
-// Hauptschaltfläche: das Gold der Oberfläche (--accent).
-const GOLD = 'rgb(242, 201, 138)'
+// Hauptschaltfläche: der Akzent der Tageszeit (--accent). Er hängt von der Uhrzeit ab (Gold, Pfirsich, Mint)
+// und wird deshalb aus der Seite gelesen statt fest eingetragen.
+const accent = (page: Page) =>
+  page.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--accent)'
+    document.body.append(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    return color
+  })
 
 const GROUPS = {
   'Einsteiger & Achtsamkeit': ['Ankommen im Atem', 'Gedanken wie Wolken', 'Bodyscan im Sitzen'],
@@ -272,10 +281,11 @@ test.describe('when the file does not load', () => {
     await expect(player.getByText('Die Meditation konnte nicht geladen werden.')).toBeVisible()
     const retry = player.getByRole('button', { name: 'Erneut versuchen' })
     await expect(retry).toBeVisible()
-    // „Erneut versuchen“ ist die einzige Hauptschaltfläche (Gold); „Weiter“ versucht dasselbe, tritt aber zurück.
-    await expect(retry).toHaveCSS('background-color', GOLD)
-    await expect(player.getByRole('button', { name: 'Weiter' })).not.toHaveCSS('background-color', GOLD)
-    await expect(player.getByRole('button', { name: 'Beenden' })).not.toHaveCSS('background-color', GOLD)
+    const ACCENT = await accent(page)
+    // „Erneut versuchen“ ist die einzige Hauptschaltfläche (Akzent); „Weiter“ versucht dasselbe, tritt aber zurück.
+    await expect(retry).toHaveCSS('background-color', ACCENT)
+    await expect(player.getByRole('button', { name: 'Weiter' })).not.toHaveCSS('background-color', ACCENT)
+    await expect(player.getByRole('button', { name: 'Beenden' })).not.toHaveCSS('background-color', ACCENT)
     await expect(player.getByRole('timer')).toHaveCount(0)
     await expect(player.getByRole('button', { name: '15 Sekunden vor' })).toBeDisabled()
 
@@ -286,7 +296,7 @@ test.describe('when the file does not load', () => {
     await expect(player.getByText('Die Meditation konnte nicht geladen werden.')).toHaveCount(0)
     await expect(player.getByRole('button', { name: 'Pause' })).toBeVisible()
     // Ohne Fehler ist „Pause“ wieder die Hauptschaltfläche.
-    await expect(player.getByRole('button', { name: 'Pause' })).toHaveCSS('background-color', GOLD)
+    await expect(player.getByRole('button', { name: 'Pause' })).toHaveCSS('background-color', ACCENT)
     await expect(player.getByRole('button', { name: '15 Sekunden vor' })).toBeEnabled()
   })
 })

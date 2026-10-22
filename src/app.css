@@ -1,19 +1,90 @@
 /*
-  Ruhe – Gestaltung "Abendhimmel".
-  Dunkle Nachtblau-Verläufe, ein weich leuchtendes Gold als Akzent, ruhige Typografie.
+  Ruhe – Gestaltung "Himmel der Tageszeit".
+  Dunkle Verläufe, ein weich leuchtender Akzent, ruhige Typografie. Drei Stimmungen, immer dunkel:
+  `:root` ist der Abend (Standard und Ausgangswerte), `:root[data-tageszeit='morgen'|'tag']` überschreiben
+  nur die Farben. `data-tageszeit` setzt vor dem ersten Zeichnen das Inline-Skript in index.html.
 */
 
+/*
+  Die Farbvariablen der Stimmungen sind registrierte Eigenschaften: Nur so kann der Browser sie
+  überblenden (Übergang weiter unten, nur ohne Bewegungswunsch). Anfangswert = Abend.
+*/
+@property --sky-top {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #0b1026;
+}
+@property --sky-mid {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1b2350;
+}
+@property --sky-bottom {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3a2f5b;
+}
+@property --sky-horizon {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3a2f5b;
+}
+@property --accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f2c98a;
+}
+@property --on-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #0b1026;
+}
+@property --text {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #eef0fa;
+}
+@property --text-muted {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #b3b8d2;
+}
+@property --hill-far {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3a3163;
+}
+@property --hill-near {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #171a3d;
+}
+@property --star-opacity {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+/* Abend (Standard): Mond und Sterne */
 :root {
-  /* Himmel (oben nach unten) */
+  /* Himmel (oben nach unten) und Horizont */
   --sky-top: #0b1026;
   --sky-mid: #1b2350;
   --sky-bottom: #3a2f5b;
+  --sky-horizon: #3a2f5b;
 
   /* Akzent und Text */
   --accent: #f2c98a;
   --on-accent: #0b1026;
   --text: #eef0fa;
-  --text-muted: #a9afcb;
+  --text-muted: #b3b8d2;
+  /* Zierlinien und Zierelemente: in allen Stimmungen Gold, auch wenn der Akzent Pfirsich oder Mint ist */
+  --gold: #f2c98a;
+
+  /* Berge (fern, nah) und Sichtbarkeit der Sterne */
+  --hill-far: #3a3163;
+  --hill-near: #171a3d;
+  --star-opacity: 1;
 
   /* Flächen */
   --surface: rgb(238 240 250 / 0.07);
@@ -38,6 +109,40 @@
   --miniplayer-gap: 8px;
 
   color-scheme: dark;
+}
+
+/* Morgen: warmes Licht über den Bergen, blasse Sterne */
+:root[data-tageszeit='morgen'] {
+  --sky-top: #1b1838;
+  --sky-mid: #352a5c;
+  --sky-bottom: #633e5b;
+  --sky-horizon: #c47c7c;
+
+  --accent: #f8b98f;
+  --on-accent: #2b1b2c;
+  --text: #f7f1fb;
+  --text-muted: #ddd3e9;
+
+  --hill-far: #5a3660;
+  --hill-near: #33223f;
+  --star-opacity: 0.35;
+}
+
+/* Tag: helle, weiche Sonne, keine Sterne */
+:root[data-tageszeit='tag'] {
+  --sky-top: #0f2236;
+  --sky-mid: #1c3b55;
+  --sky-bottom: #304e5b;
+  --sky-horizon: #5f8487;
+
+  --accent: #9fe0cf;
+  --on-accent: #0f2236;
+  --text: #eef6f8;
+  --text-muted: #c8dadf;
+
+  --hill-far: #2c5163;
+  --hill-near: #1a3447;
+  --star-opacity: 0;
 }
 
 *,
@@ -137,8 +242,8 @@ main.with-player-bar {
   border-radius: 28px;
   background: linear-gradient(160deg, rgb(238 240 250 / 0.1), rgb(238 240 250 / 0.04));
   box-shadow: 0 18px 48px rgb(5 8 24 / 0.35);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 
 /* Haupt-Schaltfläche: Gold, mit sanftem Leuchten */
@@ -242,6 +347,22 @@ input[type='range'].range:focus-visible {
 
 /* Bewegung nur, wenn das System sie nicht reduziert */
 @media (prefers-reduced-motion: no-preference) {
+  /* Wechsel der Stimmung: die Farben blenden in 1,5 s über */
+  :root {
+    transition:
+      --sky-top 1.5s ease,
+      --sky-mid 1.5s ease,
+      --sky-bottom 1.5s ease,
+      --sky-horizon 1.5s ease,
+      --accent 1.5s ease,
+      --on-accent 1.5s ease,
+      --text 1.5s ease,
+      --text-muted 1.5s ease,
+      --hill-far 1.5s ease,
+      --hill-near 1.5s ease,
+      --star-opacity 1.5s ease;
+  }
+
   .screen {
     animation: screen-in 0.6s ease-out both;
   }
