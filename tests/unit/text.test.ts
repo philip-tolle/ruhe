@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import { softBreaks } from '../../src/lib/text'
 
-const shy = '­'
+const shy = '\u00ad'
 const BREAKS = { Meeresrauschen: `Meeres${shy}rauschen`, Kohärentes: `Kohä${shy}rentes` }
 
 test('listed words get their soft hyphens, everything around them stays', () => {

@@ -33,7 +33,6 @@ const COLOR_TOKENS = [
   'sky-top',
   'sky-mid',
   'sky-bottom',
-  'sky-horizon',
   'accent',
   'on-accent',
   'text',
@@ -151,7 +150,6 @@ describe('Farbwerte der drei Stimmungen', () => {
     expect(block).toMatch(/--sky-top:\s*#0b1026;/i)
     expect(block).toMatch(/--sky-mid:\s*#1b2350;/i)
     expect(block).toMatch(/--sky-bottom:\s*#3a2f5b;/i)
-    expect(block).toMatch(/--sky-horizon:\s*#3a2f5b;/i)
     expect(block).toMatch(/--accent:\s*#f2c98a;/i)
     expect(block).toMatch(/--on-accent:\s*#0b1026;/i)
     expect(block).toMatch(/--text:\s*#eef0fa;/i)
@@ -169,13 +167,6 @@ describe('Farbwerte der drei Stimmungen', () => {
     expect(block).toMatch(/--horizon-glow:\s*rgb\(242 201 138 \/ 0\.16\);/)
     expect(block).toMatch(/--surface:\s*rgb\(238 240 250 \/ 0\.07\);/)
     expect(block).toMatch(/--surface-border:\s*rgb\(238 240 250 \/ 0\.12\);/)
-  })
-
-  test('--gold ist in allen Stimmungen das Gold der Zierlinien', () => {
-    expect(blockOf(MOODS.abend)).toMatch(/--gold:\s*#f2c98a;/i)
-    // Die Stimmungsblöcke überschreiben es nicht.
-    expect(blockOf(MOODS.morgen)).not.toMatch(/--gold:/)
-    expect(blockOf(MOODS.tag)).not.toMatch(/--gold:/)
   })
 })
 

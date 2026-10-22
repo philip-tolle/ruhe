@@ -13,6 +13,7 @@ import {
   type Category,
   type Meditation,
 } from '../../src/lib/content/catalog'
+import { tageszeit, type Tageszeit } from '../../src/lib/time/tageszeit'
 
 const CATEGORIES: Category[] = ['achtsamkeit', 'stress', 'fokus']
 
@@ -111,6 +112,16 @@ describe('suggestionFor: Thema nach Tageszeit', () => {
 
   test('liefert eine Meditation aus dem Katalog', () => {
     expect(MEDITATIONS).toContain(suggestionFor(at(2026, 10, 21, 9)))
+  })
+
+  // Thema und Stimmung (Motiv des Vorschlags) dürfen nie auseinanderlaufen: zu jeder Stunde, am Anfang und am Ende.
+  test('zu jeder Stunde gehört das Thema zur Tageszeit: Morgen Fokus, Tag Stress, Abend Achtsamkeit', () => {
+    const THEMA: Record<Tageszeit, Category> = { morgen: 'fokus', tag: 'stress', abend: 'achtsamkeit' }
+    for (let hour = 0; hour < 24; hour++) {
+      for (const minute of [0, 59]) {
+        expect(categoryAt(hour, minute), `${hour}:${minute}`).toBe(THEMA[tageszeit(at(2026, 10, 21, hour, minute))])
+      }
+    }
   })
 })
 

@@ -24,11 +24,6 @@
   inherits: true;
   initial-value: #3a2f5b;
 }
-@property --sky-horizon {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #3a2f5b;
-}
 @property --accent {
   syntax: '<color>';
   inherits: true;
@@ -92,19 +87,16 @@
 
 /* Abend (Standard): Mond und Sterne */
 :root {
-  /* Himmel (oben nach unten) und Horizont */
+  /* Himmel (oben nach unten) */
   --sky-top: #0b1026;
   --sky-mid: #1b2350;
   --sky-bottom: #3a2f5b;
-  --sky-horizon: #3a2f5b;
 
   /* Akzent und Text */
   --accent: #f2c98a;
   --on-accent: #0b1026;
   --text: #eef0fa;
   --text-muted: #b3b8d2;
-  /* Zierlinien und Zierelemente: in allen Stimmungen Gold, auch wenn der Akzent Pfirsich oder Mint ist */
-  --gold: #f2c98a;
 
   /* Landschaft (Sky.svelte): Berge fern (oben, unten) und nah, See (oben, unten), Glanz auf dem See,
      Schein über dem Horizont (nur hinter den Bergen) und Sichtbarkeit der Sterne */
@@ -150,7 +142,6 @@
   --sky-top: #1b1838;
   --sky-mid: #352a5c;
   --sky-bottom: #633e5b;
-  --sky-horizon: #c47c7c;
 
   /* Etwas heller als #F8B98F: Der Akzent ist auch Schrift auf Karten (≥ 4,5:1 über --sky-bottom). */
   --accent: #fcc9a6;
@@ -173,7 +164,6 @@
   --sky-top: #0f2236;
   --sky-mid: #1c3b55;
   --sky-bottom: #304e5b;
-  --sky-horizon: #5f8487;
 
   --accent: #9fe0cf;
   --on-accent: #0f2236;
@@ -412,7 +402,6 @@ input[type='range'].range:focus-visible {
       --sky-top 1.5s ease,
       --sky-mid 1.5s ease,
       --sky-bottom 1.5s ease,
-      --sky-horizon 1.5s ease,
       --accent 1.5s ease,
       --on-accent 1.5s ease,
       --text 1.5s ease,

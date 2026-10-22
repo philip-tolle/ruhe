@@ -3,6 +3,7 @@
 // (src/content/meditations.json); dieses Modul ist rein und hat keine Seiteneffekte.
 import data from '../../content/meditations.json'
 import { assetUrl } from '../sounds/catalog'
+import { tageszeit, type Tageszeit } from '../time/tageszeit'
 
 export type Category = 'achtsamkeit' | 'stress' | 'fokus'
 
@@ -51,12 +52,12 @@ export function byCategory(): { category: Category; title: string; items: Medita
   }))
 }
 
-// Thema nach lokaler Tageszeit, dieselben Grenzen wie die Begrüßung: morgens 5–11, tagsüber 11–17.
+// Thema je Tageszeit; die Grenzen (5/11/17 Uhr) kommen aus `tageszeit()`. So passen Thema und Motiv des
+// Vorschlags immer zur Stimmung.
+const CATEGORY_AT: Record<Tageszeit, Category> = { morgen: 'fokus', tag: 'stress', abend: 'achtsamkeit' }
+
 function categoryAt(now: Date): Category {
-  const hour = now.getHours()
-  if (hour >= 5 && hour < 11) return 'fokus'
-  if (hour >= 11 && hour < 17) return 'stress'
-  return 'achtsamkeit'
+  return CATEGORY_AT[tageszeit(now)]
 }
 
 // Tag des Jahres im lokalen Kalender, der 1. Januar ist 0. Gerechnet wird mit den lokalen
