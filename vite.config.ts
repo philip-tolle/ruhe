@@ -30,8 +30,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // App-Hülle, Schriften, Icons und die Klangdateien: alles offline ab dem ersten Besuch.
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2,ogg}'],
+        // App-Hülle, Schriften, Icons, die gemalten Motive (WebP) und die Klangdateien: alles offline ab dem ersten Besuch.
+        globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2,ogg}'],
         cleanupOutdatedCaches: true,
         // Die Meditationen (MP3) sind zu groß für den Precache und stehen bewusst nicht in
         // globPatterns. Gespeichert werden sie von src/lib/offline/meditations.ts im Cache

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
 
 test('manifest matches spec', async ({ page, request }) => {
@@ -37,6 +38,34 @@ test('works offline after first visit', async ({ page, context }) => {
   await expect(page.getByText('Ankommen', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Beenden' }).click()
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toHaveCount(0)
+})
+
+test('all 28 painted motifs are precached and available offline', async ({ page, context }) => {
+  const ids = (JSON.parse(readFileSync('content/motive.json', 'utf8')).motive as { id: string }[]).map((m) => m.id)
+  expect(ids).toHaveLength(28)
+  await page.goto('./')
+  await page.evaluate(async () => { await navigator.serviceWorker.ready })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+  const urls = ids.map((id) => new URL(`images/motive/${id}.webp`, page.url()).href)
+  // Wie bei der Klangschale: Workbox hängt eine Revision an die Adresse an. Die Liste der fehlenden
+  // Motive macht einen Fehlschlag lesbar.
+  const missing = await page.evaluate(async (list) => {
+    const absent: string[] = []
+    for (const url of list) if (!((await caches.match(url, { ignoreSearch: true })) instanceof Response)) absent.push(url)
+    return absent
+  }, urls)
+  expect(missing).toEqual([])
+  await context.setOffline(true)
+  const broken = await page.evaluate(async (list) => {
+    const bad: string[] = []
+    for (const url of list) {
+      const response = await fetch(url)
+      if (!response.ok || response.headers.get('Content-Type') !== 'image/webp') bad.push(url)
+    }
+    return bad
+  }, urls)
+  expect(broken).toEqual([])
 })
 
 test('a saved meditation is served from the cache with range support while offline', async ({ page, context }) => {
