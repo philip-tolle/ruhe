@@ -46,6 +46,17 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 8. Auf „Heute“ starten „Vorschlag des Tages“ und „Zuletzt genutzt“ die richtige Meditation; „Erneut starten“ wiederholt einen Timer oder eine Atemübung genau so wie zuletzt.
 9. Unter „Ich“ „Alle offline speichern“ starten, den Reiter wechseln und zurückkommen: Der Lauf ging weiter, es steht der Fortschritt da – oder, wenn er inzwischen fertig ist, das Ergebnis.
 
+## Handy-Checkliste Meilenstein 4
+
+1. Lass die App kurz vor 11 bzw. 17 Uhr offen: Die Stimmung (Himmel, Knöpfe, aktiver Reiter) wechselt weich, ohne Neustart.
+2. Atemübung 3 Min, Bildschirm sperren und nach einer Weile wieder entsperren: Die Blüte ist sofort wieder im Takt mit Ton und Vibration.
+3. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar.
+4. Flugmodus direkt nach der Installation des Updates: Alle Motive sind sichtbar.
+5. Mit „Bewegung reduzieren“ (Android: Einstellungen › Bedienungshilfen): Die Blüte steht still, nur die Farbe wechselt mit der Phase.
+6. Die Blüte läuft auf dem Handy flüssig, ohne Ruckeln beim Ein- und Ausatmen. Auf einem echten Gerät ist das noch nicht gemessen.
+
+> Hinweis: Die Stimmung folgt allein der Uhrzeit (Morgen 5–11 Uhr, Tag 11–17 Uhr, Abend 17–5 Uhr). Willst du alle drei sehen, ohne zu warten, schalte in den Handy-Einstellungen die automatische Uhrzeit aus und stell sie um; beim Zurückkehren in die App wechselt die Stimmung. Danach die automatische Uhrzeit wieder einschalten.
+
 ## Meditationen vertonen
 
 Die Texte stehen in `content/meditations/<id>.md`, die fertigen Dateien entstehen mit `scripts/meditations.mjs` (`npm run meditations <Befehl>`; braucht ffmpeg und ffprobe). Gesprochen wird in einer Claude-Sitzung über den ElevenLabs-Connector. Dafür ist kein API-Schlüssel nötig, und es wird keiner gespeichert.
@@ -59,6 +70,20 @@ Die Texte stehen in `content/meditations/<id>.md`, die fertigen Dateien entstehe
 7. **Veröffentlichen:** Eine neue Aufnahme hat eine neue `version`, die App ruft die Datei als `<id>.mp3?v=<version>` ab. Das Handy lädt sie dadurch frisch, statt die alte aus dem Cache zu spielen. Ein Gerät, auf dem alles gespeichert war, muss nach einer neuen Aufnahme „Alle offline speichern“ erneut antippen: Die neuen `?v=`-Fassungen sind dort noch nicht gespeichert, und nur dieser Knopf entfernt die alten Kopien.
 
 Solange eine Meditation noch nicht vertont ist, spielt eine Platzhalter-Datei (leise Töne, in der App als „Vorabversion“ gekennzeichnet): `npm run meditations placeholders` legt sie für jede Meditation ohne echte Datei an und vermerkt sie in `audio-work/placeholders.json`; `assemble` nimmt die id dort wieder heraus. Echte Dateien überschreibt der Befehl nie.
+
+## Motive malen
+
+Die 28 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entstehen in einer Claude-Sitzung über den ElevenLabs-Connector; ein API-Schlüssel ist dafür nicht nötig, und es wird keiner gespeichert. Das Freistellen übernimmt `scripts/freistellen.py`, ein Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit Pillow und NumPy braucht.
+
+1. **Prompt aufstellen:** `content/motive.json` hält das Schema. `prompt` beschreibt drei Motive nebeneinander (`Icon 1: … Icon 2: … Icon 3: …`), `<style>` darin wird durch den Stiltext `style` ersetzt; dazu `model` und `background`. Je Motiv stehen `id`, `subject` (was gemalt ist), `flow` und `generation` (Quelle im Connector), `crop` (Ausschnitt) und `size`. So lässt sich ein Motiv später im selben Stil nachmalen.
+2. **Erzeugen:** In der Claude-Sitzung mit dem ElevenLabs-Connector, Modell `gpt-image-2.5-sunburst`, je Bild drei Motive einer Gruppe auf flacher Navy-Fläche `#1B2350`. Eine Variante kostet etwa 190 Credits (rund 4 US-Cent); jeder Aufruf zählt, wiederhole ihn also nicht ohne Grund.
+3. **Auswählen:** Alle neuen Gruppen erscheinen auf einer Auswahlseite, und du wählst je Gruppe eine Variante.
+4. **Freistellen:** Das gewählte Bild als PNG speichern und ausführen:
+   `python3 scripts/freistellen.py <quelle.png> public/images/motive/<id>.webp --crop x,y,b,h --size N`
+   `--crop` ist der Ausschnitt im Quellbild (x, y, Breite, Höhe), `--size` die Kantenlänge des fertigen, quadratischen Bildes. Heraus kommt ein WebP mit Alpha.
+5. **Zielgrößen** (`--size`): Symbole 168, Themen 192, Vorschlag 288, Atem-Kacheln 240, Klang-Kacheln 480, Blütenblätter 360 px.
+6. **Budget:** höchstens 60 KB je Datei (Klang-Motive 90 KB), zusammen höchstens 1,5 MB. Der Test prüft das.
+7. **Eintragen:** Die neue ID kommt in `src/lib/content/motive.ts`, das Motiv mit Quelle, Ausschnitt und Größe in `content/motive.json`. `npm test` meldet eine fehlende, falsch große oder zu schwere Datei; `npm run check` meldet einen Klang, eine Atemübung, ein Thema oder eine Tageszeit ohne Motiv. Beim nächsten Build nimmt der Service Worker die Datei von selbst in den Precache auf.
 
 ## Entwicklung
 

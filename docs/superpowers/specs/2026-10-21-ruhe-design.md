@@ -74,6 +74,8 @@ Unten eine feste Leiste mit fünf Reitern. Die Android-Zurück-Geste schließt z
 
 *Ergänzung vom 21.10.2026 (Meilenstein 3):* Der „Vorschlag des Tages“ und der Ersatz „Ankommen im Atem“ sind umgesetzt. Die Karten stehen in dieser Reihenfolge: Vorschlag des Tages, Zuletzt genutzt, 3 Min durchatmen, Zur Ruhe kommen. Ohne bisherige Sitzung zeigt „Zuletzt genutzt“ „Ankommen im Atem“ mit dem Knopf „Jetzt starten“ (es gibt noch nichts zu wiederholen); kennt der Katalog die gemerkte Meditation nicht (mehr), gilt derselbe Ersatz. Offline folgen die geführten Starts auf „Heute“ der Regel aus „Meditieren“: Sie sind gesperrt und nennen „Nicht offline verfügbar“, solange die Datei nicht gespeichert ist.
 
+*Ergänzung vom 22.10.2026 (Meilenstein 4):* Die Karten „3 Min durchatmen“ und „Zur Ruhe kommen“ entfallen. An ihre Stelle tritt eine Karte „Aktivitäten“ mit drei Zeilen: „Meditieren“ („Geführt oder mit Timer“) wechselt zum Reiter Meditieren, „Atemübung“ („3 Min kohärent atmen“) startet wie bisher Kohärentes Atmen für 3 Minuten und merkt es als zuletzt genutzt, „Klänge“ („Zur Ruhe kommen“) wechselt zum Reiter Klänge. Die Reihenfolge ist nun: Begrüßung und Serie, Vorschlag des Tages (mit dem gemalten Motiv der Tageszeit), Zuletzt genutzt, Aktivitäten. Näheres in `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §4.1.
+
 ### 3.2 Meditieren
 
 - Oben eine Karte **Meditations-Timer** (öffnet die Timer-Einstellungen).
@@ -128,6 +130,8 @@ Sechs Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird 
 
 *Ergänzung vom 21.10.2026:* Der Atem-Player hat auch „Pause“ und „Weiter“ (nötig, wenn ein Anruf die Übung unterbricht).
 
+*Ergänzung vom 22.10.2026 (Meilenstein 4):* Kreis, Schein und Phasenring sind durch die Atem-Blüte ersetzt (sechs gemalte Blütenblätter, die sich mit dem Atemstand öffnen und schließen). Die Phasenfarben sind jetzt Einatmen Lavendel, Halten Pfirsich-Gold und Ausatmen Blaugrün; das Pulsieren beim Halten entfällt. Mit „Bewegung reduzieren“ steht die Blüte in mittlerer Größe still, nur die Farbe wechselt mit der Phase. Die Übungen stehen auf „Atmen“ als Kacheln mit Motiv, Rhythmus und Wirkung, und der Player zeigt die Beschreibung der Übung unter dem Titel. Näheres in `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §5 (Blüte) und §4.3 (Kacheln).
+
 ### 3.4 Klänge
 
 **Acht Klänge**, es läuft immer **einer** zur Zeit:
@@ -150,6 +154,8 @@ Sechs Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird 
 
 - **Sleep-Timer:** 15 / 30 / 45 / 60 / 90 Min oder endlos. Die letzte Minute wird sanft ausgeblendet, danach stoppt die Wiedergabe. Ein Wechsel des Klangs startet den Countdown nicht neu.
 - Klang-Sitzungen zählen **nicht** zur Statistik.
+
+*Ergänzung vom 22.10.2026 (Meilenstein 4):* Die acht Klänge sind Kacheln mit einem gemalten Motiv; der Titel steht gut lesbar auf einem Verlauf darüber. Antippen, Lautstärke, Sleep-Timer und Mini-Player bleiben unverändert (siehe `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §4.4).
 
 ### 3.5 Ich
 
@@ -390,6 +396,8 @@ Name und Kurzname „Ruhe“, `display: standalone`, Hochformat, `lang: de`, `st
 - **Schrift:** weiche Serifenschrift für Überschriften (Vorschlag: Fraunces), runde, gut lesbare Sans für Text (Vorschlag: Nunito Sans), beide lokal gebündelt.
 - **Bedienung:** Tippflächen ≥ 48 px, Kontrast mindestens WCAG AA.
 
+*Ergänzung vom 22.10.2026 (Meilenstein 4):* Die App hat drei Stimmungen nach lokaler Uhrzeit: morgen (5–11 Uhr), tag (11–17 Uhr) und abend (17–5 Uhr); der Abend entspricht den Farben oben. Der Himmel bleibt in allen dreien dunkel, nur Farbton, Akzent (Pfirsich, Mint, Gold) und Gestirn wandern mit; das Gold der Zierlinien bleibt in jeder Stimmung. Die Stimmung wird als `data-tageszeit` am `<html>`-Element gesetzt, die Farbwerte stehen in `src/app.css`. Hinzu kommen 28 gemalte Aquarell-Motive als WebP unter `public/images/motive/` (Stil „zart mit feiner Goldlinie“); sie sind Schmuck, die Bedeutung trägt immer der Text. Näheres in `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §2 (Stimmungen und Farbwerte), §3 (Motive) und §4 (wo sie erscheinen).
+
 ---
 
 ## 8. Projektstruktur
@@ -484,6 +492,8 @@ Jede Datei unter `src/lib/` hat eine klar umrissene Aufgabe und ist ohne UI test
 | 4 | *Neue Session mit ElevenLabs-Zugang:* Stimm-Casting, Vertonung der 9 Meditationen (die 8 Loops und der Klangschalen-Schlag sind seit 21.10.2026 fertig) | Fertige App, komplette Checkliste |
 
 *Ergänzung vom 21.10.2026 (Meilenstein 3):* Meilenstein 4 (Vertonung) ist in Meilenstein 3 aufgegangen. Weil der Connector vertont (§5.2), braucht es keine neue Session mit API-Zugang; nach Freigabe der Texte und der Stimmwahl werden die 9 Meditationen im selben Meilenstein vertont, bis dahin spielen Platzhalter. Von der Vorbedingung „Vor Meilenstein 4“ in §12 entfallen damit nur die Freischaltung von `api.elevenlabs.io` und der API-Schlüssel; für neue Texte braucht es weiter das ElevenLabs-Konto mit Credits. Abgenommen wird mit der „Handy-Checkliste Meilenstein 3“ im README.
+
+*Ergänzung vom 22.10.2026 (Meilenstein 4):* Meilenstein 4 trägt jetzt den Titel „Optik & Tageszeiten“ (Zeile 4 der Tabelle, die Vertonung, ist in Meilenstein 3 aufgegangen): drei Stimmungen nach Tageszeit, gemalte Motive, Kacheln für Atemübungen und Klänge, Atem-Blüte statt Kreis. Er ist umgesetzt und wird mit der „Handy-Checkliste Meilenstein 4“ im README abgenommen (siehe `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §8). Als Nächstes folgen Meilenstein 5 (Meditationsmusik und -klänge, auch als Hintergrund der geführten Meditationen) und Meilenstein 6 (Stimmungs-Check-in „Wie geht es dir?“, sichtbar unter „Ich“), jeweils mit eigener Spec und eigenem Plan (siehe `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §9).
 
 Für jeden Meilenstein entsteht ein eigener Implementierungsplan, beginnend mit Meilenstein 1. Ergibt der Härtetest in Meilenstein 1, dass Plan B (4.6) nötig ist, wird das vor Meilenstein 2 umgesetzt.
 
