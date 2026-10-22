@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
+import { expectMotiv } from './motiv'
 
 // Die Aufnahmen können neu entstehen (andere Länge, wieder ein Platzhalter): Die Tests verlassen sich nie
 // auf genaue Längen, nur auf Unterschiede (Spulen ≈ 15 s, ±2 s), und lesen „Platzhalter“ aus dem Manifest.
@@ -78,6 +79,26 @@ test('the guided meditations are listed by theme with their length', async ({ pa
   for (const target of await list.getByRole('button').all()) {
     const box = await target.boundingBox()
     expect(box!.height).toBeGreaterThanOrEqual(48)
+  }
+})
+
+test('the timer card and every theme show their painting', async ({ page }) => {
+  await openMeditieren(page)
+  const timerCard = page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Meditations-Timer' }) })
+  await expectMotiv(timerCard.locator('img'), 'timer', 56)
+
+  const list = page.getByRole('region', { name: 'Geführte Meditationen' })
+  const motive = { 'Einsteiger & Achtsamkeit': 'thema-achtsamkeit', 'Stress & Ruhe': 'thema-stress', 'Fokus & Energie': 'thema-fokus' }
+  for (const [theme, motiv] of Object.entries(motive)) {
+    const group = list.getByRole('region', { name: theme })
+    // Ein Motiv je Thema, im Kopf der Gruppe links der Überschrift; die Einträge bleiben schlanke Zeilen.
+    await expect(group.locator('img')).toHaveCount(1)
+    const image = group.locator('img')
+    await expectMotiv(image, motiv, 64)
+    const heading = (await group.getByRole('heading', { level: 3 }).boundingBox())!
+    const box = (await image.boundingBox())!
+    expect(box.x + box.width).toBeLessThanOrEqual(heading.x)
+    await expect(group.getByRole('button').locator('img')).toHaveCount(0)
   }
 })
 

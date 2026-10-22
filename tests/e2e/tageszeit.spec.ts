@@ -70,6 +70,7 @@ test.describe('mood', () => {
     await expect(greeting(page)).toHaveText('Guten Morgen')
     await expect(html(page)).toHaveAttribute('data-tageszeit', 'morgen')
     await expect(suggestionCard(page)).toContainText(titlesOf('fokus'))
+    await expect(suggestionCard(page).locator('img')).toHaveAttribute('src', /vorschlag-morgen\.webp$/)
     // Merker im Fenster: Übersteht er den Wechsel, wurde die Seite nicht neu geladen.
     await page.evaluate(() => ((window as unknown as { ruheMarker: boolean }).ruheMarker = true))
 
@@ -79,6 +80,7 @@ test.describe('mood', () => {
     await expect(greeting(page)).toHaveText('Guten Tag')
     // Der Vorschlag wird mit der Tageszeit neu bestimmt.
     await expect(suggestionCard(page)).toContainText(titlesOf('stress'))
+    await expect(suggestionCard(page).locator('img')).toHaveAttribute('src', /vorschlag-tag\.webp$/)
     expect(await page.evaluate(() => (window as unknown as { ruheMarker?: boolean }).ruheMarker)).toBe(true)
   })
 

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte'
+  import Motiv from '../components/Motiv.svelte'
   import { breathProgram } from '../lib/audio/program'
   import { durationLabel, suggestionFor, type Meditation } from '../lib/content/catalog'
+  import { vorschlagMotiv, type MotivId } from '../lib/content/motive'
   import { absoluteAudioUrl, startable } from '../lib/meditation/guided-view'
   import { offline, refreshSaved } from '../lib/offline/status.svelte'
   import { GREETING } from '../lib/time/tageszeit'
@@ -66,6 +68,19 @@
   </div>
 {/snippet}
 
+<!-- Eine Zeile der Aktivitäten: die ganze Fläche ist der Knopf. Sein Name ist der sichtbare Text, das Motiv Schmuck. -->
+{#snippet activity(motiv: MotivId, title: string, subtitle: string, action: () => void)}
+  <li>
+    <button type="button" class="row" onclick={action}>
+      <Motiv id={motiv} size={56} />
+      <span class="row-text">
+        <span class="row-title">{title}</span>
+        <span class="row-subtitle">{subtitle}</span>
+      </span>
+    </button>
+  </li>
+{/snippet}
+
 <section class="screen">
   <header>
     <h1>{greeting}</h1>
@@ -75,7 +90,10 @@
   <div class="card">
     <h2>Vorschlag des Tages</h2>
     <div class="suggestion">
-      <p class="name">{suggestion.title}</p>
+      <div class="suggestion-head">
+        <p class="name">{suggestion.title}</p>
+        <Motiv id={vorschlagMotiv(tageszeitUi.current)} size={96} />
+      </div>
       <p class="hint">{suggestion.description}</p>
       <p class="hint">{durationLabel(suggestion)}</p>
     </div>
@@ -93,15 +111,12 @@
   </div>
 
   <div class="card">
-    <h2>3 Min durchatmen</h2>
-    <p class="hint">Kohärentes Atmen</p>
-    <button type="button" class="button" onclick={breatheNow}>Jetzt durchatmen</button>
-  </div>
-
-  <div class="card">
-    <h2>Zur Ruhe kommen</h2>
-    <p class="hint">Ein sanfter Klang hilft beim Ankommen.</p>
-    <button type="button" class="button" onclick={() => onNavigate('klaenge')}>Zu den Klängen</button>
+    <h2>Aktivitäten</h2>
+    <ul class="rows">
+      {@render activity('meditieren', 'Meditieren', 'Geführt oder mit Timer', () => onNavigate('meditieren'))}
+      {@render activity('atmen', 'Atemübung', '3 Min kohärent atmen', breatheNow)}
+      {@render activity('klaenge', 'Klänge', 'Zur Ruhe kommen', () => onNavigate('klaenge'))}
+    </ul>
   </div>
 </section>
 
@@ -120,6 +135,21 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    width: 100%;
+  }
+
+  /* Der Titel links, das Motiv der Tageszeit rechts davon; Beschreibung und Dauer laufen darunter über die
+     ganze Breite. So bleibt die Karte auch auf einem schmalen Telefon (360 px) niedrig. Der Titel darf
+     umbrechen, das Motiv behält seine Fläche. */
+  .suggestion-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .suggestion-head .name {
+    flex: 1;
+    min-width: 0;
   }
 
   /* Der Titel der Meditation ist der Blickfang der Karte, aber keine Überschrift: unter „h2“ der Karte. */
@@ -147,5 +177,54 @@
     color: var(--text-muted);
     font-size: 0.875rem;
     font-weight: 600;
+  }
+
+  /* Aktivitäten: Zeilen ohne eigene Fläche, nur eine feine Linie dazwischen. */
+  .rows {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rows li + li {
+    border-top: 1px solid var(--surface-border);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: calc(100% + 16px);
+    min-height: 72px;
+    margin: 0 -8px;
+    padding: 8px;
+    border: 0;
+    border-radius: 18px;
+    background: none;
+    color: var(--text);
+    text-align: left;
+  }
+
+  .row:active {
+    background: var(--surface);
+  }
+
+  .row-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .row-title {
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .row-subtitle {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.4;
   }
 </style>

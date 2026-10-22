@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
+import { expectMotiv } from './motiv'
 
 // Sitzungen und Zeiten tragen ihren Offset und der Browser läuft in Berlin; so hängt kein Test
 // von der Zeitzone des Rechners ab. „Heute“ ist der 21.10.2026, 20 Uhr; die Tests zum Vorschlag am
@@ -49,6 +50,11 @@ const cardOf = (page: Page, heading: string) =>
   page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: heading, exact: true }) })
 const lastUsedCard = (page: Page) => cardOf(page, 'Zuletzt genutzt')
 const suggestionCard = (page: Page) => cardOf(page, 'Vorschlag des Tages')
+const activitiesCard = (page: Page) => cardOf(page, 'Aktivitäten')
+// Die Zeilen der Karte „Aktivitäten“; die Reiterleiste hat Knöpfe mit denselben Anfängen („Meditieren“, „Klänge“).
+const meditierenRow = (page: Page) => activitiesCard(page).getByRole('button', { name: /^Meditieren/ })
+const atemuebungRow = (page: Page) => activitiesCard(page).getByRole('button', { name: /^Atemübung/ })
+const klaengeRow = (page: Page) => activitiesCard(page).getByRole('button', { name: /^Klänge/ })
 
 // Der Player erscheint, sobald der Start angestoßen ist; eingeplant wird erst, wenn die Klangschale
 // geladen ist. Wer vorher „Beenden“ tippt, beendet nichts Eingeplantes und bekommt keinen Abschluss.
@@ -88,16 +94,11 @@ test('streak and quick start', async ({ page }) => {
   await expect(last.getByText('4-7-8 · 1 Min', { exact: true })).toBeVisible()
   await expect(last.getByRole('button', { name: 'Erneut starten' })).toBeVisible()
 
-  // Reihenfolge: Vorschlag des Tages, Zuletzt genutzt, 3 Min durchatmen, Zur Ruhe kommen.
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText([
-    'Vorschlag des Tages',
-    'Zuletzt genutzt',
-    '3 Min durchatmen',
-    'Zur Ruhe kommen',
-  ])
-  await expect(page.getByText('Kohärentes Atmen', { exact: true })).toBeVisible()
+  // Reihenfolge: Vorschlag des Tages, Zuletzt genutzt, Aktivitäten.
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
+  await expect(atemuebungRow(page)).toContainText('3 Min kohärent atmen')
 
-  await page.getByRole('button', { name: 'Jetzt durchatmen' }).click()
+  await atemuebungRow(page).click()
   await expect(page.getByRole('heading', { name: 'Atmen · Kohärentes Atmen' })).toBeVisible()
   await expect(page.getByText('Einatmen', { exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toBeVisible()
@@ -123,19 +124,71 @@ test('empty state', async ({ page }) => {
   await expect(last.getByText(/^Ankommen im Atem · \d+ Min$/)).toBeVisible()
   await expect(last.getByRole('button', { name: 'Jetzt starten' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Erneut starten' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText([
-    'Vorschlag des Tages',
-    'Zuletzt genutzt',
-    '3 Min durchatmen',
-    'Zur Ruhe kommen',
-  ])
-  await expect(page.getByRole('button', { name: 'Jetzt durchatmen' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Zu den Klängen' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
+  await expect(meditierenRow(page)).toBeVisible()
+  await expect(atemuebungRow(page)).toBeVisible()
+  await expect(klaengeRow(page)).toBeVisible()
 })
 
-test('„3 Min durchatmen“ starts coherent breathing and becomes the last used', async ({ page }) => {
+test('the two quick-start cards of before are gone', async ({ page }) => {
   await open(page, null)
-  await page.getByRole('button', { name: 'Jetzt durchatmen' }).click()
+  await expect(page.getByRole('heading', { name: '3 Min durchatmen' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Zur Ruhe kommen' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Jetzt durchatmen' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Zu den Klängen' })).toHaveCount(0)
+})
+
+test('„Aktivitäten“: three rows with painting, title and subtitle, each one button', async ({ page }) => {
+  await open(page, null)
+  const rows = activitiesCard(page).getByRole('button')
+  await expect(rows).toHaveCount(3)
+  // Der Name des Knopfs ist der sichtbare Text; das Motiv ist Schmuck und trägt nichts bei.
+  await expect(rows.nth(0)).toHaveAccessibleName('Meditieren Geführt oder mit Timer')
+  await expect(rows.nth(1)).toHaveAccessibleName('Atemübung 3 Min kohärent atmen')
+  await expect(rows.nth(2)).toHaveAccessibleName('Klänge Zur Ruhe kommen')
+
+  for (const [index, motiv] of ['meditieren', 'atmen', 'klaenge'].entries()) {
+    const row = rows.nth(index)
+    await expectMotiv(row.locator('img'), motiv, 56)
+    // Layout-Höhe (nicht boundingBox): Beim Einblenden des Bildschirms schwankt diese um Bruchteile eines Pixels.
+    expect(await row.evaluate((el: HTMLElement) => el.offsetHeight)).toBeGreaterThanOrEqual(72)
+    // Die Zeile ist die ganze Breite der Karte: die ganze Fläche ist der Knopf.
+    const box = (await row.boundingBox())!
+    const card = (await activitiesCard(page).boundingBox())!
+    expect(box.width).toBeGreaterThan(card.width - 60)
+  }
+})
+
+test('„Meditieren“ in the activities leads to the Meditieren tab', async ({ page }) => {
+  await open(page, null)
+  await meditierenRow(page).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Meditieren')
+  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Meditieren' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+})
+
+for (const [time, mood, greeting] of [
+  ['08:00', 'morgen', 'Guten Morgen'],
+  ['14:00', 'tag', 'Guten Tag'],
+  ['20:00', 'abend', 'Guten Abend'],
+] as const) {
+  test(`the suggestion shows the painting of the ${mood} (${time})`, async ({ page }) => {
+    await open(page, null, new Date(`2026-10-21T${time}:00+02:00`), greeting)
+    const images = suggestionCard(page).locator('img')
+    await expect(images).toHaveCount(1)
+    await expectMotiv(images, `vorschlag-${mood}`, 96)
+    // Das Motiv steht rechts vom Titel.
+    const title = (await suggestionCard(page).locator('.name').boundingBox())!
+    const image = (await images.boundingBox())!
+    expect(image.x).toBeGreaterThanOrEqual(title.x + title.width)
+  })
+}
+
+test('„Atemübung“ in the activities starts coherent breathing and becomes the last used', async ({ page }) => {
+  await open(page, null)
+  await atemuebungRow(page).click()
   await expect(page.getByRole('heading', { name: 'Atmen · Kohärentes Atmen' })).toBeVisible()
   await expect(page.getByText('Einatmen', { exact: true })).toBeVisible()
   // Sofort gemerkt, nicht erst am Ende.
@@ -232,8 +285,9 @@ test('touch targets are at least 48px and the cards stay within the screen', asy
   const targets = [
     suggestionCard(page).getByRole('button', { name: 'Jetzt starten' }),
     page.getByRole('button', { name: 'Erneut starten' }),
-    page.getByRole('button', { name: 'Jetzt durchatmen' }),
-    page.getByRole('button', { name: 'Zu den Klängen' }),
+    meditierenRow(page),
+    atemuebungRow(page),
+    klaengeRow(page),
   ]
   for (const target of targets) {
     await target.scrollIntoViewIfNeeded()
@@ -244,9 +298,9 @@ test('touch targets are at least 48px and the cards stay within the screen', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
-test('the card for the sounds still leads to the sounds', async ({ page }) => {
+test('the row „Klänge“ still leads to the sounds', async ({ page }) => {
   await open(page, null)
-  await page.getByRole('button', { name: 'Zu den Klängen' }).click()
+  await klaengeRow(page).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Klänge')
 })
 
@@ -328,7 +382,7 @@ test('offline, a meditation that is not saved cannot start from „Heute“', as
   await expect(fallback).toBeDisabled()
   await expect(fallback).toHaveAccessibleDescription('Nicht offline verfügbar')
   // Die Atemübung braucht kein Netz.
-  await expect(page.getByRole('button', { name: 'Jetzt durchatmen' })).toBeEnabled()
+  await expect(atemuebungRow(page)).toBeEnabled()
 
   await context.setOffline(false)
   await expect(hints).toHaveCount(0)
@@ -361,13 +415,14 @@ test('offline, a meditation that is saved starts from „Heute“', async ({ pag
 test.describe('on a small phone', () => {
   test.use({ viewport: { width: 360, height: 640 } })
 
-  test('the four cards keep their buttons at least 48 px and nothing scrolls sideways', async ({ page }) => {
+  test('the three cards keep their buttons at least 48 px and nothing scrolls sideways', async ({ page }) => {
     await open(page, dataOf(THREE_DAYS, { kind: 'guided', id: 'energie-in-der-mittagspause' }), MORNING, 'Guten Morgen')
     const targets = [
       suggestionCard(page).getByRole('button', { name: 'Jetzt starten' }),
       lastUsedCard(page).getByRole('button', { name: 'Erneut starten' }),
-      page.getByRole('button', { name: 'Jetzt durchatmen' }),
-      page.getByRole('button', { name: 'Zu den Klängen' }),
+      meditierenRow(page),
+      atemuebungRow(page),
+      klaengeRow(page),
     ]
     for (const target of targets) {
       await target.scrollIntoViewIfNeeded()
@@ -378,5 +433,16 @@ test.describe('on a small phone', () => {
       expect(box.x + box.width).toBeLessThanOrEqual(360)
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  })
+
+  test('the painting beside the suggestion neither overlaps the title nor leaves the card', async ({ page }) => {
+    await open(page, null, MORNING, 'Guten Morgen')
+    const card = (await suggestionCard(page).boundingBox())!
+    const title = (await suggestionCard(page).locator('.name').boundingBox())!
+    const image = (await suggestionCard(page).locator('img').boundingBox())!
+    expect(image.x).toBeGreaterThanOrEqual(title.x + title.width)
+    expect(image.x + image.width).toBeLessThanOrEqual(card.x + card.width)
+    expect(image.y).toBeGreaterThanOrEqual(card.y)
+    expect(image.y + image.height).toBeLessThanOrEqual(card.y + card.height)
   })
 })

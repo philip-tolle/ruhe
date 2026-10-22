@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { expectMotiv } from './motiv'
 
 // Sitzungen und Zeiten tragen ihren Offset und der Browser läuft in Berlin; so hängt kein Test
 // von der Zeitzone des Rechners ab. „Heute“ ist der 21.10.2026, 20 Uhr.
@@ -71,6 +72,18 @@ const SUMMARY = (saved: number) => new RegExp(`^${saved} von 9 Meditationen offl
 const balanceSlider = (page: Page) => page.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
 const nav = (page: Page, name: string) =>
   page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name }).click()
+
+test('the painting „ich“ sits beside the heading, centred', async ({ page }) => {
+  await open(page)
+  const image = page.locator('header img')
+  await expect(image).toHaveCount(1)
+  await expectMotiv(image, 'ich', 56)
+  const heading = (await page.getByRole('heading', { level: 1 }).boundingBox())!
+  const box = (await image.boundingBox())!
+  expect(box.x + box.width).toBeLessThanOrEqual(heading.x + 1) // links der Überschrift oder bündig …
+  // … und auf einer Höhe mit ihr.
+  expect(Math.abs(box.y + box.height / 2 - (heading.y + heading.height / 2))).toBeLessThanOrEqual(2)
+})
 
 test('key figures: streak, minutes and sessions', async ({ page }) => {
   await open(page)

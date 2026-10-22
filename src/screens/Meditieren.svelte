@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import Motiv from '../components/Motiv.svelte'
   import TimerSetup from '../components/timer/TimerSetup.svelte'
   import { byCategory, durationLabel, type Meditation } from '../lib/content/catalog'
+  import { themaMotiv } from '../lib/content/motive'
   import { absoluteAudioUrl, entryLabel, startable } from '../lib/meditation/guided-view'
   import { savedTimer, timerSummary } from '../lib/meditation/timer-view'
   import { offline, refreshSaved } from '../lib/offline/status.svelte'
@@ -37,8 +39,13 @@
   </header>
 
   <div class="card">
-    <h2>Meditations-Timer</h2>
-    <p class="hint">{summary}</p>
+    <div class="timer-head">
+      <Motiv id="timer" size={56} />
+      <div class="timer-text">
+        <h2>Meditations-Timer</h2>
+        <p class="hint">{summary}</p>
+      </div>
+    </div>
     <button type="button" class="button" onclick={() => (setupOpen = true)}>Timer einstellen</button>
   </div>
 
@@ -47,7 +54,10 @@
 
     {#each groups as group (group.category)}
       <section class="group" aria-labelledby="theme-{group.category}">
-        <h3 id="theme-{group.category}">{group.title}</h3>
+        <div class="group-head">
+          <Motiv id={themaMotiv(group.category)} size={64} />
+          <h3 id="theme-{group.category}">{group.title}</h3>
+        </div>
         <ul>
           {#each group.items as { m, url } (m.id)}
             <!-- Drei Zustände: noch ungeprüft (undefined) ist weder „✓ offline“ noch gesperrt. -->
@@ -103,6 +113,20 @@
     color: var(--text-muted);
   }
 
+  .timer-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .timer-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
   .guided {
     display: flex;
     flex-direction: column;
@@ -112,6 +136,12 @@
   .group {
     display: flex;
     flex-direction: column;
+    gap: 12px;
+  }
+
+  .group-head {
+    display: flex;
+    align-items: center;
     gap: 12px;
   }
 

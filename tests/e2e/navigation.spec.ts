@@ -17,6 +17,7 @@ test('tab bar navigates between all five screens', async ({ page }) => {
   await nav.getByRole('button', { name: 'Klänge' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Klänge')
   await nav.getByRole('button', { name: 'Heute' }).click()
-  await page.getByRole('button', { name: 'Zu den Klängen' }).click()
+  // Auf „Heute“ führt die Zeile „Klänge“ der Aktivitäten dorthin (die Reiterleiste hat denselben Namen).
+  await page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Aktivitäten' }) }).getByRole('button', { name: /^Klänge/ }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Klänge')
 })

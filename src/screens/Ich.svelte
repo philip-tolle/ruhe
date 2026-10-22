@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import BalanceSlider from '../components/BalanceSlider.svelte'
   import Calendar from '../components/Calendar.svelte'
+  import Motiv from '../components/Motiv.svelte'
   import SoundSelect from '../components/SoundSelect.svelte'
   import Switch from '../components/Switch.svelte'
   import { offline, refreshSaved } from '../lib/offline/status.svelte'
@@ -80,7 +81,8 @@
 </script>
 
 <section class="screen">
-  <header>
+  <header class="with-motiv">
+    <Motiv id="ich" size={56} />
     <h1>Ich</h1>
   </header>
 
@@ -166,6 +168,14 @@
 </section>
 
 <style>
+  /* Das Symbol steht links neben der Überschrift, in der Höhe mittig. Die Klasse sorgt dafür, dass es
+     `.screen header` (app.css) sicher übertrifft. */
+  header.with-motiv {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+
   .figures {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
