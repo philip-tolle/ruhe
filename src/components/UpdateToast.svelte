@@ -26,9 +26,9 @@
     min-height: 48px;
     max-width: min(100%, var(--column-width));
     padding: 8px 20px;
-    border: 1px solid rgb(242 201 138 / 0.28);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
     border-radius: 999px;
-    background: rgb(27 35 80 / 0.92);
+    background: color-mix(in srgb, var(--sky-mid) 92%, transparent);
     color: var(--text);
     font-size: 0.9375rem;
     font-weight: 600;
@@ -36,10 +36,17 @@
     text-align: center;
     box-shadow:
       0 10px 32px rgb(5 8 24 / 0.5),
-      0 0 28px rgb(242 201 138 / 0.1);
+      0 0 28px color-mix(in srgb, var(--accent) 10%, transparent);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     pointer-events: auto;
+  }
+
+  /* Ohne color-mix() bliebe der Hinweis sonst durchsichtig (siehe MiniPlayer): dann deckend. */
+  @supports not (color: color-mix(in srgb, red, red)) {
+    button {
+      background: var(--sky-mid);
+    }
   }
 
   /* kleiner Lichtpunkt als Zeichen für „etwas Neues“ */
@@ -50,7 +57,7 @@
     height: 8px;
     border-radius: 50%;
     background: var(--accent);
-    box-shadow: 0 0 10px rgb(242 201 138 / 0.7);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
   }
 
   @media (prefers-reduced-motion: no-preference) {

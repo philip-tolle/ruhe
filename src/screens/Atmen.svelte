@@ -58,8 +58,11 @@
 
 <style>
   .field {
-    /* Vier kurze Chips sollen auf Telefonbreite in eine Zeile passen. */
+    /* Vier kurze Chips sollen auf Telefonbreite (auch 360 px) in eine Zeile passen: gleich breit, schmaler
+       Innenabstand. Die Mindestbreite wächst mit der Schrift, bei großer Schrift brechen sie um. */
     --choice-min: 4.5rem;
+    --choice-flex: 1 1 0;
+    --choice-padding: 8px;
 
     display: flex;
     flex-direction: column;

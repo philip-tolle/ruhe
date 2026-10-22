@@ -349,15 +349,33 @@ test.describe('on a narrow screen with large system text', () => {
     expect(overflow).toEqual([])
   }
 
+  // Die Dauer-Chips: je Chip eine Textzeile (nur die Mindesthöhe von 48 px), nichts läuft heraus. Oberkanten der Chips.
+  async function chipTops(page: Page) {
+    const chips = await page
+      .getByRole('radiogroup', { name: 'Dauer' })
+      .getByRole('radio')
+      .evaluateAll((els) => els.map((el) => ({ top: el.getBoundingClientRect().top, height: el.getBoundingClientRect().height, overflow: el.scrollWidth > el.clientWidth })))
+    expect(chips).toHaveLength(4)
+    for (const chip of chips) {
+      expect(chip.height).toBeLessThanOrEqual(48.5)
+      expect(chip.overflow).toBe(false)
+    }
+    return chips.map((chip) => Math.round(chip.top))
+  }
+
   test('nothing overflows its tile or the page, at normal size and at 130 %', async ({ page }) => {
     await openAtmen(page)
     await expect(tiles(page)).toHaveCount(6)
     const normal = await tileBoxes(page)
     expect(normal[0].width).toBeCloseTo(normal[1].width, 0)
     await expectFits(page)
+    // Bei normaler Schrift stehen die vier Dauer-Chips in einer Zeile.
+    expect(new Set(await chipTops(page)).size).toBe(1)
 
     await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
     await expectFits(page)
+    // Bei 130 % dürfen sie umbrechen, aber kein Chip bricht in sich um oder läuft über.
+    await chipTops(page)
     // Die Kacheln sind weiter zwei je Zeile, gleich breit, je Zeile gleich hoch und innerhalb des Bildschirms.
     const large = await tileBoxes(page)
     for (const [i, box] of large.entries()) {

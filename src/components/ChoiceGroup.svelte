@@ -60,23 +60,32 @@
 
 <style>
   /* Chips füllen ihre Zeile; was nicht mehr passt, rutscht in die nächste. Wer eine kurze Reihe
-     in eine Zeile bringen will, senkt die Mindestbreite mit `--choice-min`. */
+     in eine Zeile bringen will, senkt die Mindestbreite mit `--choice-min`; mit `--choice-flex: 1 1 0`
+     werden die Chips einer Zeile gleich breit, `--choice-padding` setzt den Innenabstand links und rechts. */
   .choices {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
   }
 
+  /* Deckende Fläche, leicht im Akzent getönt: Sonne oder Mond scheinen beim Scrollen nicht durch. */
   button {
-    flex: 1 1 auto;
+    flex: var(--choice-flex, 1 1 auto);
     min-width: var(--choice-min, 5.5rem);
     min-height: 48px;
-    padding: 0 16px;
+    padding: 0 var(--choice-padding, 16px);
     border: 1px solid var(--surface-border);
     border-radius: 999px;
-    background: var(--surface);
+    background: color-mix(in srgb, var(--accent) 8%, var(--sky-mid));
     color: var(--text);
     font-weight: 600;
+  }
+
+  /* Ohne color-mix() bliebe der Chip durchsichtig: dann der Himmel der Stimmung, deckend. */
+  @supports not (color: color-mix(in srgb, red, red)) {
+    button {
+      background: var(--sky-mid);
+    }
   }
 
   button[aria-checked='true'] {
@@ -84,7 +93,7 @@
     background: var(--accent);
     color: var(--on-accent);
     font-weight: 700;
-    box-shadow: 0 0 24px rgb(242 201 138 / 0.22);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
   }
 
   @media (prefers-reduced-motion: no-preference) {

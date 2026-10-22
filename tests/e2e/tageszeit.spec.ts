@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
+import { contrast, parseColor, type Rgba } from './color'
 
 // Der Browser läuft in Berlin, die Uhr ist vorgegeben; so hängt kein Test von der Zeitzone des Rechners ab.
 test.use({ timezoneId: 'Europe/Berlin' })
@@ -98,4 +99,99 @@ test.describe('mood', () => {
     await expect(html(page)).toHaveAttribute('data-tageszeit', 'abend', { timeout: 1000 })
     await expect(greeting(page)).toHaveText('Guten Abend', { timeout: 1000 })
   })
+})
+
+// Die berechnete Farbe eines Ausdrucks (`var(--accent)` usw.), gelesen über ein Hilfselement.
+const resolveColor = (page: Page, expression: string) =>
+  page.evaluate((value) => {
+    const probe = document.createElement('div')
+    probe.style.backgroundColor = value
+    document.body.appendChild(probe)
+    const color = getComputedStyle(probe).backgroundColor
+    probe.remove()
+    return color
+  }, expression)
+
+const nav = (page: Page) => page.getByRole('navigation', { name: 'Hauptnavigation' })
+
+// Sonne und Mond stehen oben rechts im festen Himmel, genau in der Spalte der Abspielknöpfe; beim Scrollen wandern
+// Knöpfe und Chips über sie. Deckende Flächen lassen nichts durchscheinen, egal was dahinter steht.
+test.describe('controls stay solid in front of the sun or the moon', () => {
+  for (const [time, mood] of [
+    ['08:00:00', 'morgen'],
+    ['14:00:00', 'tag'],
+    ['20:00:00', 'abend'],
+  ] as const) {
+    test(`the play disc is opaque and its icon in the accent has 3:1 against it: ${time} → ${mood}`, async ({ page }) => {
+      await page.clock.setFixedTime(at(time))
+      await page.goto('./')
+      await expect(html(page)).toHaveAttribute('data-tageszeit', mood)
+      await nav(page).getByRole('button', { name: 'Meditieren' }).click()
+      const discs = page.locator('.entry:not(:disabled) .play')
+      await expect(discs.first()).toBeVisible()
+      const accent = parseColor(await resolveColor(page, 'var(--accent)'))
+      const found = await discs.evaluateAll((els) =>
+        els.map((el) => ({ background: getComputedStyle(el).backgroundColor, icon: getComputedStyle(el.querySelector('path')!).fill })),
+      )
+      expect(found.length).toBeGreaterThan(0)
+      for (const disc of found) {
+        const background = parseColor(disc.background)
+        expect(background[3], disc.background).toBe(1)
+        expect(parseColor(disc.icon)).toEqual(accent)
+        // Bedienelement, kein Text: 3:1 (WCAG 1.4.11).
+        expect(contrast(parseColor(disc.icon), background)).toBeGreaterThanOrEqual(3)
+      }
+    })
+
+    test(`the unselected duration chips are opaque and their text has 4.5:1: ${time} → ${mood}`, async ({ page }) => {
+      await page.clock.setFixedTime(at(time))
+      await page.goto('./')
+      await expect(html(page)).toHaveAttribute('data-tageszeit', mood)
+      await nav(page).getByRole('button', { name: 'Atmen' }).click()
+      const chips = page.getByRole('radiogroup', { name: 'Dauer' }).getByRole('radio', { checked: false })
+      await expect(chips).toHaveCount(3)
+      const found = await chips.evaluateAll((els) => els.map((el) => ({ background: getComputedStyle(el).backgroundColor, text: getComputedStyle(el).color })))
+      for (const chip of found) {
+        const background = parseColor(chip.background)
+        expect(background[3], chip.background).toBe(1)
+        expect(contrast(parseColor(chip.text), background)).toBeGreaterThanOrEqual(4.5)
+      }
+    })
+  }
+})
+
+// Farbkanäle ohne Deckkraft, gerundet (color(srgb …) liefert Brüche).
+const rgbOf = ([r, g, b]: Rgba) => [r, g, b].map(Math.round)
+// Alle Farben in einem berechneten Wert wie `box-shadow`.
+const colorsIn = (value: string) => [...value.matchAll(/(?:rgba?|color)\([^)]*\)/g)].map((m) => parseColor(m[0]))
+const OLD_GOLD = '242, 201, 138'
+
+test('by day the Klänge bar and the active tab take the mint accent, not the evening gold', async ({ page }) => {
+  await page.clock.setFixedTime(at('14:00:00'))
+  await page.goto('./')
+  await expect(html(page)).toHaveAttribute('data-tageszeit', 'tag')
+  await nav(page).getByRole('button', { name: 'Klänge' }).click()
+  await page.getByRole('button', { name: 'Regen', exact: true }).click()
+  const bar = page.locator('.dock .bar')
+  await expect(bar).toBeVisible()
+
+  const accent = rgbOf(parseColor(await resolveColor(page, 'var(--accent)')))
+  // Am Tag ist der Akzent Mint, nicht Gold: Sonst prüfte der Test nichts.
+  expect(accent.join(', ')).not.toBe(OLD_GOLD)
+  const styleOf = (selector: string) =>
+    page.locator(selector).evaluate((el) => {
+      const s = getComputedStyle(el)
+      return { border: s.borderTopColor, background: s.backgroundColor, shadow: s.boxShadow }
+    })
+  const dock = await styleOf('.dock .bar')
+  const tab = await styleOf('nav [aria-current="page"] .icon')
+
+  for (const value of [dock.border, dock.shadow, tab.background, tab.shadow]) expect(value).not.toContain(OLD_GOLD)
+  // Rand und Schein der Leiste, Fläche und Schein des aktiven Reiters: der Akzent der Stimmung, zart deckend.
+  expect(rgbOf(parseColor(dock.border))).toEqual(accent)
+  expect(colorsIn(dock.shadow).map(rgbOf)).toContainEqual(accent)
+  expect(rgbOf(parseColor(tab.background))).toEqual(accent)
+  expect(colorsIn(tab.shadow).map(rgbOf)).toEqual([accent])
+  // Die Fläche der Leiste wie beim Mini-Player: der Himmel der Stimmung, fast deckend.
+  expect(dock.background).toBe(await resolveColor(page, 'color-mix(in srgb, var(--sky-mid) 92%, transparent)'))
 })

@@ -159,17 +159,17 @@
     box-shadow: inset 0 0 0 1.5px var(--text-muted);
   }
 
-  /* Meditierte Tage leuchten in Gold; der heutige Tag behält zusätzlich seinen Ring. */
+  /* Meditierte Tage leuchten im Akzent der Stimmung; der heutige Tag behält zusätzlich seinen Ring. */
   .marked .day {
     background: var(--accent);
     color: var(--on-accent);
     font-weight: 700;
-    box-shadow: 0 0 18px rgb(242 201 138 / 0.28);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 28%, transparent);
   }
 
   .marked.today .day {
     box-shadow:
       inset 0 0 0 2px var(--on-accent),
-      0 0 18px rgb(242 201 138 / 0.28);
+      0 0 18px color-mix(in srgb, var(--accent) 28%, transparent);
   }
 </style>

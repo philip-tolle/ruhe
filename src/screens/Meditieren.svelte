@@ -209,6 +209,8 @@
     line-height: 1.6;
   }
 
+  /* Deckende Scheibe im Akzent der Stimmung: Sonne und Mond stehen oben rechts genau in dieser Spalte und
+     scheinen beim Scrollen nicht durch. */
   .play {
     display: grid;
     flex: none;
@@ -216,8 +218,15 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: rgb(242 201 138 / 0.14);
+    background: color-mix(in srgb, var(--accent) 14%, var(--sky-mid));
     color: var(--accent);
+  }
+
+  /* Ohne color-mix() bliebe die Scheibe durchsichtig: dann der Himmel der Stimmung, deckend. */
+  @supports not (color: color-mix(in srgb, red, red)) {
+    .play {
+      background: var(--sky-mid);
+    }
   }
 
   /* Ausgegraut: Titel und Angaben treten zurück, der Hinweis bleibt gut lesbar. */

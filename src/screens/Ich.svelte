@@ -277,6 +277,6 @@
     padding: 16px 20px;
     border: 1px solid var(--accent);
     border-radius: 20px;
-    background: rgb(242 201 138 / 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
 </style>

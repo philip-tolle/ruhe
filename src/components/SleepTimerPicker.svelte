@@ -73,7 +73,7 @@
     background: var(--accent);
     color: var(--on-accent);
     font-weight: 700;
-    box-shadow: 0 0 24px rgb(242 201 138 / 0.22);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
   }
 
   @media (prefers-reduced-motion: no-preference) {

@@ -104,9 +104,10 @@
     color: var(--accent);
   }
 
+  /* Der aktive Reiter leuchtet im Akzent der Stimmung (Spec M4 §4). */
   button.active .icon {
-    background: rgb(242 201 138 / 0.14);
-    box-shadow: 0 0 22px rgb(242 201 138 / 0.18);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 18%, transparent);
   }
 
   @media (prefers-reduced-motion: no-preference) {
