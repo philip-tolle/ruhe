@@ -1,6 +1,6 @@
 // Atemmuster und Ablauf: reine Berechnung, ohne Audio-Zugriff.
 // Zeiten sind Sekunden ab Übungsbeginn; die Audio-Engine plant damit auf der AudioContext-Uhr,
-// die Anzeige liest mit breathAt() Phase, Countdown und Kreisgröße.
+// die Anzeige liest mit breathAt() Phase, Countdown und Atemstand.
 
 export type BreathPatternId = '478' | 'box' | 'kohaerent' | 'langes-ausatmen' | 'seufzer' | 'wechselatmung'
 export type PhaseKind = 'ein' | 'halten' | 'aus'
@@ -10,7 +10,7 @@ export interface BreathPhase {
   seconds: number
   /** Ersetzt `PHASE_LABEL[kind]` in der Anzeige. */
   label?: string
-  /** Kreisgröße am Phasenende (0 klein … 1 groß). Standard: ein → 1, aus → 0, halten → unverändert. */
+  /** Atemstand am Phasenende (0 = Blüte klein … 1 = groß). Standard: ein → 1, aus → 0, halten → unverändert. */
   level?: number
 }
 
@@ -20,7 +20,7 @@ export interface BreathPattern {
   description: string
   /** Wirkung in einem Wort bis zwei Wörtern, für die Kachel (Spec §4.3). */
   effect: string
-  /** Ein Zyklus: beginnt und endet bei Kreisgröße 0. */
+  /** Ein Zyklus: beginnt und endet bei Atemstand 0. */
   phases: readonly BreathPhase[]
 }
 
@@ -94,7 +94,7 @@ function cycleSeconds(pattern: BreathPattern): number {
   return pattern.phases.reduce((sum, p) => sum + p.seconds, 0)
 }
 
-/** Kreisgröße am Ende der Phase; `from` ist der Stand zu Beginn der Phase. */
+/** Atemstand am Ende der Phase; `from` ist der Stand zu Beginn der Phase. */
 function levelAfter(phase: BreathPhase, from: number): number {
   if (phase.level !== undefined) return phase.level
   if (phase.kind === 'ein') return 1
@@ -131,11 +131,11 @@ export function breathPlan(id: BreathPatternId, minutes: number): BreathPlan {
 export interface BreathMoment {
   kind: PhaseKind
   label: string
-  /** Kreisgröße von 0 (klein) bis 1 (groß), linear über die Phase. */
+  /** Atemstand von 0 (Blüte klein) bis 1 (Blüte groß), linear über die Phase. */
   level: number
-  /** Kreisgröße am Beginn der Phase. */
+  /** Atemstand am Beginn der Phase. */
   startLevel: number
-  /** Kreisgröße am Ende der Phase. */
+  /** Atemstand am Ende der Phase. */
   endLevel: number
   phaseElapsed: number
   phaseLength: number

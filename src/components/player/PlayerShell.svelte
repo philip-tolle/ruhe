@@ -130,7 +130,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 24px;
+    --shell-gap: 24px; /* Abstand der Spalte; der Untertitel rückt davon abhängig an den Titel heran */
+    gap: var(--shell-gap);
     padding: calc(env(safe-area-inset-top, 0px) + 48px) var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 40px);
     background:
       radial-gradient(80% 45% at 50% 42%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
@@ -154,10 +155,10 @@
     text-align: center;
   }
 
-  /* Rückt an den Titel heran (statt des vollen Abstands der Spalte). */
+  /* Rückt an den Titel heran: Der Abstand der Spalte (--shell-gap) schrumpft hier auf 8px. */
   .subtitle {
     max-width: 32ch;
-    margin-top: -16px;
+    margin-top: calc(8px - var(--shell-gap));
     padding: 0 8px;
     color: var(--text-muted);
     font-size: 0.95rem;

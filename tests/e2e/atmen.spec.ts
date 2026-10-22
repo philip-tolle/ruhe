@@ -623,7 +623,7 @@ test('paused flower stands still and is in time after resume', async ({ page }) 
   // Mit dem Ausatmen (8 s, sanft beginnend) schließt sie sich: Nach 1,5 s ist sie kleiner als nach 1 s Ausatmen.
   const afterOneSecond = circleScale(easedLevel(breathAt('478', 4 + 7 + 1, 76)))
   await expect(page.getByText('Ausatmen', { exact: true })).toBeVisible({ timeout: 8000 })
-  await expect.poll(() => flowerScale(page), { timeout: 1500 }).toBeLessThan(afterOneSecond)
+  await expect.poll(() => flowerScale(page), { timeout: 1500, intervals: [100] }).toBeLessThan(afterOneSecond)
 })
 
 test('the player shows the description of the exercise under the title', async ({ page }) => {
