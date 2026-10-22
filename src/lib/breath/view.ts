@@ -1,6 +1,6 @@
 // Atemübung in der Oberfläche: Kreisgröße, Phasenring, Farbe, Leuchten, Vibration und Phasenwechsel
 // aus dem Stand der Anzeige. Reine Funktionen, ohne Audio- und Speicherzugriff.
-import type { BreathMoment, PhaseKind } from './patterns'
+import type { BreathMoment, BreathPattern, PhaseKind } from './patterns'
 
 const SMALLEST = 0.45 // Skalierung des Kreises bei Atemstand 0 (ausgeatmet)
 const RANGE = 0.55 // bis zur vollen Größe bei Atemstand 1
@@ -23,25 +23,13 @@ export function easedLevel(m: BreathMoment): number {
   return m.startLevel + (m.endLevel - m.startLevel) * (1 - Math.cos(Math.PI * phaseProgress(m))) / 2
 }
 
-const PULSE_SECONDS = 3.5 // ungefähre Länge einer Welle des Leuchtens beim Halten
-
-/**
- * Sanftes Pulsieren des Leuchtens beim Halten, 0 … 1; in den anderen Phasen 0. Ganze Wellen von
- * etwa 3,5 s, damit es am Beginn und am Ende des Haltens ruht und ohne Sprung in die nächste Phase geht.
- */
-export function holdPulse(m: BreathMoment): number {
-  if (m.kind !== 'halten') return 0
-  const waves = Math.max(1, Math.round(m.phaseLength / PULSE_SECONDS))
-  return (1 - Math.cos(2 * Math.PI * waves * phaseProgress(m))) / 2
-}
-
 const PHASE_COLOR: Record<PhaseKind, string> = {
-  ein: '#F2C98A', // warmes Gold
-  halten: '#C9B8F0', // helles, ruhiges Lila
-  aus: '#8FB8E8', // kühles Blau
+  ein: '#B7A8F0', // Lavendel
+  halten: '#F2C98A', // warmes Gold
+  aus: '#8FD0D6', // Türkis
 }
 
-/** Farbe von Kreis, Leuchten und Phasenring. */
+/** Farbe von Blüte, Leuchten und Phasenring. */
 export function phaseColor(kind: PhaseKind): string {
   return PHASE_COLOR[kind]
 }
@@ -65,4 +53,31 @@ export function vibrationPattern(kind: PhaseKind): number[] {
 export function phaseChanged(previous: BreathMoment | null, next: BreathMoment): boolean {
   if (!previous) return false
   return previous.kind !== next.kind || previous.label !== next.label || next.phaseElapsed < previous.phaseElapsed
+}
+
+/** Sekunden als Zahl mit deutschem Dezimalkomma, ohne überflüssige Nullen: 5,5 → „5,5“, 4 → „4“. */
+function secondsText(seconds: number): string {
+  return String(seconds).replace('.', ',')
+}
+
+/**
+ * Rhythmus für die Kachel: die Sekunden jeder Phase hintereinander. Aufeinanderfolgende Phasen
+ * gleicher Art (Einatmen und Nachatmen) stehen mit „+“, alle anderen mit „-“: 4-7-8, 5,5-5,5, 3+1-6.
+ */
+export function rhythmLabel(pattern: BreathPattern): string {
+  return pattern.phases
+    .map((phase, i) => {
+      const previous = pattern.phases[i - 1]
+      const separator = i === 0 ? '' : previous.kind === phase.kind ? '+' : '-'
+      return separator + secondsText(phase.seconds)
+    })
+    .join('')
+}
+
+const PETAL_REST = 0.04 // Blattversatz bei Atemstand 0: knapp nach innen
+const PETAL_SPREAD = 0.17 // Weg nach außen bis zum Atemstand 1
+
+/** Versatz der Blütenblätter als Anteil der Blattlänge: positiv nach innen, negativ nach außen. */
+export function petalOffset(level: number): number {
+  return PETAL_REST - PETAL_SPREAD * level
 }

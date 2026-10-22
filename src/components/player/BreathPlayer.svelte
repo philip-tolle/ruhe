@@ -6,7 +6,6 @@
   import {
     circleScale,
     easedLevel,
-    holdPulse,
     phaseChanged,
     phaseColor,
     phaseProgress,
@@ -27,7 +26,6 @@
   const clock = programClock(() => running)
   const moment = $derived(run ? breathAt(run.ref as BreathPatternId, clock.elapsed, run.length) : null)
   const scale = $derived(moment ? circleScale(easedLevel(moment)) : 1)
-  const pulse = $derived(moment ? holdPulse(moment) : 0)
   const progress = $derived(moment ? phaseProgress(moment) : 0)
   const color = $derived(phaseColor(moment?.kind ?? 'ein'))
 
@@ -84,7 +82,7 @@
             />
           {/if}
         </svg>
-        <div class="circle" data-testid="breath-circle" aria-hidden="true" style:--scale={scale} style:--pulse={pulse}></div>
+        <div class="circle" data-testid="breath-circle" aria-hidden="true" style:--scale={scale}></div>
       </div>
 
       <div class="readout">
@@ -227,7 +225,7 @@
     line-height: 1.1;
   }
 
-  /* Mit Bewegung: Der Kreis atmet, die Farbe geht weich über, beim Halten pulsiert der Schein sanft. */
+  /* Mit Bewegung: Der Kreis atmet, die Farbe geht weich über. */
   @media (prefers-reduced-motion: no-preference) {
     .breath {
       transition: --phase-color 0.6s ease-in-out;
@@ -236,11 +234,6 @@
     .circle {
       transform: scale(var(--scale));
       will-change: transform;
-    }
-
-    /* Beim Halten wird der Schein in ruhigen Wellen etwas weiter. */
-    .circle::before {
-      transform: scale(calc(1 + 0.1 * var(--pulse)));
     }
   }
 </style>

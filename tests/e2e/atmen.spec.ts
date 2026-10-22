@@ -52,9 +52,9 @@ async function circleScale(page: Page) {
 }
 
 // Phasenfarbe des Kreises (eingetragene Farbe, also als rgb() berechnet).
-const GOLD = 'rgb(242, 201, 138)' // Einatmen
-const LILAC = 'rgb(201, 184, 240)' // Halten
-const BLUE = 'rgb(143, 184, 232)' // Ausatmen
+const LAVENDER = 'rgb(183, 168, 240)' // Einatmen, #B7A8F0
+const GOLD = 'rgb(242, 201, 138)' // Halten, #F2C98A
+const TEAL = 'rgb(143, 208, 214)' // Ausatmen, #8FD0D6
 const phaseColor = (page: Page) =>
   page.getByTestId('breath-circle').evaluate((el) => getComputedStyle(el).getPropertyValue('--phase-color').trim())
 
@@ -236,12 +236,12 @@ test('the circle grows while breathing in, rests on hold and shrinks while breat
   expect(early).toBeGreaterThanOrEqual(0.44)
   expect(early).toBeLessThan(0.75)
   await expect.poll(() => circleScale(page)).toBeGreaterThan(early + 0.1)
-  await expect.poll(() => phaseColor(page)).toBe(GOLD)
+  await expect.poll(() => phaseColor(page)).toBe(LAVENDER)
   await expect.poll(() => ringProgress(page)).toBeGreaterThan(0.25)
 
   await expect(hold).toBeVisible({ timeout: 6000 })
   await expect.poll(() => circleScale(page)).toBeGreaterThan(0.97)
-  await expect.poll(() => phaseColor(page)).toBe(LILAC)
+  await expect.poll(() => phaseColor(page)).toBe(GOLD)
   await page.waitForTimeout(1000)
   expect(await circleScale(page)).toBeCloseTo(1, 2)
 
@@ -249,7 +249,7 @@ test('the circle grows while breathing in, rests on hold and shrinks while breat
   const start = await circleScale(page)
   expect(start).toBeGreaterThan(0.85)
   await expect.poll(() => circleScale(page)).toBeLessThan(start - 0.1)
-  await expect.poll(() => phaseColor(page)).toBe(BLUE)
+  await expect.poll(() => phaseColor(page)).toBe(TEAL)
 })
 
 test('under reduced motion the circle stays static while colour, ring, text and countdown still change', async ({ page }) => {
@@ -258,14 +258,14 @@ test('under reduced motion the circle stays static while colour, ring, text and 
   await page.getByRole('button', { name: '4-7-8 starten' }).click()
   await expect(page.getByText('Einatmen', { exact: true })).toBeVisible()
   const still = await circleTransform(page)
-  expect(await phaseColor(page)).toBe(GOLD)
+  expect(await phaseColor(page)).toBe(LAVENDER)
   const ring = await ringProgress(page)
   await page.waitForTimeout(1500)
   expect(await circleTransform(page)).toBe(still)
   expect(await ringProgress(page)).toBeGreaterThan(ring + 0.2)
   await expect(page.getByText('Halten', { exact: true })).toBeVisible({ timeout: 6000 })
   // Ohne Übergang: Die Farbe wechselt mit dem Text, der Ring beginnt von vorn.
-  expect(await phaseColor(page)).toBe(LILAC)
+  expect(await phaseColor(page)).toBe(GOLD)
   expect(await ringProgress(page)).toBeLessThan(0.5)
   expect(await circleTransform(page)).toBe(still)
   await expect(page.getByRole('timer')).toHaveText(/^[5-7]$/)

@@ -44,6 +44,17 @@ test('pattern list: texts, order of ids, lookup and minutes', () => {
   expect(BREATH_MINUTES).toEqual([1, 3, 5, 10])
 })
 
+test('every pattern has its effect', () => {
+  expect(BREATH_PATTERNS.map(p => [p.id, p.effect])).toEqual([
+    ['478', 'Einschlafen'],
+    ['box', 'Konzentration'],
+    ['kohaerent', 'Balance'],
+    ['langes-ausatmen', 'Entspannung'],
+    ['seufzer', 'Schnell beruhigen'],
+    ['wechselatmung', 'Ausgleich'],
+  ])
+})
+
 test('plan cues: one per phase start, also for fractional phases', () => {
   const p = breathPlan('kohaerent', 1)
   expect([p.cycle, p.cycles, p.length]).toEqual([11, 6, 66])

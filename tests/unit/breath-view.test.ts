@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
-import { BREATH_PATTERNS, breathAt, breathPlan, type BreathMoment } from '../../src/lib/breath/patterns'
-import { circleScale, easedLevel, holdPulse, phaseChanged, phaseColor, phaseProgress, vibrationPattern } from '../../src/lib/breath/view'
+import { BREATH_PATTERNS, breathAt, breathPlan, patternById, type BreathMoment } from '../../src/lib/breath/patterns'
+import { circleScale, easedLevel, petalOffset, phaseChanged, phaseColor, phaseProgress, rhythmLabel, vibrationPattern } from '../../src/lib/breath/view'
 
 const moment = (over: Partial<BreathMoment> = {}): BreathMoment => ({
   kind: 'ein',
@@ -74,26 +74,28 @@ test('the phase ring fills with the phase and starts over with the next one', ()
   expect(phaseProgress(moment({ phaseElapsed: -1 }))).toBe(0)
 })
 
-test('the glow pulses gently only while holding, resting at both ends of the hold', () => {
-  for (const kind of ['ein', 'aus'] as const) {
-    for (const t of [0, 1.5, 2, 3.9]) expect(holdPulse(moment({ kind, phaseElapsed: t }))).toBe(0)
-  }
-  const hold = (phaseElapsed: number, phaseLength: number) =>
-    holdPulse(moment({ kind: 'halten', label: 'Halten', startLevel: 1, endLevel: 1, phaseElapsed, phaseLength }))
-  // 4-7-8: sieben Sekunden halten, zwei ruhige Wellen; Box-Atmung: vier Sekunden, eine Welle.
-  expect([0, 1.75, 3.5, 5.25, 7].map(t => hold(t, 7))).toEqual([0, 1, 0, 1, 0].map(v => expect.closeTo(v, 9)))
-  expect([0, 2, 4].map(t => hold(t, 4))).toEqual([0, 1, 0].map(v => expect.closeTo(v, 9)))
-  for (let t = 0; t <= 7; t += 0.1) {
-    expect(hold(t, 7)).toBeGreaterThanOrEqual(0)
-    expect(hold(t, 7)).toBeLessThanOrEqual(1)
-  }
-  expect(hold(0.5, 1)).toBeCloseTo(1) // ein sehr kurzes Halten hat trotzdem eine Welle
+test('each phase has its own colour: lavender, gold, teal', () => {
+  expect(phaseColor('ein')).toBe('#B7A8F0')
+  expect(phaseColor('halten')).toBe('#F2C98A')
+  expect(phaseColor('aus')).toBe('#8FD0D6')
 })
 
-test('each phase has its own colour: warm gold, calm lilac, cool blue', () => {
-  expect(phaseColor('ein')).toBe('#F2C98A')
-  expect(phaseColor('halten')).toBe('#C9B8F0')
-  expect(phaseColor('aus')).toBe('#8FB8E8')
+test('rhythm labels join equal phases in a row with + and the others with -, with a decimal comma', () => {
+  const label = (id: Parameters<typeof patternById>[0]) => rhythmLabel(patternById(id))
+  expect(label('478')).toBe('4-7-8')
+  expect(label('box')).toBe('4-4-4-4')
+  expect(label('kohaerent')).toBe('5,5-5,5')
+  expect(label('langes-ausatmen')).toBe('4-6')
+  expect(label('seufzer')).toBe('3+1-6')
+  expect(label('wechselatmung')).toBe('4-4-4-4')
+})
+
+test('the petals sit 0.04 inside at rest and 0.13 outside when fully open', () => {
+  expect(petalOffset(0)).toBeCloseTo(0.04, 9)
+  expect(petalOffset(1)).toBeCloseTo(-0.13, 9)
+  expect(petalOffset(0.5)).toBeCloseTo(-0.045, 9)
+  // 0.04 − 0.17 · level: Je weiter geöffnet, desto weiter nach außen (negativ).
+  expect(petalOffset(0.25)).toBeCloseTo(0.04 - 0.17 * 0.25, 9)
 })
 
 test('each phase has its own vibration: one pulse, a short tap, two pulses', () => {

@@ -18,6 +18,8 @@ export interface BreathPattern {
   id: BreathPatternId
   title: string
   description: string
+  /** Wirkung in einem Wort bis zwei Wörtern, für die Kachel (Spec §4.3). */
+  effect: string
   /** Ein Zyklus: beginnt und endet bei Kreisgröße 0. */
   phases: readonly BreathPhase[]
 }
@@ -27,30 +29,35 @@ export const BREATH_PATTERNS: readonly BreathPattern[] = [
     id: '478',
     title: '4-7-8',
     description: 'Einatmen 4 s · Halten 7 s · Ausatmen 8 s',
+    effect: 'Einschlafen',
     phases: [{ kind: 'ein', seconds: 4 }, { kind: 'halten', seconds: 7 }, { kind: 'aus', seconds: 8 }],
   },
   {
     id: 'box',
     title: 'Box-Atmung',
     description: 'Einatmen 4 s · Halten 4 s · Ausatmen 4 s · Halten 4 s',
+    effect: 'Konzentration',
     phases: [{ kind: 'ein', seconds: 4 }, { kind: 'halten', seconds: 4 }, { kind: 'aus', seconds: 4 }, { kind: 'halten', seconds: 4 }],
   },
   {
     id: 'kohaerent',
     title: 'Kohärentes Atmen',
     description: 'Einatmen 5,5 s · Ausatmen 5,5 s',
+    effect: 'Balance',
     phases: [{ kind: 'ein', seconds: 5.5 }, { kind: 'aus', seconds: 5.5 }],
   },
   {
     id: 'langes-ausatmen',
     title: 'Langes Ausatmen',
     description: 'Einatmen 4 s · Ausatmen 6 s',
+    effect: 'Entspannung',
     phases: [{ kind: 'ein', seconds: 4 }, { kind: 'aus', seconds: 6 }],
   },
   {
     id: 'seufzer',
     title: 'Physiologischer Seufzer',
     description: 'Einatmen 3 s · kurz Nachatmen 1 s · langsam Ausatmen 6 s',
+    effect: 'Schnell beruhigen',
     phases: [
       { kind: 'ein', seconds: 3, level: 0.8 },
       { kind: 'ein', seconds: 1, label: 'Nachatmen', level: 1 },
@@ -61,6 +68,7 @@ export const BREATH_PATTERNS: readonly BreathPattern[] = [
     id: 'wechselatmung',
     title: 'Wechselatmung',
     description: 'Je 4 s: links ein · rechts aus · rechts ein · links aus. Das andere Nasenloch hältst du mit dem Finger zu.',
+    effect: 'Ausgleich',
     phases: [
       { kind: 'ein', seconds: 4, label: 'Links einatmen' },
       { kind: 'aus', seconds: 4, label: 'Rechts ausatmen' },
