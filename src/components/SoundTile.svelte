@@ -1,11 +1,25 @@
 <script lang="ts">
+  // Eine Kachel unter „Klänge“: ein Naturklang oder ein Musikstück. Ein Musikstück wird gestreamt; ohne
+  // Netz ist es nur spielbar, wenn es offline gespeichert ist (wie eine Meditation), sonst gesperrt mit
+  // Hinweis. Gespeichert trägt es das Zeichen „offline gespeichert“, und beim ersten Abspielen wird es
+  // im Hintergrund gespeichert.
   import { engine } from '../lib/audio/engine'
   import { audio } from '../lib/audio/engine-store.svelte'
-  import { soundMotiv } from '../lib/content/motive'
-  import { soundTileTitle, type SoundDef } from '../lib/sounds/catalog'
+  import { backgroundMotiv } from '../lib/content/motive'
+  import { startable } from '../lib/meditation/guided-view'
+  import { offline } from '../lib/offline/status.svelte'
+  import { soundTileTitle, type Background } from '../lib/sounds/catalog'
+  import { absoluteMusicUrl, saveBackgroundForOffline } from '../lib/ui/offline-ui.svelte'
   import Motiv from './Motiv.svelte'
+  import OfflineMark from './OfflineMark.svelte'
 
-  let { sound }: { sound: SoundDef } = $props()
+  let { sound }: { sound: Background } = $props()
+
+  // Nur Musik hat einen Offline-Stand; Naturklänge liegen im Precache.
+  const url = $derived(sound.kind === 'music' ? absoluteMusicUrl(sound, location.href) : null)
+  const saved = $derived(url === null ? undefined : offline.saved[url])
+  const unavailable = $derived(url !== null && !startable(saved, offline.online))
+  const hintId = $derived(`offline-${sound.id}`)
 
   const volume = $derived(audio.snap.volumes[sound.id])
   const active = $derived(volume !== undefined)
@@ -19,6 +33,7 @@
   function toggle() {
     // Die Engine hält ihren Zustand selbst konsistent; ein Fehler von play() soll nicht in die Konsole.
     engine.toggle(sound.id).catch(() => {})
+    if (!pressed) saveBackgroundForOffline(sound.id)
   }
 
   function setVolume(event: Event & { currentTarget: HTMLInputElement }) {
@@ -32,12 +47,21 @@
     aria-label={sound.title}
     aria-pressed={pressed}
     aria-busy={loading ? 'true' : undefined}
-    aria-describedby={failed ? errorId : undefined}
+    aria-describedby={unavailable ? hintId : failed ? errorId : undefined}
+    disabled={unavailable}
     class:roomy={active || failed}
     onclick={toggle}
   >
-    <span class="motif"><Motiv id={soundMotiv(sound.id)} size={128} /></span>
-    <span class="label"><span class="title">{soundTileTitle(sound.title)}</span></span>
+    <span class="motif"><Motiv id={backgroundMotiv(sound.id)} size={128} /></span>
+    <span class="label">
+      <span class="title">{soundTileTitle(sound.title)}</span>
+      {#if saved === true}
+        <span class="saved"><OfflineMark /></span>
+      {/if}
+      {#if unavailable}
+        <span class="unavailable" id={hintId}>Nicht offline verfügbar</span>
+      {/if}
+    </span>
   </button>
 
   {#if failed}
@@ -136,6 +160,32 @@
     line-height: 1.25;
     overflow-wrap: anywhere;
     hyphens: manual;
+  }
+
+  /* Das Häkchen „offline gespeichert“ leise unter dem Titel, in der gedämpften Textfarbe. */
+  .saved {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-muted);
+  }
+
+  /* Gesperrt (ohne Netz, nicht gespeichert): Motiv und Titel treten zurück, der Hinweis bleibt gut lesbar. */
+  button:disabled {
+    cursor: default;
+  }
+
+  button:disabled .motif,
+  button:disabled .title {
+    opacity: 0.55;
+  }
+
+  .unavailable {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
   }
 
   .error {

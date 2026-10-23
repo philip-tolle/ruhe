@@ -95,6 +95,10 @@ const TITLE_BREAKS: Record<string, string> = {
   Meeresrauschen: 'Meeres\u00ADrauschen',
   Klangschalen: 'Klang\u00ADschalen',
   Kaminfeuer: 'Kamin\u00ADfeuer',
+  Schwebende: 'Schwe\u00ADbende',
+  Bambusflöte: 'Bambus\u00ADflöte',
+  Sternenlicht: 'Sternen\u00ADlicht',
+  Oberfläche: 'Ober\u00ADfläche',
 }
 
 /** Titel für die Kachel mit weichen Trennstellen in den langen Zusammensetzungen. Nur zur Anzeige: Der Name des Knopfes bleibt der Titel selbst. */

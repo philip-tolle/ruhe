@@ -1,10 +1,10 @@
 import { test, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import motive from '../../content/motive.json'
-import { MOTIV_IDS, motivUrl, soundMotiv, breathMotiv, themaMotiv, vorschlagMotiv } from '../../src/lib/content/motive'
+import { MOTIV_IDS, motivUrl, soundMotiv, musicMotiv, backgroundMotiv, breathMotiv, themaMotiv, vorschlagMotiv } from '../../src/lib/content/motive'
 import type { Category } from '../../src/lib/content/catalog'
 import { CATEGORY_TITLE } from '../../src/lib/content/catalog'
-import { SOUNDS, assetUrl } from '../../src/lib/sounds/catalog'
+import { MUSIC, SOUNDS, assetUrl } from '../../src/lib/sounds/catalog'
 import { BREATH_PATTERNS } from '../../src/lib/breath/patterns'
 import { GREETING } from '../../src/lib/time/tageszeit'
 import type { Tageszeit } from '../../src/lib/time/tageszeit'
@@ -14,9 +14,9 @@ const DIR = 'public/images/motive'
 const file = (id: string) => `${DIR}/${id}.webp`
 const sizeOf = (id: string) => readFileSync(file(id)).length
 
-test('MOTIV_IDS lists exactly the 28 motifs of content/motive.json', () => {
-  expect(MOTIV_IDS).toHaveLength(28)
-  expect(new Set(MOTIV_IDS).size).toBe(28)
+test('MOTIV_IDS lists exactly the 35 motifs of content/motive.json', () => {
+  expect(MOTIV_IDS).toHaveLength(35)
+  expect(new Set(MOTIV_IDS).size).toBe(35)
   expect([...MOTIV_IDS].sort()).toEqual(motive.motive.map((m) => m.id).sort())
 })
 
@@ -38,7 +38,14 @@ test('helpers name the motif of every sound, breath pattern, topic and time of d
   expect(categories.map(themaMotiv)).toEqual(['thema-achtsamkeit', 'thema-stress', 'thema-fokus'])
   const zeiten = Object.keys(GREETING) as Tageszeit[]
   expect(zeiten.map(vorschlagMotiv)).toEqual(['vorschlag-morgen', 'vorschlag-tag', 'vorschlag-abend'])
-  for (const id of [...sounds.map(soundMotiv), ...patterns.map(breathMotiv), ...categories.map(themaMotiv), ...zeiten.map(vorschlagMotiv)]) {
+  const music = MUSIC.map((m) => m.id)
+  expect(music.map(musicMotiv)).toEqual([
+    'musik-schwebend', 'musik-klavier', 'musik-obertoene', 'musik-bambusfloete',
+    'musik-zwischen-zwei-atemzuegen', 'musik-salz-und-sternenlicht', 'musik-unter-der-oberflaeche',
+  ])
+  expect(backgroundMotiv('klavier')).toBe('musik-klavier')
+  expect(backgroundMotiv('regen')).toBe('klang-regen')
+  for (const id of [...music.map(musicMotiv), ...sounds.map(soundMotiv), ...patterns.map(breathMotiv), ...categories.map(themaMotiv), ...zeiten.map(vorschlagMotiv)]) {
     expect(MOTIV_IDS).toContain(id)
   }
 })
@@ -54,7 +61,7 @@ test('every motif id has a webp file with alpha', () => {
 
 test('files stay within budget', () => {
   for (const id of MOTIV_IDS) {
-    const limit = id.startsWith('klang-') ? 90_000 : 60_000
+    const limit = id.startsWith('klang-') || id.startsWith('musik-') ? 90_000 : 60_000
     expect(sizeOf(id), `${id} (${sizeOf(id)} Bytes, Grenze ${limit})`).toBeLessThanOrEqual(limit)
   }
   const total = MOTIV_IDS.reduce((sum, id) => sum + sizeOf(id), 0)

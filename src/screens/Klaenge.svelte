@@ -1,12 +1,27 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { engine } from '../lib/audio/engine'
   import { audio, togglePause } from '../lib/audio/engine-store.svelte'
-  import { SOUNDS } from '../lib/sounds/catalog'
+  import { refreshSaved } from '../lib/offline/status.svelte'
+  import { backgroundById, MUSIC, SOUNDS } from '../lib/sounds/catalog'
+  import { absoluteMusicUrl } from '../lib/ui/offline-ui.svelte'
   import { formatRemaining } from '../lib/time/format'
   import SleepTimerPicker from '../components/SleepTimerPicker.svelte'
   import SoundTile from '../components/SoundTile.svelte'
 
   const snap = $derived(audio.snap)
+
+  // Zuerst die Musik, dann die Natur; jede Kachel kennt die Art ihres Klangs.
+  const sections = [
+    { id: 'musik', title: 'Musik', items: MUSIC.map((m) => backgroundById(m.id)) },
+    { id: 'natur', title: 'Natur', items: SOUNDS.map((s) => backgroundById(s.id)) },
+  ]
+
+  // Ob die Musik offline gespeichert ist, steht im Cache (wie unter „Meditieren“).
+  onMount(() => {
+    void refreshSaved(MUSIC.map((m) => absoluteMusicUrl(m, location.href)))
+  })
+
   // `remainingSec` ist genau bei „endlos“ null, auch in der Pause: dann gibt es keinen Text,
   // „Läuft endlos“ wäre neben „Weiter“ falsch. Nach einem gescheiterten Start zeigt die Leiste
   // statt des Statustexts den Hinweis „Zum Starten tippen“.
@@ -24,11 +39,19 @@
     <h1>Klänge</h1>
   </header>
 
-  <ul class="grid" role="list">
-    {#each SOUNDS as sound (sound.id)}
-      <li><SoundTile {sound} /></li>
-    {/each}
-  </ul>
+  {#each sections as section (section.id)}
+    <section class="group" aria-labelledby="{section.id}-title">
+      <div>
+        <h2 id="{section.id}-title">{section.title}</h2>
+        <span class="rule" aria-hidden="true"></span>
+      </div>
+      <ul class="grid" role="list">
+        {#each section.items as sound (sound.id)}
+          <li><SoundTile {sound} /></li>
+        {/each}
+      </ul>
+    </section>
+  {/each}
 
   <section class="timer">
     <h2>Sleep-Timer</h2>
@@ -58,6 +81,12 @@
 {/if}
 
 <style>
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

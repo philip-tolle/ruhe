@@ -32,7 +32,11 @@ test('the tile titles of the sounds get a soft hyphen at the joint of their long
   expect(soundTileTitle('Kaminfeuer')).toBe(`Kamin${shy}feuer`)
   expect(soundTileTitle('Braunes Rauschen')).toBe('Braunes Rauschen')
   expect(soundTileTitle('Wald mit Vögeln')).toBe('Wald mit Vögeln')
-  for (const sound of SOUNDS) {
+  expect(soundTileTitle('Schwebende Flächen')).toBe(`Schwe${shy}bende Flächen`)
+  expect(soundTileTitle('Bambusflöte')).toBe(`Bambus${shy}flöte`)
+  expect(soundTileTitle('Salz und Sternenlicht')).toBe(`Salz und Sternen${shy}licht`)
+  expect(soundTileTitle('Unter der Oberfläche')).toBe(`Unter der Ober${shy}fläche`)
+  for (const sound of [...SOUNDS, ...MUSIC]) {
     const shown = soundTileTitle(sound.title)
     // Ohne die Trennstellen ist es der Titel selbst; jedes Wort ab 10 Buchstaben hat genau eine.
     expect(shown.replaceAll(shy, '')).toBe(sound.title)
