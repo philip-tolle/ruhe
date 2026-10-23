@@ -229,3 +229,125 @@ describe('Kartenstil', () => {
     expect(card).toMatch(/-webkit-backdrop-filter:\s*blur\(14px\);/)
   })
 })
+
+describe('Goldlinien, Waschung und Linienknopf (Meilenstein 4.1)', () => {
+  const MOOD_NAMES = Object.keys(MOODS) as Tageszeit[]
+  const SUPPORTS_NO_MIX = /^@supports not \(color: color-mix\(in srgb, red, red\)\)\s*\{/gm
+
+  /** Wert einer Eigenschaft in der Stimmung, sonst der aus `:root` (so löst der Browser die Vererbung auf). */
+  const moodValue = (mood: Tageszeit, token: string): string | undefined => {
+    const find = (block: string) => block.match(new RegExp(`^\\s*--${token}:\\s*([^;]+);`, 'm'))?.[1].trim()
+    return find(blockOf(MOODS[mood])) ?? find(blockOf(MOODS.abend))
+  }
+
+  /** Alle Regeln (Auswahl und Inhalt), deren Auswahlliste `selector` enthält – auch außerhalb des Blocks am Zeilenanfang. */
+  const rulesWith = (selector: string): string[] =>
+    [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter((m) => m[1].split(',').some((s) => s.trim() === selector))
+      .map((m) => m[2])
+
+  test('--wash-opacity liegt in jeder Stimmung zwischen 0.2 und 0.45', () => {
+    for (const mood of MOOD_NAMES) {
+      const value = moodValue(mood, 'wash-opacity')
+      expect(value, `${mood} --wash-opacity`).toBeDefined()
+      expect(Number(value), `${mood} --wash-opacity`).toBeGreaterThanOrEqual(0.2)
+      expect(Number(value), `${mood} --wash-opacity`).toBeLessThanOrEqual(0.45)
+    }
+  })
+
+  test('--gold-line und --gold-line-strong stehen in :root', () => {
+    const root = blockOf(MOODS.abend)
+    expect(root).toMatch(/--gold-line:\s*rgb\(233 196 142 \/ 0\.26\);/)
+    expect(root).toMatch(/--gold-line-strong:\s*rgb\(233 196 142 \/ 0\.7\);/)
+    // In jeder Stimmung gleich: keine Stimmung überschreibt sie.
+    for (const mood of MOOD_NAMES.filter((m) => m !== 'abend')) {
+      expect(blockOf(MOODS[mood]), `${mood} überschreibt die Goldlinie`).not.toMatch(/--gold-line/)
+    }
+  })
+
+  test('.card hat den Goldrand', () => {
+    expect(blockOf(/^\.card\s*\{/m)).toMatch(/^\s*border:\s*1px solid var\(--gold-line\);/m)
+  })
+
+  test('.rule ist eine kurze Linie: 40 px breit, 1 px hoch, --gold-line-strong, 8 px Abstand', () => {
+    const rule = blockOf(/^\.rule\s*\{/m)
+    expect(rule).toMatch(/width:\s*40px;/)
+    expect(rule).toMatch(/height:\s*1px;/)
+    expect(rule).toMatch(/background:\s*var\(--gold-line-strong\);/)
+    expect(rule).toMatch(/margin-top:\s*8px;/)
+  })
+
+  test('.rule-fade läuft von Gold (50 %) nach transparent aus und füllt den Rest der Zeile', () => {
+    const fade = blockOf(/^\.rule-fade\s*\{/m)
+    expect(fade).toMatch(/flex:\s*1\b/)
+    expect(fade).toMatch(/height:\s*1px;/)
+    expect(fade).toMatch(/linear-gradient\(\s*to right,\s*rgb\(233 196 142 \/ 0\.5\),\s*transparent\s*\)/)
+  })
+
+  describe('.button-line', () => {
+    const FILL = /color-mix\(in srgb, var\(--accent\) (\d+)%, var\(--sky-mid\)\)/
+    const line = () => blockOf(/^\.button-line\s*\{/m)
+
+    test('Rand 1 px Akzent 55 %, Fläche Akzent 8 % über --sky-mid, Schrift im Akzent', () => {
+      const block = line()
+      expect(block).toMatch(/^\s*border:\s*1px solid var\(--accent\);/m) // Rückfall, wenn color-mix() fehlt
+      expect(block).toMatch(/^\s*border-color:\s*color-mix\(in srgb, var\(--accent\) 55%, transparent\);/m)
+      expect(block).toMatch(/^\s*background:\s*color-mix\(in srgb, var\(--accent\) 8%, var\(--sky-mid\)\);/m)
+      expect(block).toMatch(/^\s*color:\s*var\(--accent\);/m)
+    })
+
+    test('die Fläche ist deckend, auch ohne color-mix(): dann --sky-mid', () => {
+      // Deckend, weil die zweite Farbe der Mischung keine Durchsicht hat (kein `transparent`, kein Alpha).
+      expect(line().match(FILL)).not.toBeNull()
+      const fallbacks = [...css.matchAll(SUPPORTS_NO_MIX)].map((m) => blockFrom(css, m.index!))
+      const rule = fallbacks.map((b) => b.match(/\.button-line\s*\{([^}]*)\}/)).find(Boolean)
+      expect(rule, '@supports-Rückfall für .button-line').toBeTruthy()
+      expect(rule![1]).toMatch(/background:\s*var\(--sky-mid\);/)
+    })
+
+    test('die Schrift im Akzent hat auf der Fläche in jeder Stimmung mindestens 4,5:1', () => {
+      const share = Number(line().match(FILL)![1]) / 100
+      for (const mood of MOOD_NAMES) {
+        const block = blockOf(MOODS[mood])
+        const fill = over({ rgb: hex(block, 'accent'), alpha: share }, hex(block, 'sky-mid'))
+        expect(contrast(hex(block, 'accent'), fill), `${mood}: --accent auf der Fläche des Linienknopfs`).toBeGreaterThanOrEqual(4.5)
+      }
+    })
+
+    test('hält die Knopf-Regeln ein: Berührfläche ≥ 44 px, Pillenform, Druck-Skalierung, sichtbarer Fokus', () => {
+      const block = line()
+      expect(Number(block.match(/min-height:\s*(\d+)px;/)?.[1]), 'min-height').toBeGreaterThanOrEqual(44)
+      expect(block).toMatch(/border-radius:\s*999px;/)
+      // Der Fokusring kommt aus der globalen `:focus-visible`-Regel mit --focus-ring; der Knopf darf ihn nicht abschalten.
+      expect(block).not.toMatch(/outline:\s*(none|0)/)
+      expect(rulesWith(':focus-visible').join('\n')).toMatch(/outline:\s*2px solid var\(--focus-ring\);/)
+      expect(rulesWith('.button-line:active').join('\n')).toMatch(/transform:\s*scale\(0\.98\);/)
+    })
+  })
+})
+
+describe('OfflineMark', () => {
+  // Erst im Test gelesen, damit eine fehlende Datei nur diese Tests rot färbt.
+  const source = () => readFileSync('src/components/OfflineMark.svelte', 'utf8')
+
+  test('ist ein Bild mit der Beschriftung „offline gespeichert“ und ohne Eigenschaften', () => {
+    const mark = source()
+    const svg = mark.match(/<svg[^>]*>/)?.[0] ?? ''
+    expect(svg).toMatch(/\brole="img"/)
+    expect(svg).toMatch(/\baria-label="offline gespeichert"/)
+    expect(svg).toMatch(/\bclass="offline-mark"/)
+    expect(svg).toMatch(/\bviewBox="0 0 16 16"/)
+    expect(mark).not.toMatch(/\$props/)
+  })
+
+  test('zeichnet Kreis (r 6,3) und Häkchen mit Strich in der Textfarbe, 13 px', () => {
+    const mark = source()
+    const svg = mark.match(/<svg[^>]*>/)?.[0] ?? ''
+    expect(mark).toMatch(/<circle[^>]*\br="6\.3"/)
+    expect(mark).toMatch(/<path[^>]*\bd="M/)
+    expect(svg).toMatch(/\bstroke="currentColor"/)
+    expect(svg).toMatch(/\bfill="none"/)
+    expect(mark).toMatch(/width:\s*13px;/)
+    expect(mark).toMatch(/height:\s*13px;/)
+  })
+})
