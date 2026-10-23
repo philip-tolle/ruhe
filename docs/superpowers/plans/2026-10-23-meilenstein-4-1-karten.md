@@ -54,11 +54,15 @@
 ### Washes
 - Colours `lavendel`, `pfirsich`, `blaugruen`.
 - Files `public/images/waschungen/<farbe>.webp`: WebP with alpha, width 900 px, ≤ 120 KB each, ≤ 300 KB together.
-- Data in `content/waschungen.json`.
-- Placement on the right side, about 60 % of the card width.
-- Opacity `var(--wash-opacity)`, default 0.28, adjustable per mood.
-- `pointer-events: none`, `alt=""`.
-- Three positions: 0 top right, 1 mirrored and turned 6°, 2 turned −12°. In lists the position is the index modulo 3.
+- Data in `content/waschungen.json`: `model`, `prompt`, `freistellen`, and per colour `id`, `colours`, `flow`, `generation`, `width`, `height`. There is no `hellste` field (ruling R1).
+- **Zone (ruling R1):** the wash fills only a zone in the **top right corner** of the card.
+  - Size from `--wash-w` / `--wash-h`, set by the card; default `40%` × `100%`.
+  - The zone clips its content.
+  - A mask fades the wash out softly towards the zone's left and bottom edges, so it is invisible at the zone edge.
+- **No text in the zone**, except text on an opaque surface such as a line button.
+- Opacity `var(--wash-opacity)`, default 0.35, between 0.2 and 0.45 in every mood.
+- `pointer-events: none`, `aria-hidden`, `alt=""`.
+- Three positions of the image inside the zone: 0 as painted, 1 mirrored and turned 6°, 2 turned −12°. In lists the position is the index modulo 3.
 
 ### Colour assignment
 - Themes:
@@ -105,9 +109,9 @@
    - Cards keep their size and remain operable.
    - No broken-image icon, no layout shift.
    - Test: Task 4 (Meditieren) and Task 6 (Atmen).
-2. **Text over the brightest spot of a wash:**
-   - Title, muted text and accent stay ≥ 4.5:1 in every mood. If not, the wash gets fainter, the text does not change.
-   - Test: Task 3.
+2. **Text drifts into the wash zone** (a long title, a wrapped description, 130 % font):
+   - No text node overlaps the zone of its card, except text on an opaque surface.
+   - Test: helper `expectNoTextInWash` (Task 4), used in Tasks 4, 5 and 6 at 412 px and at 360 px with 130 %.
 3. **360 px wide at 130 % font size:**
    - Timer card with „Einstellen“, Vorschlag start row, Aktivitäten rows and Atem tiles: nothing overflows, the button wraps below the text if needed.
    - Test: Task 4, Task 5, Task 6.
@@ -139,7 +143,7 @@ The ElevenLabs connector is only available to the controller, so this task is no
     "model": "…",
     "style": "…",
     "waschungen": [
-      { "id": "<farbe>", "prompt": "…", "flow": "…", "generation": "…", "hellste": "#RRGGBB", "width": 900, "height": n }
+      { "id": "<farbe>", "colours": "…", "flow": "…", "generation": "…", "width": 900, "height": n }
     ]
   }
   ```
@@ -159,7 +163,7 @@ The ElevenLabs connector is only available to the controller, so this task is no
   - Print the brightest colour: the 99th luminance percentile among pixels with opacity > 0.5, as `#RRGGBB`.
   - The existing mode stays unchanged.
 - [ ] **Step 4: Cut out the three files, write `content/waschungen.json`, check the budget.** ≤ 120 KB each, ≤ 300 KB together.
-- [ ] **Step 5: Check visually.** Lay each wash at opacity 0.28 over the three sky colours (`#1b2350`, `#352a5c`, `#1c3b55`). No black edges.
+- [ ] **Step 5: Check visually.** Lay each wash at opacity 0.35 over the three sky colours (`#1b2350`, `#352a5c`, `#1c3b55`). No black edges.
 - [ ] **Step 6: Commit** `content: drei gemalte Waschungen für die Karten`.
 
 ### Task 2: Wash catalogue and component
@@ -186,13 +190,12 @@ The ElevenLabs connector is only available to the controller, so this task is no
   - `atemWaschung(id: BreathPatternId): WaschFarbe`
   - `zuletztWaschung(last: LastUsed, now: Tageszeit): WaschFarbe`
   - `waschLage(index: number): WaschLage` (index modulo 3)
-  - `Waschung.svelte` with props `{ farbe: WaschFarbe; lage?: WaschLage }` (default 0). It renders `<img class="waschung lage-{lage}" src alt="" decoding="async" draggable="false">`.
+  - `Waschung.svelte` with props `{ farbe: WaschFarbe; lage?: WaschLage }` (default 0). It renders `<span class="waschung lage-{lage}" aria-hidden="true"><img src alt="" decoding="async" draggable="false"></span>`. The `span` is the zone.
 
 - [ ] **Step 1: Failing unit tests** (`tests/unit/waschungen.test.ts`)
   - `WASCH_FARBEN equals the ids in content/waschungen.json`
   - `every colour has a webp file with alpha, 900 px wide, ≤ 120 KB; together ≤ 300 KB` (reuse `webpInfo` from `tests/unit/motive.test.ts` by moving it to `tests/unit/webp.ts`)
   - `no stray files in public/images/waschungen`
-  - `hellste is #RRGGBB for each colour`
   - `colour assignment`: all values from Global Constraints, e.g. `expect(themaWaschung('stress')).toBe('blaugruen')`, `expect(atemWaschung('wechselatmung')).toBe('pfirsich')`, `expect(tageszeitWaschung('abend')).toBe('lavendel')`
   - `zuletztWaschung`:
     - `{kind:'guided', id:'gedanken-wie-wolken'}` → `'lavendel'`
@@ -202,16 +205,19 @@ The ElevenLabs connector is only available to the controller, so this task is no
   - `waschLage cycles 0,1,2,0` for index 0…3
 - [ ] **Step 2:** Run `npx vitest run tests/unit/waschungen.test.ts`. It must fail (module missing).
 - [ ] **Step 3: Implement** `waschungen.ts` (comment style as in `motive.ts`) and `Waschung.svelte`.
-  - Styles:
-    - `position: absolute`, `right: -12%`, `top: -14%`, `width: 60%`, `height: auto`;
-    - `opacity: var(--wash-opacity, 0.28)`, `pointer-events: none`, `z-index: 0`;
-    - position 1 `transform: scaleX(-1) rotate(6deg)`, position 2 `transform: rotate(-12deg)`.
-  - Comment: the card must provide `position: relative; overflow: hidden; isolation: isolate`, and its content `position: relative; z-index: 1`.
+  - Zone (`span.waschung`):
+    - `position: absolute; top: 0; right: 0; width: var(--wash-w, 40%); height: var(--wash-h, 100%)`;
+    - `overflow: hidden; pointer-events: none; z-index: 0; opacity: var(--wash-opacity, 0.35)`;
+    - mask so the wash is invisible at the zone's left and bottom edge: `mask-image: linear-gradient(to right, transparent, #000 45%), linear-gradient(to bottom, #000 55%, transparent)` with `mask-composite: intersect` (and `-webkit-mask-composite: source-in`).
+  - Image: `position: absolute`, height about 150 % of the zone, width auto, anchored so its densest part sits near the zone's top right.
+    - Position 1: `transform: scaleX(-1) rotate(6deg)`.
+    - Position 2: `transform: rotate(-12deg)`.
+  - Comment: the card must provide `position: relative; overflow: hidden; isolation: isolate`, its content `position: relative; z-index: 1`, set `--wash-w`/`--wash-h`, and keep its text out of the zone.
 - [ ] **Step 4: Precache test** in `tests/e2e/pwa.spec.ts`: the built service worker lists `images/waschungen/lavendel.webp`, `pfirsich.webp` and `blaugruen.webp` (same pattern as the motif precache test). Run it: green.
 - [ ] **Step 5:** Run `npm run test` and `npm run check`; both green.
 - [ ] **Step 6: Commit** `feat: Katalog der Waschungen und Baustein Waschung`.
 
-### Task 3: Tokens, helper classes and contrast over the washes
+### Task 3: Tokens, helper classes and the offline mark
 
 **Files:**
 - Modify: `src/app.css`
@@ -219,7 +225,7 @@ The ElevenLabs connector is only available to the controller, so this task is no
 - Test: `tests/unit/theme-contrast.test.ts`
 
 **Interfaces:**
-- Consumes: `content/waschungen.json` (`hellste`).
+- Consumes: nothing from earlier tasks.
 - Produces:
   - Tokens `--gold-line`, `--gold-line-strong` (`:root`) and `--wash-opacity` (per mood).
   - `.card` border `1px solid var(--gold-line)`.
@@ -229,18 +235,15 @@ The ElevenLabs connector is only available to the controller, so this task is no
     - `.rule-fade` (fading line, flex-grow).
   - `OfflineMark.svelte` without props: `<svg class="offline-mark" role="img" aria-label="offline gespeichert" viewBox="0 0 16 16">` with circle r 6.3 and tick, 13 px, stroke `currentColor` (colour comes from the surrounding text).
 
-- [ ] **Step 1: Failing contrast test** in `theme-contrast.test.ts`, new `describe('Kontrast über der hellsten Stelle einer Waschung')`.
-  - For each mood, each colour from `content/waschungen.json` (`hellste`), each backdrop in `['sky-mid', 'sky-bottom']` and each card overlay:
-    - `ground = over({ rgb: hellste, alpha: washOpacity(mood) }, over(overlay, backdrop))`;
-    - `--text`, `--text-muted` and `--accent` against `ground` ≥ 4.5.
-  - `washOpacity(mood)` reads `--wash-opacity` from the mood block, falling back to `:root`.
-  - Plus: `'--wash-opacity ist zwischen 0.14 und 0.28'`.
-- [ ] **Step 2:** Run `npx vitest run tests/unit/theme-contrast.test.ts`. It fails: the token is missing.
+- [ ] **Step 1: Failing unit tests** in `theme-contrast.test.ts`:
+  - `'--wash-opacity liegt in jeder Stimmung zwischen 0.2 und 0.45'`. It reads the value from the mood block, falling back to `:root`.
+  - `'--gold-line und --gold-line-strong stehen in :root'` with the exact values from Global Constraints.
+  - `'.card hat den Goldrand'`: the `.card` rule contains `border: 1px solid var(--gold-line)`.
+- [ ] **Step 2:** Run `npx vitest run tests/unit/theme-contrast.test.ts`. It fails because the tokens are missing.
 - [ ] **Step 3: Tokens and classes in `app.css`.**
-  - Start `--wash-opacity` at 0.28. For each mood, lower it in steps of 0.02 until the test passes.
-  - If a mood would need less than 0.14: stop and report (BLOCKED), do not change the text colour.
-  - Write a comment above the value saying how much contrast margin remains.
+  - `--wash-opacity: 0.35` in `:root`. Only override it per mood if a screenshot later shows a mood too bright or too faint.
   - Write `OfflineMark.svelte`.
+  - Ruling R1: there is no contrast test over the wash, because text never sits on it (see Global Constraints, Zone).
 - [ ] **Step 4:** Run `npm run test`: green, including the existing contrast tests.
 - [ ] **Step 5:** Run `npm run test:e2e` once. The gold border must not break any computed-style test; existing tests that check `--surface-border` on cards are updated to the gold value.
 - [ ] **Step 6: Commit** `feat: Goldlinien, Linienknopf und Offline-Zeichen als Bausteine`.
@@ -256,7 +259,12 @@ The ElevenLabs connector is only available to the controller, so this task is no
   - `Waschung`, `themaWaschung`, `tageszeitWaschung`, `waschLage` (Task 2);
   - `OfflineMark`, `.button-line`, `.rule`, `.rule-fade`, tokens (Task 3);
   - `tageszeitUi` from `src/lib/ui/tageszeit.svelte`.
-- Produces: the e2e helper in `tests/e2e/karten.spec.ts`: `async function waschungIn(locator): Promise<string | null>`, which returns the colour from the `src` of the `img.waschung` or `null`. Tasks 5/6 extend this file.
+- Produces: e2e helpers in `tests/e2e/karten.spec.ts`; Tasks 5/6 extend this file.
+  - `async function waschungIn(card: Locator): Promise<string | null>` returns the colour from the `src` of the `img` inside `.waschung`, or `null`.
+  - `async function expectNoTextInWash(card: Locator): Promise<void>` (Review Focus 2):
+    - Zone = bounding rect of the card's `.waschung`, intersected with the card's rect.
+    - For every non-whitespace text node in the card, use the client rects of a `Range` over it. Skip text inside `.visually-hidden`, and text with an ancestor below the card whose computed `background-color` has alpha 1.
+    - Each rect must not overlap the zone by more than 1 px. The message names the text.
 
 - [ ] **Step 1: Failing e2e tests.**
   - In `guided.spec.ts`, replace every `'✓ offline'` assertion with the symbol:
@@ -265,6 +273,7 @@ The ElevenLabs connector is only available to the controller, so this task is no
   - `ich.spec.ts:408` likewise.
   - New in `karten.spec.ts` (clock 08:00):
     - The timer card has a wash `pfirsich` (morning) and a button with name „Timer einstellen“ and visible text „Einstellen“.
+    - **Review Focus 2:** `expectNoTextInWash` passes for the timer card and every entry, at 412 px and at 360×640 with 130 %.
     - Under „Geführte Meditationen“ there is a `.rule`. Each theme heading has a `.rule-fade`.
     - Every meditation entry has a wash in its theme colour (Achtsamkeit `lavendel`, Stress `blaugruen`, Fokus `pfirsich`), with positions 0, 1, 2 in order.
     - Title `font-family` contains `Fraunces`.
@@ -273,7 +282,7 @@ The ElevenLabs connector is only available to the controller, so this task is no
     - **Review Focus 4:**
       - Offline (`context.setOffline(true)`) with nothing saved: the entry is disabled, „Nicht offline verfügbar“ is visible, and `toHaveAccessibleDescription(/Nicht offline verfügbar/)`.
       - Saved entry: `getByRole('img', { name: 'offline gespeichert' })`.
-    - **Review Focus 5:** a tap at 85 % of the width and 30 % of the height of the first entry (over the wash) starts the meditation, i.e. the player heading is visible. `scrollWidth <= clientWidth`.
+    - **Review Focus 5:** a tap in the middle of the first entry's wash zone starts the meditation, i.e. the player heading is visible. `scrollWidth <= clientWidth`.
     - **Review Focus 1:**
       - Use `page.route('**/images/waschungen/**', r => r.fulfill({ status: 404 }))` and `serviceWorkers: 'block'`.
       - Entries keep their height (±1 px against the run with images).
@@ -284,11 +293,12 @@ The ElevenLabs connector is only available to the controller, so this task is no
       - „Einstellen“ lies completely inside the card.
 - [ ] **Step 2:** Run `npx playwright test tests/e2e/karten.spec.ts tests/e2e/guided.spec.ts`: red.
 - [ ] **Step 3: Implement.**
-  - **Timer card:** motif · text · `.button-line` „Einstellen“ (`aria-label="Timer einstellen"`). Use `flex-wrap: wrap`, so the button moves below the text when space is short. Wash `tageszeitWaschung(tageszeitUi.current)`.
+  - **Timer card:** motif · text · `.button-line` „Einstellen“ (`aria-label="Timer einstellen"`). Use `flex-wrap: wrap`, so the button moves below the text when space is short. Wash `tageszeitWaschung(tageszeitUi.current)`, its zone behind the button column. The button's opaque fill carries its text.
   - **Headings:** `h2` with `.rule`; theme heading as a row with motif, `h3` and `.rule-fade`.
   - **Entries:**
     - `position: relative; overflow: hidden; isolation: isolate`; border `rgb(233 196 142 / 0.22)`.
     - `<Waschung farbe={themaWaschung(group.category)} lage={waschLage(i)} />` as the first child.
+    - The zone is the play column, about 104 px wide (`--wash-w`). The text column ends left of it, via `margin-right` or a wider gap.
     - Title in Fraunces about 1.1875rem.
     - `.meta` 0.78rem `--text-muted` with the length and `<OfflineMark />` when saved.
     - Play circle with ring.
@@ -314,14 +324,16 @@ The ElevenLabs connector is only available to the controller, so this task is no
     - At 08:00 and 20:00 the wash is `pfirsich` and `lavendel` respectively.
     - The `h2` of the card is still „Vorschlag des Tages“ (accessible name), visibly in small caps (`text-transform: uppercase`, `letter-spacing` 0.14em).
     - Next to „Jetzt starten“ (full button) are the length and, when saved, `img` „offline gespeichert“.
+    - The zone is the top right around the motif, above the description. `expectNoTextInWash` passes.
   - **Zuletzt genutzt:**
     - With `lastUsed` breath `box`: wash `pfirsich`, button with class `button-line`.
     - With guided `nach-einem-vollen-tag`: wash `blaugruen`.
     - Without `lastUsed`: the fallback „Ankommen im Atem“ gives `lavendel`.
+    - The zone is a top-right corner. Heading and summary stay out of it, e.g. via `padding-right`. `expectNoTextInWash` passes.
   - **Aktivitäten:**
     - Each row has `border-top` `rgba(233, 196, 142, 0.28)`, title in Fraunces and a chevron `svg[aria-hidden="true"]`.
     - Names unchanged („Meditieren“, „Atemübung“, „Klänge“).
-  - **Review Focus 3:** 360×640 at 130 %: the Vorschlag start row wraps without overflow; `scrollWidth <= clientWidth`.
+  - **Review Focus 3:** 360×640 at 130 %: the Vorschlag start row wraps without overflow; `scrollWidth <= clientWidth`; `expectNoTextInWash` passes for both cards.
   - Existing `heute.spec.ts` stays green: names, Vorschlag, Zuletzt, offline lock.
 - [ ] **Step 2:** Run `npx playwright test tests/e2e/karten.spec.ts tests/e2e/heute.spec.ts`: red.
 - [ ] **Step 3: Implement** as in the board „Heute · morgens“.
@@ -347,12 +359,14 @@ The ElevenLabs connector is only available to the controller, so this task is no
   - **Atmen:**
     - Each tile has a wash in the colour from Global Constraints (`478` → `lavendel` … `wechselatmung` → `pfirsich`), positions by index modulo 3.
     - Border `rgba(233, 196, 142, 0.26)`.
+    - The zone is beside the motif, above the title. `expectNoTextInWash` passes for every tile, at 412 px and at 360 px with 130 %.
     - **Review Focus 1:** with the wash at 404, tiles keep their size, the tap starts.
     - **Review Focus 3:** 360 px at 130 % stays green (existing test).
   - **Klänge:** no tile contains `img.waschung`. An inactive tile has border `rgba(233, 196, 142, 0.26)`; an active one keeps the accent border (existing test stays).
   - **Ich:**
     - Key-figure tiles and every `.card` have the gold border.
     - Only the calendar card has a wash (08:00 → `pfirsich`); `Einstellungen`, `Offline` and `Backup` have none.
+    - The calendar's zone sits in a text-free top-right corner. `expectNoTextInWash` passes, at 412 px and at 360 px with 130 %.
     - Settings rows (the switches) have `border-top` `rgba(233, 196, 142, 0.28)` from the second row on.
   - **Dialogs:**
     - The timer sheet (Meditieren › Einstellen) has border `rgba(233, 196, 142, 0.26)`.
@@ -379,7 +393,8 @@ The ElevenLabs connector is only available to the controller, so this task is no
     - prompt from `content/waschungen.json`;
     - `python3 scripts/freistellen.py <quelle.png> <ziel.webp> --schwarz --breite 900`;
     - budget;
-    - if needed, adjust `--wash-opacity` in `app.css` and let the contrast test decide.
+    - `--wash-opacity` in `app.css` (0.2–0.45);
+    - rule: text never sits in a wash zone, checked by `expectNoTextInWash`.
 - [ ] **Step 2: Notes.**
   - M4 spec §4: *Ergänzung vom 23.10.2026 (Meilenstein 4.1):* gold edge, washes and quiet length/offline, with a reference to the M4.1 spec.
   - M4.1 spec §5: replace `SessionDone.svelte` with `ConfirmDialog.svelte` (ruling P1).

@@ -24,7 +24,7 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
   - Titel in der Serifenschrift;
   - zarte gemalte Waschungen in den Karten.
 - Länge und „offline gespeichert“ treten leise zurück. Was den Start verhindert („Nicht offline verfügbar“), bleibt deutlich.
-- Alle Texte erfüllen WCAG AA in allen drei Stimmungen, auch über der hellsten Stelle einer Waschung.
+- Schrift liegt nie über einer Waschung (außer auf einer deckenden Fläche wie einem Knopf); alle Texte erfüllen WCAG AA in allen drei Stimmungen.
 - Die Waschungen sind ab dem ersten Laden offline da.
 
 ### Nicht-Ziele
@@ -75,10 +75,10 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
    - `scripts/freistellen.py` bekommt den Modus `--schwarz`.
    - Die Deckkraft ergibt sich aus dem hellsten Kanal, die Farbe wird davon befreit (unvormultipliziert).
    - Dann wird auf die Waschung beschnitten, **ohne** quadratisch aufzufüllen, auf die Zielbreite **900 px** verkleinert und als WebP mit Alpha (Qualität 80) gespeichert.
-   - Das Skript gibt die **hellste Farbe** der Waschung aus: das 99. Perzentil der Helligkeit unter den Pixeln mit Deckkraft > 0,5.
+   - Zur Einschätzung gibt das Skript die hellste Farbe der Waschung aus: das 99. Perzentil der vormultiplizierten Helligkeit.
 3. **Ablage:**
    - Die Bilder liegen als `public/images/waschungen/<farbe>.webp`.
-   - Daten in `content/waschungen.json`, je Farbe: `id`, `prompt`, `flow`, `generation`, `hellste` (Hex), Größe.
+   - Daten in `content/waschungen.json`: Modell, Prompt-Schema, Befehl zum Freistellen; je Farbe `id`, `colours`, `flow`, `generation`, Größe.
    - Budget: je Datei ≤ 120 KB, zusammen ≤ 300 KB.
    - Precache über die bestehende `webp`-Regel.
 4. **Zuordnung** (`src/lib/content/waschungen.ts`):
@@ -90,15 +90,20 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
      - Langes Ausatmen lavendel, Seufzer blaugruen, Wechselatmung pfirsich.
    - Zuletzt genutzt: geführt → Farbe des Themas, Atemübung → Farbe der Übung, Timer → Farbe der Tageszeit.
 5. **Komponente** `Waschung.svelte`, Props `{ farbe: WaschFarbe; lage?: 0 | 1 | 2 }`:
-   - Ein `<img alt="" decoding="async">`, absolut hinter dem Inhalt der Karte. Die Karte schneidet mit `overflow: hidden` und ihrer Rundung zu, Klicks gehen durch (`pointer-events: none`).
-   - Breite etwa 60 % der Karte, an der **rechten** Seite.
-   - Drei Lagen, damit Listen lebendig wirken:
-     - 0: oben rechts;
+   - **Zone:** Die Waschung füllt eine Zone in der **rechten oberen Ecke** der Karte, nie mehr.
+     - Größe aus `--wash-w` und `--wash-h`, die die Karte setzt; Standard 40 % × 100 %.
+     - Darin ein `<img alt="" decoding="async">`.
+     - Die Zone schneidet zu (`overflow: hidden`). Eine Maske lässt die Waschung zum linken und unteren Rand der Zone weich auslaufen: Am Zonenrand ist sie unsichtbar, also ohne harte Kante.
+     - Klicks gehen durch (`pointer-events: none`), `aria-hidden`.
+   - **Keine Schrift in der Zone:** Jede Karte richtet ihr Layout so ein, dass keine Schrift in der Zone liegt. Ausnahme: Schrift auf einer deckenden Fläche, etwa ein Linienknopf.
+   - Drei Lagen des Bildes innerhalb der Zone, damit Listen lebendig wirken:
+     - 0: wie gemalt;
      - 1: gespiegelt, um 6° gedreht;
      - 2: um −12° gedreht.
    - In Listen bestimmt der Index modulo 3 die Lage.
-   - Deckkraft `var(--wash-opacity)`, Standard 0.28 (Token in `app.css`, je Stimmung anpassbar).
+   - Deckkraft `var(--wash-opacity)`, Standard 0.35 (Token in `app.css`, zwischen 0.2 und 0.45).
    - Fehlt die Datei, bleibt die Karte unverändert; die Waschung ist reiner Schmuck.
+   - *Umsetzungsnotiz 23.10.2026:* Ursprünglich sollte die Waschung bis unter die Schrift reichen, und der Kontrast sollte über ihrer hellsten Stelle geprüft werden. Nachgerechnet hält der gedämpfte Text die 4,5:1 schon bei 7 % Deckkraft nicht mehr; „blasser machen“ hätte die Waschung unsichtbar gemacht. Deshalb gilt der Grundsatz „Lesbarkeit vor Schönheit“ jetzt über die Trennung: Schrift und Waschung teilen sich keine Fläche.
 
 ## 4. Bildschirme
 
@@ -145,10 +150,13 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
   - **Zuordnung:** alle Themen, Tageszeiten und Übungen haben eine Farbe; `zuletztWaschung` für alle drei Arten.
   - **Dateien:** jede Farbe hat eine Datei, und jede Datei ist WebP mit Alpha und im Budget.
   - **Daten:** `content/waschungen.json` passt zu den Dateien.
-- **Kontrast** (in `theme-contrast.test.ts`), für jede Stimmung:
-  - Untergrund: die Karte (weiße Überlagerung 0.1) über `--sky-mid` und `--sky-bottom`, darüber die **hellste** Farbe jeder Waschung mit `--wash-opacity`.
-  - Prüfung: `--text` und `--text-muted` ≥ 4,5:1, der Akzent als Schrift (Atem-Kachel „Wirkung“) ≥ 4,5:1.
-  - Reicht es nicht, wird `--wash-opacity` der Stimmung gesenkt, nicht die Schriftfarbe.
+- **Kontrast:**
+  - Die bestehenden Kontrasttests (Schrift auf der Karte über Himmel, Bergen und See) gelten weiter.
+  - `--wash-opacity` liegt in jeder Stimmung zwischen 0.2 und 0.45.
+- **Schrift außerhalb der Zone** (e2e), für jede Karte mit Waschung:
+  - Kein Textstück (Rechtecke aller Textknoten, ohne unsichtbar versteckte) überschneidet die Zone.
+  - Ausnahme: Text, dessen Element oder dessen Vorfahr innerhalb der Karte eine deckende Hintergrundfarbe hat.
+  - Geprüft bei 412 px und bei 360 px mit 130 % Schrift.
 - **e2e:**
   - **Meditieren:**
     - Gespeicherte Einträge haben ein Bild „offline gespeichert“, kein „✓ offline“ mehr.
@@ -172,7 +180,7 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
 1. Meditieren: Wirken Goldränder, Waschungen und Titel edel und ruhig, nicht unruhig?
 2. Länge und „offline gespeichert“ sind leise, aber auffindbar.
 3. „Nicht offline verfügbar“ fällt auf (Flugmodus, nicht gespeicherte Meditation).
-4. Draußen bei Tageslicht: alle Texte in allen drei Stimmungen gut lesbar, auch dort, wo eine Waschung hinter dem Text liegt.
+4. Draußen bei Tageslicht: alle Texte in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
 Veröffentlicht wird – wie immer – erst nach dem OK des Nutzers.
