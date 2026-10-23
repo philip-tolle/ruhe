@@ -5,10 +5,16 @@ Entwicklungswerkzeug für die Motive unter public/images/motive (nicht Teil der 
 Voraussetzung: Python 3 mit Pillow und NumPy.
 
     python3 scripts/freistellen.py <quelle.png> <ziel.webp> --crop x,y,b,h --size N
+    python3 scripts/freistellen.py <quelle.png> <ziel.webp> --schwarz --breite 900
 
 Ablauf: Ausschnitt nehmen; Hintergrund = vom Rand her zusammenhängende Fläche nahe der Randfarbe;
 im Kantenband (4 px) Alpha aus dem Farbabstand schätzen und die Grundfarbe herausrechnen; auf das
 Motiv beschneiden, quadratisch auffüllen, auf N × N verkleinern, als WebP (Qualität 82) speichern.
+
+Mit --schwarz (Waschungen der Karten, gemalt auf reinem Schwarz): Deckkraft aus dem hellsten Kanal,
+Farbe davon befreit; auf die Waschung beschnitten (nicht quadratisch), auf die Breite N verkleinert,
+als WebP (Qualität 76) gespeichert. Ausgegeben wird zur Einschätzung die hellste Farbe der Waschung (99. Perzentil der
+vormultiplizierten Helligkeit, also wie sie auf Schwarz erscheint).
 """
 
 import argparse
@@ -20,6 +26,8 @@ NAHE = 38  # Farbabstand, bis zu dem ein Pixel als Hintergrund gilt
 KANTE = 90.0  # Farbabstand, ab dem ein Kantenpixel voll deckt
 BAND = 9  # Kantenband (MaxFilter-Größe; 9 entspricht 4 px)
 QUALITAET = 82
+QUALITAET_WASCHUNG = 76
+SCHWARZ_SCHWELLE = 0.04  # Helligkeit, bis zu der ein Pixel als schwarzer Grund gilt
 
 
 def freistellen(quelle: Image.Image) -> Image.Image:
@@ -70,14 +78,50 @@ def zuschneiden(motiv: Image.Image, groesse: int) -> Image.Image:
     return quadrat.resize((groesse, groesse), Image.LANCZOS)
 
 
+def waschung(quelle: Image.Image, breite: int) -> tuple[Image.Image, str]:
+    bild = np.asarray(quelle.convert('RGB')).astype(np.float64)
+    # Schwarzer Grund: Was heller ist, ist Farbe. Die unterste Spur (Rauschen im Schwarz) zählt nicht.
+    deckung = np.clip((bild.max(axis=2) / 255 - SCHWARZ_SCHWELLE) / (1 - SCHWARZ_SCHWELLE), 0.0, 1.0)
+    ys, xs = np.nonzero(deckung > 0.03)
+    if ys.size == 0:
+        raise SystemExit('Keine Waschung gefunden: Bild prüfen')
+    oben, unten, links, rechts = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    bild, deckung = bild[oben:unten, links:rechts], deckung[oben:unten, links:rechts]
+    farbe = np.clip(bild / np.maximum(deckung, 1e-3)[..., None], 0, 255)
+
+    # Hellste Farbe: so stark scheint die Waschung höchstens durch. Gerechnet mit der vormultiplizierten
+    # Farbe (Farbe × Deckkraft, also das, was auf Schwarz zu sehen ist): Mittel der Pixel ab dem
+    # 99. Perzentil ihrer Helligkeit. Ohne Vormultiplikation würden halb deckende Ränder zu hell.
+    sichtbar = (farbe * deckung[..., None]).reshape(-1, 3)
+    hell = sichtbar @ np.array([0.2126, 0.7152, 0.0722])
+    auswahl = sichtbar[hell >= np.percentile(hell, 99)].mean(axis=0)
+    hellste = '#' + ''.join(f'{round(kanal):02x}' for kanal in auswahl)
+
+    ergebnis = Image.fromarray(np.dstack([farbe, deckung * 255]).astype(np.uint8), 'RGBA')
+    hoehe = round(ergebnis.size[1] * breite / ergebnis.size[0])
+    return ergebnis.resize((breite, hoehe), Image.LANCZOS), hellste
+
+
 def main() -> None:
     teile = argparse.ArgumentParser(description='Motiv freistellen und als WebP speichern')
     teile.add_argument('quelle')
     teile.add_argument('ziel')
-    teile.add_argument('--crop', required=True, help='x,y,breite,höhe im Quellbild')
-    teile.add_argument('--size', required=True, type=int, help='Kantenlänge des Ergebnisses in px')
+    teile.add_argument('--crop', help='x,y,breite,höhe im Quellbild (Motive)')
+    teile.add_argument('--size', type=int, help='Kantenlänge des Ergebnisses in px (Motive)')
+    teile.add_argument('--schwarz', action='store_true', help='Waschung auf reinem Schwarz')
+    teile.add_argument('--breite', type=int, help='Breite des Ergebnisses in px (Waschungen)')
     argumente = teile.parse_args()
 
+    if argumente.schwarz:
+        if argumente.breite is None:
+            teile.error('--schwarz braucht --breite')
+        ergebnis, hellste = waschung(Image.open(argumente.quelle), argumente.breite)
+        ergebnis.save(argumente.ziel, 'WEBP', quality=QUALITAET_WASCHUNG, method=6)
+        print(f'{argumente.ziel}: {ergebnis.size[0]}×{ergebnis.size[1]}, hellste {hellste}')
+        return
+
+    if argumente.crop is None or argumente.size is None:
+        teile.error('Motive brauchen --crop und --size')
     x, y, b, h = (int(wert) for wert in argumente.crop.split(','))
     quelle = Image.open(argumente.quelle).crop((x, y, x + b, y + h))
     ergebnis = zuschneiden(freistellen(quelle), argumente.size)

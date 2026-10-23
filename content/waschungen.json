@@ -1,0 +1,31 @@
+{
+  "model": "gpt-image-2.5-sunburst",
+  "prompt": "A single soft abstract watercolor wash on a plain, flat, pure black background (#000000), centered, wide and low (about three times wider than tall), with lots of empty black space around it. An irregular, organic bloom of transparent pigment with soft feathered edges, gentle color bleeding, subtle granulation and a few darker blooms where the water dried. Colors: <COLOURS>. Along its upper edge runs a single delicate hairline stroke of metallic gold ink. Refined, calm, luxurious, premium wellness aesthetic, no text, no objects, no paper texture, no border, no shadows.",
+  "freistellen": "python3 scripts/freistellen.py <quelle.png> <ziel.webp> --schwarz --breite 900",
+  "waschungen": [
+    {
+      "id": "lavendel",
+      "colours": "lavender and soft violet",
+      "flow": "GFP2bAcb7FCvexYBufQt",
+      "generation": "pAa3AxupnAsfMXkXzN1O",
+      "width": 900,
+      "height": 256
+    },
+    {
+      "id": "pfirsich",
+      "colours": "peach, apricot and rosé",
+      "flow": "OyL4z3wBFsPkPBu3DjZC",
+      "generation": "WIKXNTCgB6gt9Vf7WhdG",
+      "width": 900,
+      "height": 226
+    },
+    {
+      "id": "blaugruen",
+      "colours": "teal and powder blue",
+      "flow": "Ed81glOGJVI8duCTk1D1",
+      "generation": "DD7OSM249DMHig5iOj3l",
+      "width": 900,
+      "height": 266
+    }
+  ]
+}
