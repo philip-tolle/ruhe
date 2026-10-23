@@ -18,22 +18,26 @@
   // Nur Musik hat einen Offline-Stand; Naturklänge liegen im Precache.
   const url = $derived(sound.kind === 'music' ? absoluteMusicUrl(sound, location.href) : null)
   const saved = $derived(url === null ? undefined : offline.saved[url])
-  const unavailable = $derived(url !== null && !startable(saved, offline.online))
-  const hintId = $derived(`offline-${sound.id}`)
 
   const volume = $derived(audio.snap.volumes[sound.id])
   const active = $derived(volume !== undefined)
   const loading = $derived(audio.snap.loading.includes(sound.id))
-  const failed = $derived(audio.snap.errors.includes(sound.id) && !active && !loading)
   // Ein ladender Klang zählt als gedrückt: ein weiterer Tipp bricht ihn ab.
   const pressed = $derived(active || loading)
+  // Gesperrt wird nur, was nicht läuft: Ein Stück, das beim Wegfall des Netzes klingt, bleibt auf seiner
+  // Kachel stoppbar. Der Hinweis ersetzt dann auch eine Ladefehler-Meldung.
+  const unavailable = $derived(url !== null && !pressed && !startable(saved, offline.online))
+  const failed = $derived(audio.snap.errors.includes(sound.id) && !active && !loading && !unavailable)
+  const hintId = $derived(`offline-${sound.id}`)
 
   const errorId = $derived(`fehler-${sound.id}`)
 
   function toggle() {
+    // Vor dem Antippen gemerkt: Die Engine meldet den neuen Stand sofort, `pressed` gilt danach schon für ihn.
+    const starting = !pressed
     // Die Engine hält ihren Zustand selbst konsistent; ein Fehler von play() soll nicht in die Konsole.
     engine.toggle(sound.id).catch(() => {})
-    if (!pressed) saveBackgroundForOffline(sound.id)
+    if (starting) saveBackgroundForOffline(sound.id)
   }
 
   function setVolume(event: Event & { currentTarget: HTMLInputElement }) {

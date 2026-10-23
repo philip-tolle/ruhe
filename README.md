@@ -69,12 +69,14 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 
 ## Handy-Checkliste Meilenstein 5
 
-1. „Klänge“: Jedes Musikstück startet weich. „Stilles Klavier“ 6 Minuten laufen lassen: An der Naht nach 5 Minuten ist kein Bruch zu hören.
+1. „Klänge“: Jedes Musikstück startet weich. „Stilles Klavier“ 6 Minuten laufen lassen, **mit gesperrtem Bildschirm**: An der Naht nach 5 Minuten ist kein Bruch zu hören.
 2. Geführte Meditation mit „Schwebende Flächen“ als Hintergrund: Der Balance-Regler wirkt, Pause und Weiter halten auch die Musik an.
 3. Atemübungen 4-7-8, Box und Seufzer: Das Atemgeräusch ist dezent und passt zu jeder Phase, Halten ist still. Mit „Atemgeräusch“ aus ist alles still, die Vibration bleibt.
 4. „Alle offline speichern“, dann Flugmodus: Musik und Meditationen spielen, die Schleife nach 5 Minuten klappt.
 5. Flugmodus ohne gespeicherte Musik: Die Stücke sind deaktiviert. Ein Timer mit Musik-Hintergrund startet ohne Hintergrund.
 6. Sperrbildschirm: Titel des Stücks; Pause und Weiter funktionieren.
+7. Anruf während der Musik, am besten kurz vor der Naht (nach etwa 4:50): Die Musik hält an; nach dem Auflegen geht es mit „Weiter“ an derselben Stelle weiter, ohne doppelten Anfang.
+8. Ein Stück in „Klänge“ antippen und kurz laufen lassen: Das Häkchen „offline gespeichert“ erscheint auf der Kachel. Läuft ein noch nicht gespeichertes Stück, wenn das Netz wegfällt, lässt es sich auf seiner Kachel weiter stoppen.
 
 > Hinweis: Musik: ElevenLabs Music (4 Stücke) und vom Nutzer mit Gemini erstellt (3 Stücke). Das Atemgeräusch ist eine echte Aufnahme (ElevenLabs).
 

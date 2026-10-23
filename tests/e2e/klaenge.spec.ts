@@ -403,3 +403,38 @@ test('offline, unsaved music is disabled and says so', async ({ page, context })
   await context.setOffline(false)
   await expect(klavier).toBeEnabled()
 })
+
+test('a music piece played in Klänge is saved for offline when it starts, not when it stops', async ({ page }) => {
+  await openKlaenge(page)
+  const klavier = soundTile(page, 'Stilles Klavier')
+  await klavier.click()
+  await expect(klavier).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
+  // Gespeichert, während es noch läuft: Das Zeichen „offline gespeichert“ erscheint auf der Kachel.
+  await expect(klavier.locator('.offline-mark')).toBeVisible({ timeout: 15000 })
+  await expect(klavier).toHaveAttribute('aria-pressed', 'true')
+  expect(await page.evaluate(async () => (await (await caches.open('ruhe-musik')).keys()).length)).toBe(1)
+})
+
+test.describe('when the network goes away while music plays', () => {
+  // Ohne Service Worker sieht `page.route` jede Anfrage.
+  test.use({ serviceWorkers: 'block' })
+
+  test('a playing, unsaved piece stays stoppable on its tile and only then says it is not available', async ({ page, context }) => {
+    // Das vollständige Laden zum Speichern scheitert (ohne Range-Kopf), das Streamen der Elemente nicht.
+    await page.route('**/audio/music/**', (route) => (route.request().headers()['range'] ? route.continue() : route.abort()))
+    await openKlaenge(page)
+    const klavier = soundTile(page, 'Stilles Klavier')
+    await klavier.click()
+    await expect(klavier).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
+
+    await context.setOffline(true)
+    await expect(soundTile(page, 'Obertöne')).toBeDisabled() // die anderen, nicht gespeicherten sind gesperrt
+    await expect(klavier).toBeEnabled()
+    await expect(klavier).not.toHaveAccessibleDescription('Nicht offline verfügbar')
+
+    await klavier.click()
+    await expect(klavier).toHaveAttribute('aria-pressed', 'false')
+    await expect(klavier).toBeDisabled()
+    await expect(klavier).toHaveAccessibleDescription('Nicht offline verfügbar')
+  })
+})

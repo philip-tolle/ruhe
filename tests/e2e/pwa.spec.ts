@@ -146,6 +146,43 @@ test('a saved meditation is served from the cache with range support while offli
   expect(partial.bytes).toEqual(saved.head)
 })
 
+test('a saved music piece is served from ruhe-musik with range support while offline', async ({ page, context }) => {
+  await page.goto('./')
+  await page.evaluate(async () => { await navigator.serviceWorker.ready })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+  // Mit Version wie in der App (musicUrl): Die Route des Service Workers muss auch die Abfrage verstehen.
+  const music: { file: string; version: string }[] = JSON.parse(readFileSync('content/sounds.json', 'utf8')).music
+  const klavier = music.find((m) => m.file.endsWith('/klavier.opus'))!
+  const file = new URL(`${klavier.file}?v=${klavier.version}`, page.url()).href
+
+  // So speichert die App (src/lib/offline/meditations.ts): vollständig laden, dann als 200 in `ruhe-musik`.
+  const saved = await page.evaluate(async (url) => {
+    const body = await (await fetch(url)).blob()
+    const cache = await caches.open('ruhe-musik')
+    await cache.put(url, new Response(body, {
+      status: 200,
+      headers: { 'Content-Type': 'audio/ogg', 'Content-Length': String(body.size) },
+    }))
+    return { size: body.size, tail: Array.from(new Uint8Array(await body.slice(body.size - 100).arrayBuffer())) }
+  }, file)
+  expect(saved.size).toBeGreaterThan(100)
+
+  // Offline kommt jedes Teilstück aus dem Cache, auch das Ende (dort beginnt die Überblendung).
+  await context.setOffline(true)
+  const partial = await page.evaluate(async ({ url, size }) => {
+    const response = await fetch(url, { headers: { Range: `bytes=${size - 100}-${size - 1}` } })
+    return {
+      status: response.status,
+      contentRange: response.headers.get('Content-Range'),
+      bytes: Array.from(new Uint8Array(await response.arrayBuffer())),
+    }
+  }, { url: file, size: saved.size })
+  expect(partial.status).toBe(206)
+  expect(partial.contentRange).toBe(`bytes ${saved.size - 100}-${saved.size - 1}/${saved.size}`)
+  expect(partial.bytes).toEqual(saved.tail)
+})
+
 test('the meditation cache takes only audio, never a page in place of a file', async ({ page }) => {
   await page.goto('./')
   await page.evaluate(async () => { await navigator.serviceWorker.ready })
