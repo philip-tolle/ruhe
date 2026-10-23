@@ -116,10 +116,13 @@ test('megabytes are decimal, with one decimal place and a comma', () => {
   expect(megabytes(12_000_000)).toBe('12,0 MB')
 })
 
-test('offline summary names the saved meditations and their size', () => {
-  expect(offlineSummary(0, 9, 0)).toBe('0 von 9 Meditationen offline gespeichert (0 MB)')
-  expect(offlineSummary(1, 9, 360_326)).toBe('1 von 9 Meditationen offline gespeichert (0,4 MB)')
-  expect(offlineSummary(9, 9, 7_723_456)).toBe('9 von 9 Meditationen offline gespeichert (7,7 MB)')
+test('offline summary names the saved meditations and music pieces and both sizes', () => {
+  expect(offlineSummary({ saved: 3, total: 9 }, { saved: 2, total: 7 }, 12_400_000, 49_200_000)).toBe(
+    '3 von 9 Meditationen und 2 von 7 Musikstücken offline gespeichert (12,4 MB von 49,2 MB)',
+  )
+  expect(offlineSummary({ saved: 0, total: 9 }, { saved: 0, total: 7 }, 0, 49_200_000)).toBe(
+    '0 von 9 Meditationen und 0 von 7 Musikstücken offline gespeichert (0 MB von 49,2 MB)',
+  )
 })
 
 test('saving label counts the file in progress, never beyond the total', () => {
@@ -141,7 +144,7 @@ test('save progress is the share of bytes in whole percent, kept between 0 and 1
 
 describe('save result message', () => {
   test('everything saved', () => {
-    expect(saveResultMessage({ saved: 9, failed: 0, quota: false }, 9)).toBe('Alle Meditationen sind offline verfügbar.')
+    expect(saveResultMessage({ saved: 16, failed: 0, quota: false }, 16)).toBe('Alle Meditationen und die Musik sind offline verfügbar.')
   })
 
   test('full storage keeps what was saved', () => {

@@ -1,8 +1,10 @@
 import { test, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   MEDITATION_CACHE,
+  MUSIC_CACHE,
+  cacheNameFor,
   isSaved,
-  saveMeditation,
+  saveAudio,
   saveAll,
   removeStale,
   requestPersistOnce,
@@ -107,9 +109,11 @@ async function cachedKeys(): Promise<string[]> {
 
 beforeEach(async () => {
   await caches.delete(MEDITATION_CACHE)
+  await caches.delete(MUSIC_CACHE)
 })
 afterEach(async () => {
   await caches.delete(MEDITATION_CACHE)
+  await caches.delete(MUSIC_CACHE)
 })
 
 test('the cache is called ruhe-meditations', () => {
@@ -122,7 +126,7 @@ test('a complete download is saved', async () => {
   const fetch = fakeFetch({ [a]: { data } })
   expect(await isSaved(a)).toBe(false)
 
-  expect(await saveMeditation(a, undefined, { fetch })).toBe('saved')
+  expect(await saveAudio(a, undefined, { fetch })).toBe('saved')
 
   expect(await isSaved(a)).toBe(true)
   const cached = await (await caches.open(MEDITATION_CACHE)).match(a)
@@ -137,7 +141,7 @@ test('a relative address is stored under its absolute address', async () => {
   const absolute = url('rel')
   const fetch = fakeFetch({ [absolute]: { data: bytes(1500) } })
 
-  expect(await saveMeditation(relative, undefined, { fetch })).toBe('saved')
+  expect(await saveAudio(relative, undefined, { fetch })).toBe('saved')
 
   expect(await cachedKeys()).toEqual([absolute])
   expect(await isSaved(relative)).toBe(true)
@@ -148,7 +152,7 @@ test('a partly streamed file does not count as saved', async () => {
   const a = url('a')
   const fetch = fakeFetch({ [a]: { data: bytes(5000), errorAt: 2000 } })
 
-  expect(await saveMeditation(a, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(a, undefined, { fetch })).toBe('failed')
 
   expect(await isSaved(a)).toBe(false)
   expect(await cachedKeys()).toEqual([])
@@ -158,7 +162,7 @@ test('a stream that ends early without an error does not count as saved', async 
   const a = url('a')
   const fetch = fakeFetch({ [a]: { data: bytes(5000), endAt: 3000 } })
 
-  expect(await saveMeditation(a, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(a, undefined, { fetch })).toBe('failed')
 
   expect(await isSaved(a)).toBe(false)
   expect(await cachedKeys()).toEqual([])
@@ -173,9 +177,9 @@ test('http errors, a refused connection and a partial answer fail without storin
     [partial]: { data: bytes(100), status: 206 },
   })
 
-  expect(await saveMeditation(missing, undefined, { fetch })).toBe('failed')
-  expect(await saveMeditation(down, undefined, { fetch })).toBe('failed')
-  expect(await saveMeditation(partial, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(missing, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(down, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(partial, undefined, { fetch })).toBe('failed')
 
   expect(await cachedKeys()).toEqual([])
 })
@@ -185,7 +189,7 @@ test('a quota error on put reports quota and stores nothing', async () => {
   const { storage, entries } = fakeCaches({ failPutAt: 1 })
   const fetch = fakeFetch({ [a]: { data: bytes(2000) } })
 
-  expect(await saveMeditation(a, undefined, { fetch, caches: storage })).toBe('quota')
+  expect(await saveAudio(a, undefined, { fetch, caches: storage })).toBe('quota')
 
   expect(entries.size).toBe(0)
 })
@@ -226,7 +230,7 @@ test('progress reports bytes', async () => {
   const fetch = fakeFetch({ [a]: { data: bytes(4500), chunk: 1000 } })
   const progress: Array<[number, number]> = []
 
-  await saveMeditation(a, (loaded, total) => progress.push([loaded, total]), { fetch })
+  await saveAudio(a, (loaded, total) => progress.push([loaded, total]), { fetch })
 
   expect(progress.map(([loaded]) => loaded)).toEqual([1000, 2000, 3000, 4000, 4500])
   expect(progress.every(([, total]) => total === 4500)).toBe(true)
@@ -237,7 +241,7 @@ test('progress reports an unknown total as 0', async () => {
   const fetch = fakeFetch({ [a]: { data: bytes(2500), noLength: true } })
   const progress: Array<[number, number]> = []
 
-  expect(await saveMeditation(a, (loaded, total) => progress.push([loaded, total]), { fetch })).toBe('saved')
+  expect(await saveAudio(a, (loaded, total) => progress.push([loaded, total]), { fetch })).toBe('saved')
 
   expect(progress.at(-1)).toEqual([2500, 0])
   expect(await isSaved(a)).toBe(true) // ohne Content-Length zählt jede vollständig gespeicherte 200-Antwort
@@ -276,10 +280,10 @@ test('a failed file does not count its partial bytes', async () => {
 test('a file that is already saved is not downloaded again', async () => {
   const a = url('a')
   const fetch = fakeFetch({ [a]: { data: bytes(2000) } })
-  await saveMeditation(a, undefined, { fetch })
+  await saveAudio(a, undefined, { fetch })
   expect(fetch.calls).toHaveLength(1)
 
-  expect(await saveMeditation(a, undefined, { fetch })).toBe('saved')
+  expect(await saveAudio(a, undefined, { fetch })).toBe('saved')
   expect(await saveAll([a], () => {}, { fetch })).toEqual({ saved: 1, failed: 0, quota: false })
 
   expect(fetch.calls).toHaveLength(1)
@@ -293,7 +297,7 @@ test('a truncated entry in the cache is downloaded again', async () => {
   await cache.put(a, new Response(data.slice(0, 1000), { status: 200, headers: { ...AUDIO, 'Content-Length': '3000' } }))
   expect(await isSaved(a)).toBe(false)
 
-  expect(await saveMeditation(a, undefined, { fetch: fakeFetch({ [a]: { data } }) })).toBe('saved')
+  expect(await saveAudio(a, undefined, { fetch: fakeFetch({ [a]: { data } }) })).toBe('saved')
 
   expect(await isSaved(a)).toBe(true)
 })
@@ -324,8 +328,8 @@ test('persistent storage is requested once, at the first save', async () => {
   const fetch = fakeFetch({ [url('a')]: { data: bytes(1500) }, [url('b')]: { data: bytes(1500) } })
 
   expect(persist).not.toHaveBeenCalled()
-  await saveMeditation(url('a'), undefined, { fetch, storage })
-  await saveMeditation(url('b'), undefined, { fetch, storage })
+  await saveAudio(url('a'), undefined, { fetch, storage })
+  await saveAudio(url('b'), undefined, { fetch, storage })
   await requestPersistOnce({ storage })
 
   expect(persist).toHaveBeenCalledTimes(1)
@@ -336,7 +340,7 @@ test('a failing persist request is silent and does not block saving', async () =
   const fetch = fakeFetch({ [url('a')]: { data: bytes(1500) } })
 
   await expect(requestPersistOnce({ storage: {} as StorageManager })).resolves.toBeUndefined()
-  expect(await saveMeditation(url('a'), undefined, { fetch, storage })).toBe('saved')
+  expect(await saveAudio(url('a'), undefined, { fetch, storage })).toBe('saved')
 })
 
 test('saveInBackground returns at once and saves in the background', async () => {
@@ -368,7 +372,7 @@ test('a real file from the server is saved completely', async () => {
   const real = new URL('audio/meditations/drei-minuten-atempause.mp3', location.href).href
   const progress: Array<[number, number]> = []
 
-  expect(await saveMeditation(real, (loaded, total) => progress.push([loaded, total]))).toBe('saved')
+  expect(await saveAudio(real, (loaded, total) => progress.push([loaded, total]))).toBe('saved')
 
   expect(await isSaved(real)).toBe(true)
   const [loaded, total] = progress.at(-1)!
@@ -388,7 +392,7 @@ test('an incomplete entry is removed before the download, so a failed download l
   expect(await cachedKeys()).toEqual([a])
 
   const fetch = fakeFetch({ [a]: { data: bytes(3000), errorAt: 500 } })
-  expect(await saveMeditation(a, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(a, undefined, { fetch })).toBe('failed')
 
   expect(await cachedKeys()).toEqual([])
   expect(await isSaved(a)).toBe(false)
@@ -399,7 +403,7 @@ test('an incomplete entry is removed even when the server has the file no more',
   const cache = await caches.open(MEDITATION_CACHE)
   await cache.put(a, new Response(bytes(1000), { status: 200, headers: { ...AUDIO, 'Content-Length': '3000' } }))
 
-  expect(await saveMeditation(a, undefined, { fetch: fakeFetch({}) })).toBe('failed') // 404
+  expect(await saveAudio(a, undefined, { fetch: fakeFetch({}) })).toBe('failed') // 404
 
   expect(await cachedKeys()).toEqual([])
 })
@@ -408,11 +412,11 @@ test('a complete entry is left alone', async () => {
   const a = url('a')
   const data = bytes(2000)
   const fetch = fakeFetch({ [a]: { data } })
-  await saveMeditation(a, undefined, { fetch })
+  await saveAudio(a, undefined, { fetch })
 
   // Der zweite Aufruf löscht nichts und lädt nichts; mit einem Netz, das ausfiele, bliebe 'saved'.
   const down = fakeFetch({ [a]: { data, reject: true } })
-  expect(await saveMeditation(a, undefined, { fetch: down })).toBe('saved')
+  expect(await saveAudio(a, undefined, { fetch: down })).toBe('saved')
 
   expect(down.calls).toEqual([])
   expect(await isSaved(a)).toBe(true)
@@ -425,7 +429,7 @@ test('a compressed response is counted by the bytes received, not compared with 
   const fetch = fakeFetch({ [a]: { data, encoding: 'gzip', lengthHeader: 1234 } })
   const progress: Array<[number, number]> = []
 
-  expect(await saveMeditation(a, (loaded, total) => progress.push([loaded, total]), { fetch })).toBe('saved')
+  expect(await saveAudio(a, (loaded, total) => progress.push([loaded, total]), { fetch })).toBe('saved')
 
   expect(progress.at(-1)).toEqual([5000, 0]) // Gesamtlänge unbekannt
   expect(await isSaved(a)).toBe(true)
@@ -439,7 +443,7 @@ test('a compressed response that delivers nothing still fails', async () => {
   const a = url('a')
   const fetch = fakeFetch({ [a]: { data: new Uint8Array(0), encoding: 'br', lengthHeader: 10 } })
 
-  expect(await saveMeditation(a, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(a, undefined, { fetch })).toBe('failed')
 
   expect(await cachedKeys()).toEqual([])
 })
@@ -469,9 +473,9 @@ test('a response that is not audio is rejected and nothing is stored', async () 
     [untyped]: { data: bytes(3000), contentType: null },
   })
 
-  expect(await saveMeditation(page, undefined, { fetch })).toBe('failed')
-  expect(await saveMeditation(octets, undefined, { fetch })).toBe('failed')
-  expect(await saveMeditation(untyped, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(page, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(octets, undefined, { fetch })).toBe('failed')
+  expect(await saveAudio(untyped, undefined, { fetch })).toBe('failed')
 
   expect(await cachedKeys()).toEqual([])
 })
@@ -484,8 +488,8 @@ test('any audio type is accepted, in any case', async () => {
     [b]: { data: bytes(2000), contentType: 'Audio/MPEG' },
   })
 
-  expect(await saveMeditation(a, undefined, { fetch })).toBe('saved')
-  expect(await saveMeditation(b, undefined, { fetch })).toBe('saved')
+  expect(await saveAudio(a, undefined, { fetch })).toBe('saved')
+  expect(await saveAudio(b, undefined, { fetch })).toBe('saved')
 })
 
 test('removeStale deletes the entries that are not a current address and keeps the others', async () => {
@@ -521,7 +525,7 @@ test('saveAll tells which files were saved, also the one that was already there'
     [url('b')]: { data: bytes(1500), errorAt: 500 },
     [url('c')]: { data: bytes(1500) },
   })
-  await saveMeditation(url('a'), undefined, { fetch })
+  await saveAudio(url('a'), undefined, { fetch })
   const saved: string[] = []
 
   await saveAll([url('a'), url('b'), url('c')], () => {}, { fetch }, (address) => saved.push(address))
@@ -568,7 +572,7 @@ test('a cached page instead of the file is replaced by the next save', async () 
   expect(await isSaved(a)).toBe(false)
 
   const fetch = fakeFetch({ [a]: { data } })
-  expect(await saveMeditation(a, undefined, { fetch })).toBe('saved')
+  expect(await saveAudio(a, undefined, { fetch })).toBe('saved')
 
   expect(fetch.calls).toEqual([a]) // nicht als „schon gespeichert“ übersprungen
   expect(await isSaved(a)).toBe(true)
@@ -582,7 +586,45 @@ test('a cached page is gone even when the new download fails', async () => {
   const cache = await caches.open(MEDITATION_CACHE)
   await cache.put(a, htmlResponse())
 
-  expect(await saveMeditation(a, undefined, { fetch: fakeFetch({ [a]: { data: bytes(3000), errorAt: 500 } }) })).toBe('failed')
+  expect(await saveAudio(a, undefined, { fetch: fakeFetch({ [a]: { data: bytes(3000), errorAt: 500 } }) })).toBe('failed')
 
   expect(await cachedKeys()).toEqual([])
+})
+
+// Musik liegt in einem eigenen Cache; sonst gilt alles wie für die Meditationen.
+const musicUrl = (name: string, version = 'x') => new URL(`audio/music/${name}.opus?v=${version}`, location.href).href
+
+test('a music file is saved into ruhe-musik with its own content type', async () => {
+  const m = musicUrl('klavier')
+  expect(cacheNameFor(m)).toBe('ruhe-musik')
+  expect(cacheNameFor(url('a'))).toBe('ruhe-meditations')
+  const data = bytes(4000)
+  const fetch = fakeFetch({ [m]: { data, contentType: 'audio/ogg' } })
+
+  expect(await saveAudio(m, undefined, { fetch })).toBe('saved')
+
+  expect(await isSaved(m)).toBe(true)
+  const cached = await (await caches.open(MUSIC_CACHE)).match(m)
+  expect(cached?.headers.get('Content-Type')).toBe('audio/ogg')
+  expect(new Uint8Array(await cached!.arrayBuffer())).toEqual(data)
+  expect(await cachedKeys()).toEqual([]) // nicht bei den Meditationen
+})
+
+test('removeStale cleans old versions in both caches', async () => {
+  const meditations = { old: url('a') + '?v=old', current: url('a') + '?v=new' }
+  const music = { old: musicUrl('klavier', 'old'), current: musicUrl('klavier', 'new') }
+  const fetch = fakeFetch({
+    [meditations.old]: { data: bytes(100) },
+    [meditations.current]: { data: bytes(100) },
+    [music.old]: { data: bytes(100), contentType: 'audio/ogg' },
+    [music.current]: { data: bytes(100), contentType: 'audio/ogg' },
+  })
+  for (const address of [meditations.old, meditations.current, music.old, music.current]) {
+    expect(await saveAudio(address, undefined, { fetch })).toBe('saved')
+  }
+
+  expect(await removeStale([meditations.current, music.current])).toBe(2)
+
+  expect(await cachedKeys()).toEqual([meditations.current])
+  expect((await (await caches.open(MUSIC_CACHE)).keys()).map((r) => r.url)).toEqual([music.current])
 })

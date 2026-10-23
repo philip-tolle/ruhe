@@ -5,6 +5,7 @@ import type { ProgramSpec } from '../audio/program'
 import type { Meditation } from '../content/catalog'
 import { absoluteAudioUrl, backgroundVolume } from '../meditation/guided-view'
 import { saveForOffline } from '../offline/status.svelte'
+import { saveBackgroundForOffline } from './offline-ui.svelte'
 import type { SessionKind } from '../stats/schema'
 import { setLastUsed, stats } from '../stats/store.svelte'
 
@@ -29,12 +30,13 @@ export function clearDone(): void {
 export function startSession(spec: ProgramSpec): void {
   clearDone()
   engine.startProgram(spec).catch(() => {})
+  saveBackgroundForOffline(spec.background)
 }
 
 /**
  * Startet eine geführte Meditation aus der Oberfläche, wie `startSession` im Tipp selbst (kein
  * `await` davor). Hintergrund und Balance kommen aus den Einstellungen. Beim ersten Abspielen wird
- * die Datei zusätzlich im Hintergrund vollständig gespeichert (offline verfügbar).
+ * die Datei (und ein Musikstück als Hintergrund) zusätzlich im Hintergrund vollständig gespeichert.
  */
 export function startGuidedSession(m: Meditation): void {
   clearDone()
@@ -45,4 +47,5 @@ export function startGuidedSession(m: Meditation): void {
     .startGuided({ id: m.id, title: m.title, url, background: guidedSound, backgroundVolume: backgroundVolume(voiceBalance) })
     .catch(() => {})
   saveForOffline(url)
+  saveBackgroundForOffline(guidedSound)
 }

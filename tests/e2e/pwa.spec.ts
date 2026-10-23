@@ -40,6 +40,19 @@ test('works offline after first visit', async ({ page, context }) => {
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toHaveCount(0)
 })
 
+test('music is not precached, the breath sounds are', async ({ page, request }) => {
+  await page.goto('./')
+  // Die Liste des Precache steht im gebauten Service Worker.
+  const sw = await (await request.get(new URL('sw.js', page.url()).href)).text()
+  expect(sw).toContain('audio/breath/ein.ogg')
+  expect(sw).toContain('audio/breath/aus.ogg')
+  expect(sw).not.toMatch(/audio\/music\/[a-z-]+\.opus/)
+  // Gespeichert wird nur `audio/*`; so liefert der Server die Musik aus (GitHub Pages ebenso).
+  const music = await request.get(new URL('audio/music/klavier.opus', page.url()).href)
+  expect(music.status()).toBe(200)
+  expect(music.headers()['content-type']).toBe('audio/ogg')
+})
+
 test('all 28 painted motifs are precached and available offline', async ({ page, context }) => {
   const ids = (JSON.parse(readFileSync('content/motive.json', 'utf8')).motive as { id: string }[]).map((m) => m.id)
   expect(ids).toHaveLength(28)

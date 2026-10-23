@@ -76,9 +76,20 @@ export function megabytes(bytes: number): string {
   return bytes > 0 ? `${(bytes / 1_000_000).toFixed(1).replace('.', ',')} MB` : '0 MB'
 }
 
-/** Stand der Offline-Speicherung: „3 von 9 Meditationen offline gespeichert (2,4 MB)“. */
-export function offlineSummary(saved: number, total: number, bytes: number): string {
-  return `${saved} von ${total} Meditationen offline gespeichert (${megabytes(bytes)})`
+/**
+ * Stand der Offline-Speicherung:
+ * „3 von 9 Meditationen und 2 von 7 Musikstücken offline gespeichert (12,4 MB von 49,2 MB)“.
+ */
+export function offlineSummary(
+  meditations: { saved: number; total: number },
+  music: { saved: number; total: number },
+  savedBytes: number,
+  totalBytes: number,
+): string {
+  return (
+    `${meditations.saved} von ${meditations.total} Meditationen und ${music.saved} von ${music.total} Musikstücken ` +
+    `offline gespeichert (${megabytes(savedBytes)} von ${megabytes(totalBytes)})`
+  )
 }
 
 /** Während des Speicherns: „Speichere 3 von 9 …“; `done` Dateien sind erledigt, die nächste ist dran. */
@@ -92,11 +103,11 @@ export function savePercent(bytes: number, totalBytes: number): number {
   return Math.min(100, Math.max(0, Math.round((bytes / totalBytes) * 100)))
 }
 
-/** Meldung nach „Alle offline speichern“; `total` ist die Zahl aller Meditationen. */
+/** Meldung nach „Alle offline speichern“; `total` ist die Zahl aller Dateien (Meditationen und Musik). */
 export function saveResultMessage(result: { saved: number; failed: number; quota: boolean }, total: number): string {
   if (result.quota) return 'Nicht genug Speicherplatz. Bereits Gespeichertes bleibt erhalten.'
   if (result.failed > 0) return `${result.saved} von ${total} gespeichert, ${result.failed} fehlgeschlagen.`
-  return 'Alle Meditationen sind offline verfügbar.'
+  return 'Alle Meditationen und die Musik sind offline verfügbar.'
 }
 
 /** Summe der Größen in Bytes. */

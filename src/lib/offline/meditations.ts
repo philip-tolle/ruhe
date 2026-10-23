@@ -1,7 +1,10 @@
-// Offline-Speicher der geführten Meditationen (Spec 6.5).
+// Offline-Speicher der geführten Meditationen (Spec 6.5) und der Musik (M5-Spec 5.4).
+//
+// Meditationen liegen im Cache `ruhe-meditations`, Musik in `ruhe-musik`; welcher gilt, sagt die
+// Adresse (`cacheNameFor`). Sonst gilt für beide dasselbe, hier am Beispiel der Meditationen.
 //
 // Die MP3-Dateien sind zu groß für den Precache. Beim Streamen fragt der Browser nur Teilstücke
-// (206) an, und die lassen sich nicht cachen; deshalb lädt `saveMeditation` die Datei zusätzlich
+// (206) an, und die lassen sich nicht cachen; deshalb lädt `saveAudio` die Datei zusätzlich
 // vollständig und legt sie erst nach vollem Empfang in den Cache `ruhe-meditations`. Aus diesem
 // Cache liefert der Service Worker mit Range-Unterstützung aus (vite.config.ts → runtimeCaching),
 // sodass Spulen auch offline geht. Der Offline-Status einer Meditation kommt allein aus dem Cache.
@@ -17,6 +20,7 @@
 // Schlüssel im Cache genau die Adresse ist, die auch die Workbox-Route sieht.
 
 export const MEDITATION_CACHE = 'ruhe-meditations'
+export const MUSIC_CACHE = 'ruhe-musik'
 
 export interface OfflineDeps {
   caches?: CacheStorage
@@ -30,8 +34,13 @@ function absolute(url: string): string {
   return new URL(url, location.href).href
 }
 
-function openCache(deps: OfflineDeps): Promise<Cache> {
-  return (deps.caches ?? caches).open(MEDITATION_CACHE)
+/** Der Cache einer Adresse: Musik (`/audio/music/`) in `ruhe-musik`, alles andere bei den Meditationen. */
+export function cacheNameFor(url: string): string {
+  return new URL(url, location.href).pathname.includes('/audio/music/') ? MUSIC_CACHE : MEDITATION_CACHE
+}
+
+function openCache(deps: OfflineDeps, address: string): Promise<Cache> {
+  return (deps.caches ?? caches).open(cacheNameFor(address))
 }
 
 // Speicher voll: Chrome und Firefox werfen eine DOMException mit diesem Namen.
@@ -67,7 +76,7 @@ async function savedIn(cache: Cache, address: string): Promise<boolean> {
   // Nur eine vollständige 200-Antwort zählt, nie ein 206.
   if (!response || response.status !== 200) return false
   // Der Service Worker legt jede 200-Antwort ab, auch die Startseite, die der Server statt einer
-  // fehlenden Datei liefert. Sie ist keine Meditation; `saveMeditation` löscht sie beim nächsten Speichern.
+  // fehlenden Datei liefert. Sie ist keine Meditation; `saveAudio` löscht sie beim nächsten Speichern.
   if (!isAudio(response)) return false
   // Ohne prüfbare Länge (fehlt oder Content-Encoding) genügt die 200-Antwort; eine unlesbare
   // Content-Length dagegen gilt als beschädigt.
@@ -83,7 +92,8 @@ async function savedIn(cache: Cache, address: string): Promise<boolean> {
  */
 export async function isSaved(url: string, deps: OfflineDeps = {}): Promise<boolean> {
   try {
-    return await savedIn(await openCache(deps), absolute(url))
+    const address = absolute(url)
+    return await savedIn(await openCache(deps, address), address)
   } catch {
     return false
   }
@@ -97,14 +107,14 @@ export async function isSaved(url: string, deps: OfflineDeps = {}): Promise<bool
  * die `Content-Length`, 0 wenn sie unbekannt ist. Eine bereits vollständig gespeicherte Datei wird
  * nicht noch einmal geladen.
  */
-export async function saveMeditation(
+export async function saveAudio(
   url: string,
   onProgress?: (loaded: number, total: number) => void,
   deps: OfflineDeps = {},
 ): Promise<SaveResult> {
   try {
     const address = absolute(url)
-    const cache = await openCache(deps)
+    const cache = await openCache(deps, address)
     if (await savedIn(cache, address)) return 'saved'
     // Was da liegt, ist unvollständig (oder eine Teilantwort): Der Service Worker würde es beim
     // Abspielen ausliefern, auch wenn das Laden jetzt scheitert. Also weg damit.
@@ -135,10 +145,12 @@ export async function saveMeditation(
     // Ein Strom, der früher endet als angekündigt, ist unvollständig, auch ohne Fehler.
     if (loaded === 0 || (declared !== undefined && loaded !== declared)) return 'failed'
 
-    const body = new Blob(chunks, { type: 'audio/mpeg' })
+    // Der Typ des Servers bleibt (Meditationen audio/mpeg, Musik audio/ogg).
+    const type = response.headers.get('Content-Type') ?? 'audio/mpeg'
+    const body = new Blob(chunks, { type })
     await cache.put(
       address,
-      new Response(body, { status: 200, headers: { 'Content-Type': 'audio/mpeg', 'Content-Length': String(body.size) } }),
+      new Response(body, { status: 200, headers: { 'Content-Type': type, 'Content-Length': String(body.size) } }),
     )
     return 'saved'
   } catch (error) {
@@ -166,7 +178,7 @@ export async function saveAll(
   onProgress(0, total, 0)
   for (const url of urls) {
     let loaded = 0
-    const result = await saveMeditation(
+    const result = await saveAudio(
       url,
       (now) => {
         loaded = now
@@ -197,19 +209,23 @@ export function staleEntries(cachedUrls: readonly string[], currentUrls: readonl
 }
 
 /**
- * Löscht aus dem Cache alles, was keine der aktuellen Adressen ist, und liefert die Zahl der
- * gelöschten Einträge. Ist der Cache nicht lesbar, bleibt alles, wie es ist (0).
+ * Löscht aus beiden Caches (Meditationen, Musik) alles, was keine der aktuellen Adressen ist, und
+ * liefert die Zahl der gelöschten Einträge. Ist ein Cache nicht lesbar, bleibt er, wie er ist.
  */
 export async function removeStale(currentUrls: readonly string[], deps: OfflineDeps = {}): Promise<number> {
-  try {
-    const cache = await openCache(deps)
-    const cached = (await cache.keys()).map((request) => request.url)
-    const stale = staleEntries(cached, currentUrls.map(absolute))
-    const removed = await Promise.all(stale.map((address) => cache.delete(address).catch(() => false)))
-    return removed.filter(Boolean).length
-  } catch {
-    return 0
+  const current = currentUrls.map(absolute)
+  let count = 0
+  for (const name of [MEDITATION_CACHE, MUSIC_CACHE]) {
+    try {
+      const cache = await (deps.caches ?? caches).open(name)
+      const cached = (await cache.keys()).map((request) => request.url)
+      const removed = await Promise.all(staleEntries(cached, current).map((address) => cache.delete(address).catch(() => false)))
+      count += removed.filter(Boolean).length
+    } catch {
+      // nicht lesbar: nichts gelöscht
+    }
   }
+  return count
 }
 
 // Pro StorageManager wird nur einmal gefragt, solange die App läuft (im Speicher gemerkt).
@@ -232,5 +248,5 @@ export async function requestPersistOnce(deps: OfflineDeps = {}): Promise<void> 
 
 /** Für das erste Abspielen: speichert im Hintergrund, ohne zu warten; Fehler bleiben still. */
 export function saveInBackground(url: string, deps: OfflineDeps = {}): void {
-  saveMeditation(url, undefined, deps).catch(() => {})
+  saveAudio(url, undefined, deps).catch(() => {})
 }

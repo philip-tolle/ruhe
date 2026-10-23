@@ -11,6 +11,7 @@
   import { stats, updateSettings } from '../../lib/stats/store.svelte'
   import { formatRemaining } from '../../lib/time/format'
   import { tapArming } from '../../lib/ui/arming.svelte'
+  import { saveBackgroundForOffline } from '../../lib/ui/offline-ui.svelte'
   import { doneOf, runningProgram } from '../../lib/ui/player-state'
   import { programClock } from '../../lib/ui/program-clock.svelte'
 
@@ -40,6 +41,7 @@
   function setSound(id: BackgroundId | null) {
     engine.setBackground(id, backgroundVolume(balance))
     updateSettings({ guidedSound: id })
+    saveBackgroundForOffline(id)
   }
 
   function slideBalance(value: number) {

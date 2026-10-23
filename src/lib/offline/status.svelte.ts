@@ -1,9 +1,9 @@
-// Offline-Status der Meditationen für die Oberfläche: welche Dateien gespeichert sind und ob das
-// Gerät online ist. Der Status kommt aus dem Cache (`isSaved`); weil `isSaved` die ganze Datei
+// Offline-Status der Meditationen und der Musik für die Oberfläche: welche Dateien gespeichert sind
+// und ob das Gerät online ist. Der Status kommt aus dem Cache (`isSaved`); weil `isSaved` die ganze Datei
 // liest, wird jede Adresse höchstens einmal zur Zeit geprüft, nacheinander, und eine gespeicherte
 // nicht noch einmal. Schlüssel sind die absoluten Adressen (`absoluteAudioUrl`). Drei Zustände:
 // `undefined` (noch nicht geprüft), `false` (nicht gespeichert), `true` (gespeichert).
-import { isSaved, saveMeditation } from './meditations'
+import { isSaved, saveAudio } from './meditations'
 
 export const offline: { saved: Partial<Record<string, boolean>>; online: boolean } = $state({
   saved: {},
@@ -45,7 +45,7 @@ export async function refreshSaved(urls: readonly string[]): Promise<void> {
 export function saveForOffline(url: string): void {
   if (offline.saved[url] || saving.has(url)) return
   saving.add(url)
-  saveMeditation(url)
+  saveAudio(url)
     .then((result) => {
       if (result === 'saved') markSaved(url)
     })

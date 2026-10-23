@@ -9,8 +9,8 @@
   import { backupFileName, serializeBackup } from '../lib/stats/backup'
   import { importBackup, stats, updateSettings } from '../lib/stats/store.svelte'
   import { streak, totalMinutes } from '../lib/stats/summary'
-  import { importMessage, offlineSummary, savedTotals, savingLabel, streakLabel } from '../lib/ui/ich-view'
-  import { clearSaveMessage, meditationFiles, saveAllOffline, saveAllUi } from '../lib/ui/offline-ui.svelte'
+  import { importMessage, offlineSummary, savedTotals, savingLabel, streakLabel, sumBytes } from '../lib/ui/ich-view'
+  import { clearSaveMessage, offlineFiles, saveAllOffline, saveAllUi } from '../lib/ui/offline-ui.svelte'
 
   const sessions = $derived(stats.data.sessions)
   const settings = $derived(stats.data.settings)
@@ -37,9 +37,20 @@
     dragging = null
   })
 
-  // Offline: Der Stand kommt aus dem Cache (wie in der Liste unter „Meditieren“).
-  const files = meditationFiles()
+  // Offline: Der Stand kommt aus dem Cache (wie in der Liste unter „Meditieren“), für Meditationen
+  // und Musik zusammen.
+  const files = offlineFiles()
+  const meditationFiles = files.filter((file) => file.kind === 'meditation')
+  const musicFiles = files.filter((file) => file.kind === 'music')
   const saved = $derived(savedTotals(files, offline.saved))
+  const summary = $derived(
+    offlineSummary(
+      { saved: savedTotals(meditationFiles, offline.saved).count, total: meditationFiles.length },
+      { saved: savedTotals(musicFiles, offline.saved).count, total: musicFiles.length },
+      saved.bytes,
+      sumBytes(files),
+    ),
+  )
   const canSave = $derived(offline.online && !saveAllUi.running && saved.count < files.length)
 
   // Eine Meldung nach „Alle offline speichern“ ist einmal zu sehen, auch wenn der Lauf endete, während
@@ -144,7 +155,7 @@
 
   <div class="card">
     <h2>Offline</h2>
-    <p class="hint">{offlineSummary(saved.count, files.length, saved.bytes)}</p>
+    <p class="hint">{summary}</p>
     <button type="button" class="button" class:secondary={!canSave} disabled={!canSave} onclick={() => void saveAllOffline()}>
       Alle offline speichern
     </button>

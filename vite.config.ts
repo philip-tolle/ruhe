@@ -30,7 +30,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // App-Hülle, Schriften, Icons, die gemalten Motive (WebP) und die Klangdateien: alles offline ab dem ersten Besuch.
+        // App-Hülle, Schriften, Icons, die gemalten Motive (WebP) und die Klangdateien samt Atemgeräusch
+        // (Ogg): alles offline ab dem ersten Besuch. Die Musik (Opus) steht bewusst nicht darin.
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2,ogg}'],
         cleanupOutdatedCaches: true,
         // Die Meditationen (MP3) sind zu groß für den Precache und stehen bewusst nicht in
@@ -49,6 +50,18 @@ export default defineConfig({
               // Nur echtes Audio: Sonst legte der Service Worker auch die Startseite ab, die ein Server
               // statt einer fehlenden Datei mit 200 ausliefert, und die Datei gälte als gespeichert.
               cacheableResponse: { statuses: [200], headers: { 'Content-Type': 'audio/mpeg' } },
+            },
+          },
+          {
+            // Die Musik (Opus, zusammen gut 20 MB) wie die Meditationen: gespeichert von
+            // src/lib/offline/meditations.ts im Cache `ruhe-musik`, ausgeliefert mit Range-Unterstützung,
+            // damit Schleife und Überblendung auch offline gehen. Adresse `<id>.opus?v=<Version>` (musicUrl).
+            urlPattern: /\/audio\/music\/.+\.opus(\?.*)?$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'ruhe-musik',
+              rangeRequests: true,
+              cacheableResponse: { statuses: [200], headers: { 'Content-Type': 'audio/ogg' } },
             },
           },
         ],
