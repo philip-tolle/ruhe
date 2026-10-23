@@ -67,6 +67,17 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
+## Handy-Checkliste Meilenstein 5
+
+1. „Klänge“: Jedes Musikstück startet weich. „Stilles Klavier“ 6 Minuten laufen lassen: An der Naht nach 5 Minuten ist kein Bruch zu hören.
+2. Geführte Meditation mit „Schwebende Flächen“ als Hintergrund: Der Balance-Regler wirkt, Pause und Weiter halten auch die Musik an.
+3. Atemübungen 4-7-8, Box und Seufzer: Das Atemgeräusch ist dezent und passt zu jeder Phase, Halten ist still. Mit „Atemgeräusch“ aus ist alles still, die Vibration bleibt.
+4. „Alle offline speichern“, dann Flugmodus: Musik und Meditationen spielen, die Schleife nach 5 Minuten klappt.
+5. Flugmodus ohne gespeicherte Musik: Die Stücke sind deaktiviert. Ein Timer mit Musik-Hintergrund startet ohne Hintergrund.
+6. Sperrbildschirm: Titel des Stücks; Pause und Weiter funktionieren.
+
+> Hinweis: Musik: ElevenLabs Music (4 Stücke) und vom Nutzer mit Gemini erstellt (3 Stücke). Das Atemgeräusch ist eine echte Aufnahme (ElevenLabs).
+
 ## Meditationen vertonen
 
 Die Texte stehen in `content/meditations/<id>.md`, die fertigen Dateien entstehen mit `scripts/meditations.mjs` (`npm run meditations <Befehl>`; braucht ffmpeg und ffprobe). Gesprochen wird in einer Claude-Sitzung über den ElevenLabs-Connector. Dafür ist kein API-Schlüssel nötig, und es wird keiner gespeichert.
@@ -80,6 +91,14 @@ Die Texte stehen in `content/meditations/<id>.md`, die fertigen Dateien entstehe
 7. **Veröffentlichen:** Eine neue Aufnahme hat eine neue `version`, die App ruft die Datei als `<id>.mp3?v=<version>` ab. Das Handy lädt sie dadurch frisch, statt die alte aus dem Cache zu spielen. Ein Gerät, auf dem alles gespeichert war, muss nach einer neuen Aufnahme „Alle offline speichern“ erneut antippen: Die neuen `?v=`-Fassungen sind dort noch nicht gespeichert, und nur dieser Knopf entfernt die alten Kopien.
 
 Solange eine Meditation noch nicht vertont ist, spielt eine Platzhalter-Datei (leise Töne, in der App als „Vorabversion“ gekennzeichnet): `npm run meditations placeholders` legt sie für jede Meditation ohne echte Datei an und vermerkt sie in `audio-work/placeholders.json`; `assemble` nimmt die id dort wieder heraus. Echte Dateien überschreibt der Befehl nie.
+
+## Musik aufbereiten
+
+Die sieben Stücke liegen als `public/audio/music/<id>.opus`, die beiden Atemgeräusche als `public/audio/breath/ein.ogg` und `aus.ogg`. Ihre Daten stehen in `content/sounds.json` (`music` und `breath`): Titel, Datei, Version, Länge, Größe und Herkunft (Prompt, Flow und Generierung im ElevenLabs-Connector bzw. der Gemini-Titel). Aufbereitet wird mit `scripts/musik.py`, einem Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit NumPy und ffmpeg (libopus, libvorbis) braucht.
+
+- **Musik:** `python3 scripts/musik.py musik <quelle> public/audio/music/<id>.opus` blendet 1,5 s ein und 3 s aus, bringt das Stück auf −26 LUFS (True Peak höchstens −2 dBTP) und speichert es als Opus mit 96 kbit/s, Stereo, 48 kHz. Alle Stücke zusammen bleiben unter 22 MB.
+- **Atem:** `python3 scripts/musik.py atem <quelle> public/audio/breath/<ein|aus>.ogg` dämpft die Höhen (4 kHz), schneidet die Stille an Anfang und Ende ab und speichert −26 LUFS als Mono-Ogg. Wie leise es in der App klingt, regelt `BREATH_GAIN` in `src/lib/audio/breath-sound.ts`.
+- **Ein Stück austauschen:** Neu erzeugen (in einer Claude-Sitzung mit dem ElevenLabs-Connector, Modell `eleven_music_v2_5`, 300 s, instrumental; ein API-Schlüssel ist nicht nötig, und es wird keiner gespeichert), aufbereiten, dann in `content/sounds.json` `version`, `bytes` und `seconds` aus der Ausgabe des Skripts übernehmen. Die neue Version ändert die Adresse, Geräte laden das Stück dann neu.
 
 ## Motive malen
 
