@@ -3,18 +3,20 @@
 // (AudioContext → Lautsprecher, plus lautloser Anker) entsteht beim ersten `toggle` bzw. Start einer
 // Sitzung, also innerhalb einer Nutzergeste. Ein-/Ausblenden, Sleep-Ende, Programmklänge und -ende
 // und das Abbauen gestoppter Stimmen sind auf der Audio-Uhr eingeplant (Rampen, `onended`), nie über
-// JS-Timer; eine geführte Meditation läuft auf ihrem Medien-Element.
+// JS-Timer; eine geführte Meditation und die Musik laufen auf ihren Medien-Elementen. Ein Klang ist
+// ein Naturklang (dekodierte Schleife) oder ein Musikstück (gestreamt, `createMusicVoice`).
 import { holdParam, scheduleMarker, scheduleSleepFade } from './clock'
 import type { GuidedRun, GuidedSpec } from './guided-run'
 import { createLoopVoice, loadBuffer } from './loops'
 import { syncMediaSession, type MediaActions } from './media-session'
+import { createMusicVoice, type MusicVoice } from './music'
 import { createOutput, type Output } from './output'
 import type { ProgramSpec } from './program'
 import type { FadeOut, ProgramRun, ProgramSnapshot, SessionRun } from './program-run'
 import { Sessions } from './sessions'
 import { sleepPlan } from './sleep-timer'
 import type { Voice } from './voice'
-import { assetUrl, EFFECTS, soundById, type SoundId } from '../sounds/catalog'
+import { assetUrl, backgroundById, EFFECTS, musicUrl, type BackgroundId } from '../sounds/catalog'
 import type { SessionResult } from '../stats/schema'
 
 export type { ProgramSnapshot } from './program-run'
@@ -24,9 +26,9 @@ export type EngineState = 'idle' | 'playing' | 'paused'
 
 export interface EngineSnapshot {
   state: EngineState
-  volumes: Partial<Record<SoundId, number>> // laufender Klang (höchstens einer) → Lautstärke 0..1
-  loading: SoundId[]
-  errors: SoundId[]
+  volumes: Partial<Record<BackgroundId, number>> // laufender Klang (höchstens einer) → Lautstärke 0..1
+  loading: BackgroundId[]
+  errors: BackgroundId[]
   sleepMinutes: number | null // Auswahl, bleibt über Sitzungen erhalten
   remainingSec: number | null // null wenn idle, endlos oder während eines Programms
   needsTap: boolean // Start scheiterte (z. B. Autoplay-Regel): pausiert, „Weiter“ versucht es neu
@@ -41,6 +43,7 @@ const STOP_AFTER = 0.9 // s, danach enden die Quellen der Stimme
 const VOLUME_GLIDE = 0.05 // s, gegen Knacken beim Ziehen des Lautstärkereglers
 
 type Loader = (ctx: BaseAudioContext, url: string) => Promise<AudioBuffer>
+type MusicFactory = (ctx: AudioContext, url: string) => MusicVoice
 
 // Eine Stimme mit eigenem Gain im Mischpult.
 interface Channel {
@@ -59,6 +62,7 @@ interface Countdown {
 export class AudioEngine {
   private readonly makeOutput: () => Output
   private readonly load: Loader
+  private readonly music: MusicFactory
   private readonly listeners = new Set<(s: EngineSnapshot) => void>()
   // Steuerung aus Benachrichtigung und Sperrbildschirm; Fehler bleiben in der Engine.
   private readonly actions: MediaActions = {
@@ -75,9 +79,9 @@ export class AudioEngine {
   private startFailed = false // der letzte Start wurde abgelehnt
   // Klingender bzw. ladender Klang; zusammen höchstens einer (Antippen wechselt). Während einer
   // Sitzung ist das ihr Hintergrundklang.
-  private readonly active = new Map<SoundId, Channel>()
-  private readonly pending = new Map<SoundId, { load: number; volume: number }>() // Nummer des Ladevorgangs, Ziel-Lautstärke
-  private readonly errors = new Set<SoundId>()
+  private readonly active = new Map<BackgroundId, Channel>()
+  private readonly pending = new Map<BackgroundId, { load: number; volume: number }>() // Nummer des Ladevorgangs, Ziel-Lautstärke
+  private readonly errors = new Set<BackgroundId>()
   private readonly channels = new Set<Channel>() // alle noch nicht abgebauten Stimmen, auch ausklingende
   private loads = 0
   // Höchstens eine Sitzung (Programm oder geführte Meditation). Solange sie besteht, ist die
@@ -88,9 +92,10 @@ export class AudioEngine {
   private settle: object | null = null // Marke, die nach dem letzten Stopp den Output anhält
   private ownPauses = 0 // pause-Events des Elements, die die Engine selbst auslöst
 
-  constructor(opts: { createOutput?: () => Output; load?: Loader } = {}) {
+  constructor(opts: { createOutput?: () => Output; load?: Loader; music?: MusicFactory } = {}) {
     this.makeOutput = opts.createOutput ?? createOutput
     this.load = opts.load ?? loadBuffer
+    this.music = opts.music ?? createMusicVoice
   }
 
   // Antippen = Wechseln: Ein aktiver oder ladender Klang wird gestoppt. Jeder andere startet und
@@ -99,7 +104,7 @@ export class AudioEngine {
   // (wie mit `endProgram`); der Klang beginnt dann eine neue Sitzung mit eigenem Countdown.
   // Darf ohne Abwarten mehrfach hintereinander gerufen werden: Es gibt höchstens eine aktive
   // Stimme (abgelöste oder gestoppte klingen höchstens noch 0,8 s aus).
-  async toggle(id: SoundId): Promise<void> {
+  async toggle(id: BackgroundId): Promise<void> {
     this.ensureOutput()
     if (this.sessions.current) this.endSession()
     if (this.active.has(id) || this.pending.has(id)) {
@@ -169,7 +174,7 @@ export class AudioEngine {
   // Hintergrund einer geführten Sitzung: `null` nimmt ihn weg, derselbe Klang ändert nur die
   // Lautstärke, ein anderer löst ihn ab (Überblenden wie beim Antippen). Ohne geführte Sitzung
   // geschieht nichts. In der Pause wird der neue Klang erst mit „Weiter“ hörbar.
-  setBackground(id: SoundId | null, volume: number): void {
+  setBackground(id: BackgroundId | null, volume: number): void {
     if (!this.sessions.guided) return
     const value = Math.min(1, Math.max(0, volume))
     const loading = id === null ? undefined : this.pending.get(id)
@@ -193,8 +198,9 @@ export class AudioEngine {
     if (!run?.error) return
     const starting = this.ensurePlaying()
     const voice = this.voiceStarted(run, run.retry())
+    const music = this.resumeStreams()
     this.emit()
-    await Promise.all([starting, voice])
+    await Promise.all([starting, voice, ...music])
   }
 
   // Beendet eine laufende Sitzung vorzeitig (wie `stopAll`); ohne Sitzung geschieht nichts.
@@ -214,7 +220,7 @@ export class AudioEngine {
     return this.sessions.listen(listener)
   }
 
-  setVolume(id: SoundId, volume: number): void {
+  setVolume(id: BackgroundId, volume: number): void {
     const channel = this.active.get(id)
     if (!channel) return
     const value = Math.min(1, Math.max(0, volume))
@@ -251,8 +257,9 @@ export class AudioEngine {
     if (run?.error) return this.retryGuided()
     const starting = this.ensurePlaying()
     const voice = run && this.voiceStarted(run, run.play())
+    const music = this.resumeStreams()
     this.emit()
-    await Promise.all([starting, voice])
+    await Promise.all([starting, voice, ...music])
   }
 
   // Beendet die Sitzung, auch ein Programm (z. B. „Stop“ in der Benachrichtigung).
@@ -263,7 +270,7 @@ export class AudioEngine {
   }
 
   snapshot(): EngineSnapshot {
-    const volumes: Partial<Record<SoundId, number>> = {}
+    const volumes: Partial<Record<BackgroundId, number>> = {}
     for (const [id, channel] of this.active) volumes[id] = channel.volume
     const c = this.countdown
     return {
@@ -342,9 +349,12 @@ export class AudioEngine {
   // Die Stimme entsteht, sobald `starting` (der Output-Start) und das Laden durch sind, mit der
   // dann gewünschten Lautstärke; ein Ladefehler markiert den Klang. Den Output startet der
   // Aufrufer, damit ein Hintergrund, der später lädt oder wechselt, nicht die Pause aufhebt.
-  private async playSound(id: SoundId, starting: Promise<void>, volume = DEFAULT_VOLUME): Promise<void> {
+  // Ein Musikstück entsteht sofort, noch in der Nutzergeste (sein Element startet dabei), und gilt
+  // als geladen, sobald es spielen kann. Wird es nicht mehr gebraucht, wird es gestoppt; ist die
+  // Engine dann nicht am Spielen (Pause), hält es gleich wieder an.
+  private async playSound(id: BackgroundId, starting: Promise<void>, volume = DEFAULT_VOLUME): Promise<void> {
     const out = this.out!
-    const sound = soundById(id)
+    const sound = backgroundById(id)
     this.errors.delete(id)
     const previous = [...this.active.keys(), ...this.pending.keys()]
     const load = ++this.loads
@@ -353,24 +363,31 @@ export class AudioEngine {
     // Countdown bleibt, keine Marke hält den Output an). Abgelöste Ladevorgänge verfallen über ihre Nummer.
     this.stop(previous)
     this.emit()
-    const [started, loaded] = await Promise.allSettled([starting, this.load(out.ctx, assetUrl(sound.file))])
+    const music = sound.kind === 'music' ? this.music(out.ctx, musicUrl(sound)) : null
+    const loading: Promise<AudioBuffer | void> = music ? music.ready : this.load(out.ctx, assetUrl(sound.file))
+    const [started, loaded] = await Promise.allSettled([starting, loading])
     // Wurde der Klang inzwischen gestoppt (oder danach neu angestoßen), gilt dieser Ladevorgang nicht mehr.
     const wanted = this.pending.get(id)
     if (wanted?.load === load) {
       this.pending.delete(id)
       if (loaded.status === 'fulfilled') {
-        this.addChannel(id, createLoopVoice(out.ctx, loaded.value), wanted.volume)
+        const voice = music ?? createLoopVoice(out.ctx, loaded.value as AudioBuffer)
+        if (this.state !== 'playing') voice.hold?.()
+        this.addChannel(id, voice, wanted.volume)
       } else {
+        music?.stop()
         this.errors.add(id)
         this.release([])
       }
       this.emit()
+    } else {
+      music?.stop()
     }
     if (started.status === 'rejected') throw started.reason
   }
 
   // Neue Stimme mit eigenem Gain, der in 1,5 s von 0 auf die Lautstärke steigt.
-  private addChannel(id: SoundId, voice: Voice, volume: number): void {
+  private addChannel(id: BackgroundId, voice: Voice, volume: number): void {
     const { ctx, input } = this.out!
     const now = ctx.currentTime
     const gain = ctx.createGain()
@@ -445,7 +462,7 @@ export class AudioEngine {
     return this.state === 'paused' || this.out!.ctx.state !== 'running'
   }
 
-  private stop(ids: SoundId[]): void {
+  private stop(ids: BackgroundId[]): void {
     const released: Channel[] = []
     for (const id of ids) {
       this.pending.delete(id)
@@ -558,12 +575,13 @@ export class AudioEngine {
     this.emit()
   }
 
-  // Hält den Output an, samt Stimme einer geführten Sitzung; die dabei ausgelösten pause-Events
-  // der Elemente sind keine Unterbrechung.
+  // Hält den Output an, samt Stimme einer geführten Sitzung und Musik; die dabei ausgelösten
+  // pause-Events der Elemente sind keine Unterbrechung.
   private async suspendOutput(): Promise<void> {
     const out = this.out!
     if (out.ctx.state === 'closed') return
     this.sessions.guided?.hold()
+    for (const channel of this.channels) channel.voice.hold?.()
     if (!out.element.paused) this.ownPauses++
     await out.suspend()
   }
@@ -605,6 +623,11 @@ export class AudioEngine {
       return
     }
     this.halt()
+  }
+
+  // Setzt die Elemente der Musik fort, die klingt (nicht die ausklingende), im Tipp wie die Stimme.
+  private resumeStreams(): Promise<void>[] {
+    return [...this.active.values()].flatMap((channel) => channel.voice.resume?.() ?? [])
   }
 
   // Lehnt der Browser play() der Stimme ab (Autoplay-Regel), wird daraus wie bei einem abgelehnten

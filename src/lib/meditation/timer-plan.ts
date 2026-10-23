@@ -1,6 +1,6 @@
 // Timer-Plan: reine Berechnung, ohne Audio-Zugriff.
 // Zeiten sind Sekunden ab Programmstart; die Audio-Engine plant damit auf der AudioContext-Uhr.
-import type { SoundId } from '../sounds/catalog'
+import type { BackgroundId } from '../sounds/catalog'
 
 /** Auswahl im Timer in Minuten. */
 export const TIMER_PRESETS: readonly number[] = [5, 10, 15, 20, 30]
@@ -20,7 +20,7 @@ export const TIMER_TAIL = 15
 export interface TimerSettings {
   minutes: number
   intervalMin: number | null
-  sound: SoundId | null
+  sound: BackgroundId | null
   lead: boolean
 }
 

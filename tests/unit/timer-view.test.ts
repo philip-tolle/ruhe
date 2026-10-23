@@ -23,6 +23,7 @@ test('card summary', () => {
   expect(timerSummary({ minutes: 5, intervalMin: 1, sound: null })).toBe('5 Min · Klangschale jede Minute')
   expect(timerSummary({ minutes: 30, intervalMin: 10, sound: 'regen' })).toBe('30 Min · Klangschale alle 10 Min · Regen')
   expect(timerSummary({ minutes: 45, intervalMin: null, sound: 'wald' })).toBe('45 Min · ohne Zwischenschale · Wald mit Vögeln')
+  expect(timerSummary({ minutes: 10, intervalMin: null, sound: 'klavier' })).toBe('10 Min · ohne Zwischenschale · Stilles Klavier')
 })
 
 test('display during the lead counts down 10 … 1 with an empty ring', () => {

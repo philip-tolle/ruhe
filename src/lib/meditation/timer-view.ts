@@ -1,6 +1,6 @@
 // Timer in der Oberfläche: gemerkte Einstellungen lesen, beschreiben und die laufende Zeit
 // anzeigen. Reine Funktionen, ohne Audio- und Speicherzugriff.
-import { soundById } from '../sounds/catalog'
+import { backgroundById } from '../sounds/catalog'
 import type { Settings } from '../stats/schema'
 import { clampMinutes, type TimerSettings } from './timer-plan'
 
@@ -25,7 +25,7 @@ export function timerSummary(t: Pick<TimerSettings, 'minutes' | 'intervalMin' | 
         ? 'Klangschale jede Minute'
         : `Klangschale alle ${t.intervalMin} Min`
   const parts = [`${t.minutes} Min`, interval]
-  if (t.sound !== null) parts.push(soundById(t.sound).title)
+  if (t.sound !== null) parts.push(backgroundById(t.sound).title)
   return parts.join(' · ')
 }
 

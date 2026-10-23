@@ -1,6 +1,7 @@
 import { test, expect, afterEach, beforeAll, beforeEach, vi, type MockInstance } from 'vitest'
 import { AudioEngine, type GuidedSpec } from '../../src/lib/audio/engine'
 import { createOutput, type Output } from '../../src/lib/audio/output'
+import { createMusicVoice, type MusicVoice } from '../../src/lib/audio/music'
 import type { ProgramSpec } from '../../src/lib/audio/program'
 import type { SessionResult } from '../../src/lib/stats/schema'
 import { toneUrl } from './wav'
@@ -20,8 +21,8 @@ beforeAll(async () => {
 
 let out: Output | undefined
 let engine: AudioEngine | undefined
-function make(load: Loader = synthetic) {
-  engine = new AudioEngine({ createOutput: () => (out = createOutput()), load })
+function make(load: Loader = synthetic, music?: (ctx: AudioContext, url: string) => MusicVoice) {
+  engine = new AudioEngine({ createOutput: () => (out = createOutput()), load, music })
   return engine
 }
 
@@ -415,3 +416,34 @@ test('media session has seek actions and position during a guided session', asyn
     setPosition.mockRestore()
   }
 }, 15000)
+
+test('a guided session runs on when its music background fails', async () => {
+  const e = make(synthetic, ctx => {
+    const ready = Promise.reject(new Error('Konnte nicht geladen werden: probe'))
+    ready.catch(() => {})
+    return { output: ctx.createGain(), ready, stop: vi.fn(), hold: vi.fn(), resume: vi.fn(async () => {}) }
+  })
+  await e.startGuided(spec({ background: 'klavier' }))
+  await expect.poll(() => e.snapshot().errors, { timeout: 2000 }).toContain('klavier')
+  expect(e.snapshot()).toMatchObject({ state: 'playing', volumes: {}, program: { kind: 'guided', error: false } })
+  expect(voice().paused).toBe(false)
+})
+
+test('a music background chosen during pause stays silent until resume', async () => {
+  const long = await toneUrl(10)
+  const sources = vi.spyOn(AudioContext.prototype, 'createMediaElementSource')
+  try {
+    const e = make(synthetic, ctx => createMusicVoice(ctx, long, { crossfade: 1 }))
+    await e.startGuided(spec())
+    await e.pause()
+    e.setBackground('klavier', 0.35)
+    await expect.poll(() => e.snapshot().volumes.klavier, { timeout: 3000 }).toBe(0.35)
+    // Das erste Element ist die Sprechstimme, danach kommen die beiden der Musik.
+    const music = sources.mock.calls[1][0]
+    expect(music.paused).toBe(true)
+    await e.resume()
+    expect(music.paused).toBe(false)
+  } finally {
+    sources.mockRestore()
+  }
+})

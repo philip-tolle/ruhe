@@ -7,7 +7,7 @@
   import { timerProgram } from '../../lib/audio/program'
   import { clampMinutes, INTERVAL_OPTIONS, TIMER_PRESETS, type TimerSettings } from '../../lib/meditation/timer-plan'
   import { intervalLabel, savedTimer } from '../../lib/meditation/timer-view'
-  import type { SoundId } from '../../lib/sounds/catalog'
+  import type { BackgroundId } from '../../lib/sounds/catalog'
   import { setLastUsed, stats, updateSettings } from '../../lib/stats/store.svelte'
   import { startSession } from '../../lib/ui/session-ui.svelte'
 
@@ -28,7 +28,7 @@
   let duration = $state<Duration>(TIMER_PRESETS.includes(saved.minutes) ? saved.minutes : 'free')
   let freeText = $state(String(saved.minutes))
   let intervalMin = $state(saved.intervalMin)
-  let sound = $state<SoundId | null>(saved.sound)
+  let sound = $state<BackgroundId | null>(saved.sound)
   let lead = $state(saved.lead)
   let starting = $state(false)
 

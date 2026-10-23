@@ -7,7 +7,7 @@
   import { audio } from '../../lib/audio/engine-store.svelte'
   import { meditationById } from '../../lib/content/catalog'
   import { backgroundVolume, canSeek, guidedDisplay, SEEK_SECONDS } from '../../lib/meditation/guided-view'
-  import type { SoundId } from '../../lib/sounds/catalog'
+  import type { BackgroundId } from '../../lib/sounds/catalog'
   import { stats, updateSettings } from '../../lib/stats/store.svelte'
   import { formatRemaining } from '../../lib/time/format'
   import { tapArming } from '../../lib/ui/arming.svelte'
@@ -37,7 +37,7 @@
   const sound = $derived(stats.data.settings.guidedSound)
   let balance = $state(stats.data.settings.voiceBalance)
 
-  function setSound(id: SoundId | null) {
+  function setSound(id: BackgroundId | null) {
     engine.setBackground(id, backgroundVolume(balance))
     updateSettings({ guidedSound: id })
   }

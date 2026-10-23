@@ -4,7 +4,7 @@
 // So hängt nichts Hörbares an JS-Timern, die Android im Hintergrund drosselt.
 import { breathPlan, patternById, type BreathPatternId } from '../breath/patterns'
 import { timerPlan, type TimerSettings } from '../meditation/timer-plan'
-import type { SoundId } from '../sounds/catalog'
+import type { BackgroundId } from '../sounds/catalog'
 import { scheduleCue } from './cue'
 import { scheduleStrike } from './strike'
 
@@ -20,7 +20,7 @@ export interface ProgramSpec {
   lead: number
   length: number
   finish: number
-  background: SoundId | null
+  background: BackgroundId | null
   // Plant alle Klänge ab t0 ein und liefert eine Funktion, die alles Eingeplante stoppt: Was schon
   // klingt, endet bei `when` (Audio-Uhr, Standard: sofort), was noch nicht eingesetzt hat, sofort.
   schedule(ctx: BaseAudioContext, destination: AudioNode, t0: number, assets: ProgramAssets): (when?: number) => void

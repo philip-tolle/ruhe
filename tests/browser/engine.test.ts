@@ -1,8 +1,10 @@
-import { test, expect, afterEach, vi } from 'vitest'
+import { test, expect, afterEach, beforeAll, vi } from 'vitest'
 import { AudioEngine } from '../../src/lib/audio/engine'
 import { loadBuffer } from '../../src/lib/audio/loops'
 import { createOutput, type Output } from '../../src/lib/audio/output'
 import { assetUrl } from '../../src/lib/sounds/catalog'
+import { createMusicVoice, type MusicVoice } from '../../src/lib/audio/music'
+import { toneUrl } from './wav'
 
 type Loader = (ctx: BaseAudioContext, url: string) => Promise<AudioBuffer>
 
@@ -351,4 +353,132 @@ test('pausing right after a start is not a failed start', async () => {
   await e.resume()
   expect(e.snapshot().state).toBe('playing')
   expect(out!.element.paused).toBe(false)
+})
+
+// Musik: ein gestreamter Ton von 10 s mit 1 s Überblendung statt der echten Datei.
+type MusicFactory = (ctx: AudioContext, url: string) => MusicVoice
+let tone = ''
+beforeAll(async () => {
+  tone = await toneUrl(10)
+})
+const streamed: MusicFactory = ctx => createMusicVoice(ctx, tone, { crossfade: 1 })
+function makeMusic(music: MusicFactory = streamed) {
+  engine = new AudioEngine({ createOutput: () => (out = createOutput()), load: synthetic, music })
+  return engine
+}
+// Die Elemente aller Musik-Stimmen, in der Reihenfolge ihrer Entstehung (je Stimme zwei).
+function musicElements(spy: { mock: { calls: [HTMLMediaElement][] } }): HTMLMediaElement[] {
+  return spy.mock.calls.map(([element]) => element)
+}
+// Eine Stimme ohne Datei, deren `ready` der Test selbst auflöst oder ablehnt.
+function fakeMusic() {
+  const made: { stop: ReturnType<typeof vi.fn>; settle: (ok: boolean) => void }[] = []
+  const factory: MusicFactory = ctx => {
+    let settle!: (ok: boolean) => void
+    const ready = new Promise<void>((resolve, reject) => {
+      settle = ok => (ok ? resolve() : reject(new Error('Konnte nicht geladen werden: probe')))
+    })
+    ready.catch(() => {})
+    const stop = vi.fn()
+    made.push({ stop, settle })
+    return { output: ctx.createGain(), ready, stop, hold: vi.fn(), resume: vi.fn(async () => {}) }
+  }
+  return { made, factory }
+}
+
+test('toggle plays a music piece as a streamed voice and stops it', async () => {
+  const sources = vi.spyOn(AudioContext.prototype, 'createMediaElementSource')
+  try {
+    const e = makeMusic()
+    await e.toggle('klavier')
+    expect(e.snapshot()).toMatchObject({ state: 'playing', volumes: { klavier: 0.7 } })
+    expect(e.voiceCount()).toBe(1)
+    const [first] = musicElements(sources)
+    expect(first.paused).toBe(false)
+    expect(first.currentTime).toBeLessThan(1) // ein Stück beginnt am Anfang
+    await e.toggle('klavier')
+    await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(0)
+    expect(e.snapshot().state).toBe('idle')
+    expect(first.hasAttribute('src')).toBe(false)
+  } finally {
+    sources.mockRestore()
+  }
+})
+
+test('switching between music and nature keeps exactly one voice', async () => {
+  const e = makeMusic()
+  await e.toggle('regen')
+  await e.toggle('klavier')
+  expect(e.snapshot().volumes).toEqual({ klavier: 0.7 })
+  await e.toggle('regen')
+  expect(e.snapshot().volumes).toEqual({ regen: 0.7 })
+  await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(1)
+  expect(e.snapshot().state).toBe('playing')
+})
+
+test('tapping a second piece before the first is ready stops the first', async () => {
+  const { made, factory } = fakeMusic()
+  const e = makeMusic(factory)
+  const first = e.toggle('klavier')
+  const second = e.toggle('obertoene')
+  for (const voice of made) voice.settle(true)
+  await Promise.all([first, second])
+  expect(e.snapshot().volumes).toEqual({ obertoene: 0.7 })
+  expect(made[0].stop).toHaveBeenCalled()
+  expect(made[1].stop).not.toHaveBeenCalled()
+  expect(e.voiceCount()).toBe(1)
+})
+
+test('pause and an interruption hold the music and resume continues where it was', async () => {
+  const sources = vi.spyOn(AudioContext.prototype, 'createMediaElementSource')
+  try {
+    const e = makeMusic()
+    await e.toggle('klavier')
+    const [first] = musicElements(sources)
+    await wait(300)
+    await e.pause()
+    expect(first.paused).toBe(true)
+    const at = first.currentTime
+    await e.resume()
+    expect(first.paused).toBe(false)
+    expect(first.currentTime).toBeGreaterThanOrEqual(at)
+
+    out!.element.pause() // Unterbrechung von außen, am Anker erkannt
+    await expect.poll(() => e.snapshot().state, { timeout: 2000 }).toBe('paused')
+    expect(first.paused).toBe(true)
+    const held = first.currentTime
+    await e.resume()
+    expect(e.snapshot().state).toBe('playing')
+    expect(first.paused).toBe(false)
+    expect(first.currentTime).toBeGreaterThanOrEqual(held)
+  } finally {
+    sources.mockRestore()
+  }
+})
+
+test('a music piece that fails to load is marked', async () => {
+  const { made, factory } = fakeMusic()
+  const e = makeMusic(factory)
+  const toggled = e.toggle('klavier')
+  made[0].settle(false)
+  await toggled
+  expect(e.snapshot().errors).toContain('klavier')
+  expect(e.snapshot().state).toBe('idle')
+  expect(e.voiceCount()).toBe(0)
+  expect(made[0].stop).toHaveBeenCalled()
+})
+
+test('the sleep end stops the music', async () => {
+  const sources = vi.spyOn(AudioContext.prototype, 'createMediaElementSource')
+  try {
+    const e = makeMusic()
+    e.setSleepTimer(0.05) // 3 s
+    await e.toggle('klavier')
+    const [first] = musicElements(sources)
+    await expect.poll(() => e.snapshot().state, { timeout: 5000 }).toBe('idle')
+    expect(first.hasAttribute('src')).toBe(false)
+    expect(e.voiceCount()).toBe(0)
+  } finally {
+    sources.mockRestore()
+  }
 })

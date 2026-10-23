@@ -123,3 +123,15 @@ test('a breath lastUsed must have one of the offered durations', () => {
     expect(parsed).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
   }
 })
+
+test('settings and the timer of lastUsed keep a music background', () => {
+  const lastUsed = { kind: 'timer', minutes: 10, intervalMin: null, sound: 'schwebend', lead: true }
+  const data = parseData({ version: 1, sessions: [], settings: { timerSound: 'klavier', guidedSound: 'obertoene' }, lastUsed })!
+  expect(data.settings).toMatchObject({ timerSound: 'klavier', guidedSound: 'obertoene' })
+  expect(data.lastUsed).toEqual(lastUsed)
+})
+
+test('an unknown background falls back', () => {
+  expect(withSettings({ timerSound: 'gibt-es-nicht', guidedSound: 'auch-nicht' })).toMatchObject({ timerSound: null, guidedSound: null })
+  expect(withLastUsed({ kind: 'timer', minutes: 10, intervalMin: null, sound: 'gibt-es-nicht', lead: true })!.lastUsed).toBeUndefined()
+})

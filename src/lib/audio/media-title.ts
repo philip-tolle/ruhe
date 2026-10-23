@@ -1,13 +1,13 @@
 // Titel für die Medien-Benachrichtigung (Lockscreen, Systemleiste) und den Mini-Player.
-import { SOUNDS } from '../sounds/catalog'
+import { MUSIC, SOUNDS } from '../sounds/catalog'
 import type { EngineSnapshot } from './engine'
 
 /**
- * Namen des laufenden Klangs (es läuft immer nur einer). Ein ladender Klang zählt mit: Bei einem
+ * Namen des laufenden Klangs oder Musikstücks (es läuft immer nur eins). Ein ladender Klang zählt mit: Bei einem
  * Wechsel steht so sofort der neue Klang im Titel, ohne Zwischenstand „Ruhe“.
  */
 export function soundTitles(snap: Pick<EngineSnapshot, 'volumes' | 'loading'>): string[] {
-  return SOUNDS.filter((s) => snap.volumes[s.id] !== undefined || snap.loading.includes(s.id)).map((s) => s.title)
+  return [...MUSIC, ...SOUNDS].filter((s) => snap.volumes[s.id] !== undefined || snap.loading.includes(s.id)).map((s) => s.title)
 }
 
 /** Klangnamen zu einem Titel verbinden: "A", "A & B", "A, B & C". Leere Liste ergibt "Ruhe". */

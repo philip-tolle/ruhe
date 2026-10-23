@@ -7,14 +7,14 @@ import { holdParam, scheduleMarker } from './clock'
 import { playedSeconds, rangesOf, type PlayedRange } from './played'
 import type { FadeOut, ProgramSnapshot, SessionRun } from './program-run'
 import { createVoice } from './voice'
-import type { SoundId } from '../sounds/catalog'
+import type { BackgroundId } from '../sounds/catalog'
 import type { SessionResult } from '../stats/schema'
 
 export interface GuidedSpec {
   id: string // Meditations-ID, das `ref` des Ergebnisses
   title: string // Media-Session-Titel
   url: string
-  background: SoundId | null
+  background: BackgroundId | null
   backgroundVolume: number // 0..1
 }
 

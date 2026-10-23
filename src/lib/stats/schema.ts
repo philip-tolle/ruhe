@@ -1,6 +1,6 @@
 // Datenschema der gespeicherten Daten (localStorage['ruhe.v1']) mit strenger Prüfung.
 // Reine Funktionen ohne Speicherzugriff; das Laden und Sichern übernimmt die Persistenz.
-import { SOUNDS, type SoundId } from '../sounds/catalog'
+import { isBackgroundId, type BackgroundId } from '../sounds/catalog'
 import { BREATH_MINUTES, BREATH_PATTERNS, type BreathPatternId } from '../breath/patterns'
 import { INTERVAL_OPTIONS } from '../meditation/timer-plan'
 
@@ -29,10 +29,10 @@ export interface Settings {
   vibration: boolean
   /** Balance Stimme ↔ Hintergrund (0 … 1), für Meilenstein 3. */
   voiceBalance: number
-  /** Standard-Hintergrundklang des Timers. */
-  timerSound: SoundId | null
-  /** Zuletzt gewählter Hintergrundklang geführter Meditationen (eigener Wert, unabhängig vom Timer). */
-  guidedSound: SoundId | null
+  /** Standard-Hintergrund des Timers (Naturklang oder Musik). */
+  timerSound: BackgroundId | null
+  /** Zuletzt gewählter Hintergrund geführter Meditationen (eigener Wert, unabhängig vom Timer). */
+  guidedSound: BackgroundId | null
   /** Vorlauf beim Timer. */
   timerLead: boolean
   /** Zuletzt gewählt im Timer. */
@@ -40,7 +40,7 @@ export interface Settings {
 }
 
 export type LastUsed =
-  | { kind: 'timer'; minutes: number; intervalMin: number | null; sound: SoundId | null; lead: boolean }
+  | { kind: 'timer'; minutes: number; intervalMin: number | null; sound: BackgroundId | null; lead: boolean }
   | { kind: 'breath'; pattern: BreathPatternId; minutes: number }
   | { kind: 'guided'; id: string }
 
@@ -63,15 +63,11 @@ export function emptyData(): AppData {
 }
 
 const SESSION_KINDS: readonly string[] = ['guided', 'timer', 'breath']
-const SOUND_IDS: readonly string[] = SOUNDS.map(s => s.id)
 const PATTERN_IDS: readonly string[] = BREATH_PATTERNS.map(p => p.id)
 const MAX_TIMER_MINUTES = 120
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
-}
-function isSoundId(v: unknown): v is SoundId {
-  return typeof v === 'string' && SOUND_IDS.includes(v)
 }
 function isPatternId(v: unknown): v is BreathPatternId {
   return typeof v === 'string' && PATTERN_IDS.includes(v)
@@ -106,8 +102,8 @@ function parseSettings(raw: Record<string, unknown>): Settings {
   return {
     vibration: typeof vibration === 'boolean' ? vibration : def.vibration,
     voiceBalance: typeof voiceBalance === 'number' && voiceBalance >= 0 && voiceBalance <= 1 ? voiceBalance : def.voiceBalance,
-    timerSound: timerSound === null || isSoundId(timerSound) ? timerSound : def.timerSound,
-    guidedSound: guidedSound === null || isSoundId(guidedSound) ? guidedSound : def.guidedSound,
+    timerSound: timerSound === null || isBackgroundId(timerSound) ? timerSound : def.timerSound,
+    guidedSound: guidedSound === null || isBackgroundId(guidedSound) ? guidedSound : def.guidedSound,
     timerLead: typeof timerLead === 'boolean' ? timerLead : def.timerLead,
     timer: {
       minutes: typeof minutes === 'number' && Number.isInteger(minutes) && minutes >= 1 && minutes <= MAX_TIMER_MINUTES ? minutes : def.timer.minutes,
@@ -121,7 +117,7 @@ function parseLastUsed(raw: unknown): LastUsed | null {
   if (!isRecord(raw)) return null
   if (raw.kind === 'timer') {
     const { minutes, intervalMin, sound, lead } = raw
-    if (!isPositive(minutes) || !isInterval(intervalMin) || !(sound === null || isSoundId(sound)) || typeof lead !== 'boolean') return null
+    if (!isPositive(minutes) || !isInterval(intervalMin) || !(sound === null || isBackgroundId(sound)) || typeof lead !== 'boolean') return null
     return { kind: 'timer', minutes, intervalMin, sound, lead }
   }
   if (raw.kind === 'breath') {

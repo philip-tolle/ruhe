@@ -12,3 +12,8 @@ test('the title follows the playing sound, during a switch already the loading o
   expect(soundTitles({ volumes: { regen: 0.7 }, loading: [] })).toEqual(['Regen'])
   expect(soundTitles({ volumes: {}, loading: ['wald'] })).toEqual(['Wald mit Vögeln'])
 })
+
+test('a music piece names the title like a sound', () => {
+  expect(soundTitles({ volumes: { klavier: 0.7 }, loading: [] })).toEqual(['Stilles Klavier'])
+  expect(soundTitles({ volumes: {}, loading: ['obertoene'] })).toEqual(['Obertöne'])
+})
