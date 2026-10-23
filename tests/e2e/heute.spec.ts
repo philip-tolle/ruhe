@@ -176,7 +176,8 @@ for (const [time, mood, greeting] of [
 ] as const) {
   test(`the suggestion shows the painting of the ${mood} (${time})`, async ({ page }) => {
     await open(page, null, new Date(`2026-10-21T${time}:00+02:00`), greeting)
-    const images = suggestionCard(page).locator('img')
+    // Das Motiv; die Karte trägt daneben die Waschung (`img` in `.waschung`), ebenfalls Schmuck.
+    const images = suggestionCard(page).locator('img.motiv')
     await expect(images).toHaveCount(1)
     await expectMotiv(images, `vorschlag-${mood}`, 96)
     // Das Motiv steht rechts vom Titel.
@@ -439,7 +440,7 @@ test.describe('on a small phone', () => {
     await open(page, null, MORNING, 'Guten Morgen')
     const card = (await suggestionCard(page).boundingBox())!
     const title = (await suggestionCard(page).locator('.name').boundingBox())!
-    const image = (await suggestionCard(page).locator('img').boundingBox())!
+    const image = (await suggestionCard(page).locator('img.motiv').boundingBox())!
     expect(image.x).toBeGreaterThanOrEqual(title.x + title.width)
     expect(image.x + image.width).toBeLessThanOrEqual(card.x + card.width)
     expect(image.y).toBeGreaterThanOrEqual(card.y)

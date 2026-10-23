@@ -1,9 +1,12 @@
 <script lang="ts">
   import { untrack } from 'svelte'
   import Motiv from '../components/Motiv.svelte'
+  import OfflineMark from '../components/OfflineMark.svelte'
+  import Waschung from '../components/Waschung.svelte'
   import { breathProgram } from '../lib/audio/program'
   import { durationLabel, suggestionFor, type Meditation } from '../lib/content/catalog'
   import { vorschlagMotiv, type MotivId } from '../lib/content/motive'
+  import { tageszeitWaschung, zuletztWaschung } from '../lib/content/waschungen'
   import { absoluteAudioUrl, startable } from '../lib/meditation/guided-view'
   import { offline, refreshSaved } from '../lib/offline/status.svelte'
   import { GREETING } from '../lib/time/tageszeit'
@@ -49,26 +52,39 @@
   }
 </script>
 
-<!-- Wie in der Liste der Meditationen: Offline startet nur, was gespeichert ist; sonst steht der Grund da. -->
-{#snippet guidedStart(m: Meditation, label: string, where: string)}
-  {@const available = startable(offline.saved[urlOf(m)], offline.online)}
+<!-- Wie in der Liste der Meditationen: Offline startet nur, was gespeichert ist; sonst steht der Grund da.
+     `line`: Umriss-Knopf (Zuletzt genutzt) statt des vollen Akzent-Knopfs (Vorschlag). `meta`: daneben leise die Länge
+     und, wenn die Datei gespeichert ist, das Häkchen; beides bricht zusammen um, wenn die Zeile zu schmal wird. -->
+{#snippet guidedStart(m: Meditation, label: string, where: string, line: boolean, meta: boolean)}
+  {@const status = offline.saved[urlOf(m)]}
+  {@const available = startable(status, offline.online)}
   <div class="start">
-    <button
-      type="button"
-      class="button"
-      disabled={!available}
-      aria-describedby={available ? undefined : `hint-${where}`}
-      onclick={() => startGuidedSession(m)}
-    >
-      {label}
-    </button>
+    <div class="start-row">
+      <button
+        type="button"
+        class={line ? 'button-line' : 'button'}
+        disabled={!available}
+        aria-describedby={available ? undefined : `hint-${where}`}
+        onclick={() => startGuidedSession(m)}
+      >
+        {label}
+      </button>
+      {#if meta}
+        <span class="meta">
+          <span>{durationLabel(m)}</span>
+          {#if status === true}
+            <OfflineMark />
+          {/if}
+        </span>
+      {/if}
+    </div>
     {#if !available}
       <p class="unavailable" id="hint-{where}">Nicht offline verfügbar</p>
     {/if}
   </div>
 {/snippet}
 
-<!-- Eine Zeile der Aktivitäten: die ganze Fläche ist der Knopf. Sein Name ist der sichtbare Text, das Motiv Schmuck. -->
+<!-- Eine Zeile der Aktivitäten: die ganze Fläche ist der Knopf. Sein Name ist der sichtbare Text, Motiv und Pfeil Schmuck. -->
 {#snippet activity(motiv: MotivId, title: string, subtitle: string, action: () => void)}
   <li>
     <button type="button" class="row" onclick={action}>
@@ -77,6 +93,9 @@
         <span class="row-title">{title}</span>
         <span class="row-subtitle">{subtitle}</span>
       </span>
+      <svg class="chevron" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
     </button>
   </li>
 {/snippet}
@@ -87,30 +106,36 @@
     <p class="lead" class:streak={days > 0}>{streakLine(days)}</p>
   </header>
 
-  <div class="card">
-    <h2>Vorschlag des Tages</h2>
+  <!-- Waschung in der Farbe der Tageszeit oben rechts, um das Motiv; Überschrift, Titel und Beschreibung liegen links
+       davon bzw. darunter. Der volle Knopf ist der einzige auf dem Bildschirm. -->
+  <div class="card vorschlag">
+    <Waschung farbe={tageszeitWaschung(tageszeitUi.current)} />
     <div class="suggestion">
+      <h2 class="kicker">Vorschlag des Tages</h2>
       <div class="suggestion-head">
         <p class="name">{suggestion.title}</p>
         <Motiv id={vorschlagMotiv(tageszeitUi.current)} size={96} />
       </div>
       <p class="hint">{suggestion.description}</p>
-      <p class="hint">{durationLabel(suggestion)}</p>
     </div>
-    {@render guidedStart(suggestion, 'Jetzt starten', 'suggestion')}
+    {@render guidedStart(suggestion, 'Jetzt starten', 'suggestion', false, true)}
   </div>
 
-  <div class="card">
+  <!-- Waschung nach dem Gemerkten (Thema, Übung oder Tageszeit) in einer schmalen Ecke oben rechts. -->
+  <div class="card zuletzt">
+    <Waschung farbe={zuletztWaschung(card.last, tageszeitUi.current)} />
     <h2>Zuletzt genutzt</h2>
     <p class="hint">{card.summary}</p>
     {#if start.kind === 'guided'}
-      {@render guidedStart(start.meditation, card.action, 'last-used')}
+      {@render guidedStart(start.meditation, card.action, 'last-used', true, false)}
     {:else}
-      <button type="button" class="button" onclick={() => startSession(start.spec)}>{card.action}</button>
+      <div class="start">
+        <button type="button" class="button-line" onclick={() => startSession(start.spec)}>{card.action}</button>
+      </div>
     {/if}
   </div>
 
-  <div class="card">
+  <div class="card activities">
     <h2>Aktivitäten</h2>
     <ul class="rows">
       {@render activity('meditieren', 'Meditieren', 'Geführt oder mit Timer', () => onNavigate('meditieren'))}
@@ -131,6 +156,34 @@
     font-weight: 600;
   }
 
+  /*
+    Vorschlag und Zuletzt genutzt tragen eine Waschung in der oberen rechten Ecke (Waschung.svelte): Die Karte ist ihr
+    Bezugsrahmen und schneidet zu, der Inhalt liegt darüber, und keine Schrift steht in der Zone.
+  */
+  .vorschlag,
+  .zuletzt {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .vorschlag > :global(:not(.waschung)),
+  .zuletzt > :global(:not(.waschung)) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /*
+    Vorschlag: Die Zone ist die Spalte des Motivs (96 px + Innenabstand 24 px) plus ein Streifen davor, in der Höhe von
+    der Karte bis zum Ende der Titelzeile: Innenabstand 24, Überschrift (eine Zeile), 8, Motiv 96. Wird die Überschrift
+    zweizeilig, endet die Zone eine Zeile über dem Motiv; die Beschreibung beginnt in jedem Fall darunter.
+  */
+  .vorschlag {
+    --wash-w: 132px;
+    --wash-h: calc(128px + 0.72rem * 1.3);
+    container-type: inline-size;
+  }
+
   .suggestion {
     display: flex;
     flex-direction: column;
@@ -138,18 +191,41 @@
     width: 100%;
   }
 
-  /* Der Titel links, das Motiv der Tageszeit rechts davon; Beschreibung und Dauer laufen darunter über die
-     ganze Breite. So bleibt die Karte auch auf einem schmalen Telefon (360 px) niedrig. Der Titel darf
-     umbrechen, das Motiv behält seine Fläche. */
+  /* Kleine Überschrift in Versalien; die Karte bleibt bei ihrer h2. Sie hält Abstand zur Zone (nur bei schmaler Karte
+     bricht sie um). */
+  .kicker {
+    margin: 0 calc(var(--wash-w) - 24px) 2px 0;
+    color: var(--text-muted);
+    font-family: var(--font-body), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  /* Der Titel links, das Motiv der Tageszeit rechts davon; Beschreibung und Start laufen darunter über die ganze
+     Breite. So bleibt die Karte auch auf einem schmalen Telefon (360 px) niedrig. Der Abstand ist so bemessen, dass
+     der Titel genau am linken Rand der Zone endet; lange Wörter brechen um, statt ins Motiv zu laufen. */
   .suggestion-head {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: calc(var(--wash-w) - 24px - 96px);
   }
 
   .suggestion-head .name {
     flex: 1;
     min-width: 0;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+
+  /* Schmale Karte bei großer Systemschrift (360 px, ab etwa 115 %): Der längste Titel („Energie in der Mittagspause“)
+     passt sonst nicht in die Spalte neben dem Motiv und bräche mitten im Wort. Abfrage in rem: wächst mit der Schrift. */
+  @container (max-width: 18rem) {
+    .suggestion-head .name {
+      font-size: 1.3rem;
+    }
   }
 
   /* Der Titel der Meditation ist der Blickfang der Karte, aber keine Überschrift: unter „h2“ der Karte. */
@@ -160,6 +236,27 @@
     letter-spacing: -0.01em;
   }
 
+  /*
+    Zuletzt genutzt: eine schmale Ecke, etwa so hoch wie die Überschrift. Sie endet 14 px unter ihr, also über der
+    Zusammenfassung (Abstand der Karte 18 px); die Überschrift hält Abstand zur Zone.
+  */
+  .zuletzt {
+    --wash-w: 128px;
+    --wash-h: calc(38px + 1.1875rem * 1.2);
+  }
+
+  .zuletzt h2 {
+    margin-right: calc(var(--wash-w) - 24px);
+    font-size: 1.1875rem;
+    line-height: 1.2;
+  }
+
+  .activities h2 {
+    font-size: 1.1875rem;
+    line-height: 1.2;
+  }
+
+  /* Der Start: Knopf, daneben leise Länge und Häkchen; der Hinweis „Nicht offline verfügbar“ steht darunter. */
   .start {
     display: flex;
     flex-direction: column;
@@ -167,7 +264,28 @@
     gap: 8px;
   }
 
-  .button:disabled {
+  .start-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+  }
+
+  .start .button-line {
+    min-height: 48px;
+  }
+
+  .meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+  }
+
+  .button:disabled,
+  .button-line:disabled {
     opacity: 0.55;
     box-shadow: none;
     cursor: default;
@@ -175,11 +293,11 @@
 
   .unavailable {
     color: var(--text-muted);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
   }
 
-  /* Aktivitäten: Zeilen ohne eigene Fläche, nur eine feine Linie dazwischen. */
+  /* Aktivitäten: Zeilen ohne eigene Fläche, über jeder eine feine Goldlinie. */
   .rows {
     width: 100%;
     margin: 0;
@@ -187,8 +305,8 @@
     list-style: none;
   }
 
-  .rows li + li {
-    border-top: 1px solid var(--surface-border);
+  .rows li {
+    border-top: 1px solid rgb(233 196 142 / 0.28);
   }
 
   .row {
@@ -212,13 +330,16 @@
 
   .row-text {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
   }
 
   .row-title {
-    font-weight: 600;
+    font-family: var(--font-display), Georgia, 'Times New Roman', serif;
+    font-size: 1.125rem;
+    font-weight: 400;
     line-height: 1.3;
   }
 
@@ -226,5 +347,11 @@
     color: var(--text-muted);
     font-size: 0.9375rem;
     line-height: 1.4;
+  }
+
+  /* Feiner Pfeil: führt die Zeile zu einem anderen Reiter bzw. in den Player. */
+  .chevron {
+    flex: none;
+    stroke: var(--gold-line-strong);
   }
 </style>

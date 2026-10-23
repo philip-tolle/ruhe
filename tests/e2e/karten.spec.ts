@@ -8,7 +8,7 @@ import { parseColor } from './color'
 
 // Der Browser läuft in Berlin, die Uhr steht fest: Die Farbe der Tageszeit hängt nicht vom Rechner ab.
 test.use({ timezoneId: 'Europe/Berlin' })
-const at = (time: string) => new Date(`2026-10-22T${time}+02:00`)
+const at = (time: string, day = '2026-10-22') => new Date(`${day}T${time}+02:00`)
 
 // Farbe der Waschung einer Karte, aus dem Dateinamen des Bildes in `.waschung` (`null`: keine Waschung).
 async function waschungIn(card: Locator): Promise<string | null> {
@@ -20,8 +20,9 @@ async function waschungIn(card: Locator): Promise<string | null> {
 
 // Kein Text liegt in der Zone der Waschung. Zone = Rechteck von `.waschung`, auf die Karte beschnitten. Geprüft
 // werden die Zeilenrechtecke jedes sichtbaren Textknotens (Range), ohne versteckten Text für Hilfstechnik und ohne
-// Text auf einer deckenden Fläche (ein Vorfahr innerhalb der Karte mit deckender Hintergrundfarbe). Mehr als 1 px
-// Überschneidung in beiden Richtungen ist ein Fehler; die Meldung nennt den Text.
+// Text auf einer deckenden Fläche: ein Vorfahr innerhalb der Karte mit deckender Hintergrundfarbe (Deckkraft 1), der
+// selbst und samt allen Vorfahren bis zur Karte die `opacity` 1 hat – eine abgeblendete Fläche ließe die Waschung
+// durchscheinen. Mehr als 1 px Überschneidung in beiden Richtungen ist ein Fehler; die Meldung nennt den Text.
 async function expectNoTextInWash(card: Locator): Promise<void> {
   const problems = await card.evaluate((el) => {
     const wash = el.querySelector('.waschung')
@@ -39,7 +40,15 @@ async function expectNoTextInWash(card: Locator): Promise<void> {
       return rgba ? Number(rgba[1].split(',')[3]) : 1
     }
     const onOpaque = (node: Node) => {
-      for (let e = node.parentElement; e && e !== el; e = e.parentElement) if (alpha(getComputedStyle(e).backgroundColor) === 1) return true
+      const chain: HTMLElement[] = []
+      for (let e = node.parentElement; e && e !== el; e = e.parentElement) chain.push(e)
+      // Von der Karte her abwärts: `dimmed`, sobald ein Vorfahr (oder die Fläche selbst) nicht ganz deckend gezeichnet wird.
+      let dimmed = false
+      for (let i = chain.length - 1; i >= 0; i--) {
+        const style = getComputedStyle(chain[i])
+        if (Number(style.opacity) !== 1) dimmed = true
+        if (!dimmed && alpha(style.backgroundColor) === 1) return true
+      }
       return false
     }
     const found: string[] = []
@@ -71,6 +80,23 @@ async function expectGoldBorder(el: Locator, alpha: number) {
 
 const pageFits = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
+// Aus einem Titel wird ein Muster: Sonderzeichen entschärfen.
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// Die Waschung lässt Tipps durch: An dieser Stelle (Seitenkoordinaten) liegt oben weder das Bild noch die Zone.
+// `elementFromPoint` beachtet `pointer-events: none` – wäre die Zone getroffen, finge sie den Tipp ab.
+async function expectTapPassesThrough(page: Page, x: number, y: number) {
+  const hit = await page.evaluate(
+    ([px, py]) => {
+      const top = document.elementFromPoint(px, py)
+      return top ? { tag: top.tagName, inWash: top.closest('.waschung') !== null } : null
+    },
+    [x, y],
+  )
+  expect(hit, `an der Stelle ${x.toFixed(0)}/${y.toFixed(0)} liegt nichts`).not.toBeNull()
+  expect(hit!.inWash, `an der Stelle liegt oben ${hit!.tag} der Waschung`).toBe(false)
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Meditieren
 // ---------------------------------------------------------------------------------------------------------------
@@ -96,7 +122,7 @@ async function openMeditieren(page: Page, time = '08:00:00') {
 const timerCard = (page: Page) => page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Meditations-Timer' }) })
 const guided = (page: Page) => page.getByRole('region', { name: 'Geführte Meditationen' })
 const entries = (page: Page) => guided(page).getByRole('button')
-const entryOf = (page: Page, title: string) => guided(page).getByRole('button', { name: new RegExp(`^${title}, `) })
+const entryOf = (page: Page, title: string) => guided(page).getByRole('button', { name: new RegExp(`^${escapeRegExp(title)}, `) })
 const savedMark = (scope: Locator) => scope.getByRole('img', { name: 'offline gespeichert' })
 
 // Spielt eine Meditation kurz an und beendet sie: Dabei wird ihre Datei offline gespeichert.
@@ -224,6 +250,7 @@ test.describe('Meditieren', () => {
     const first = entries(page).first()
     await first.click({ trial: true }) // wartet, bis der Bildschirm eingeblendet ist
     const zone = (await first.locator('.waschung').boundingBox())!
+    await expectTapPassesThrough(page, zone.x + zone.width / 2, zone.y + zone.height / 2)
     await page.touchscreen.tap(zone.x + zone.width / 2, zone.y + zone.height / 2)
     await expect(page.getByRole('dialog', { name: 'Geführte Meditation' }).getByRole('heading', { name: 'Ankommen im Atem' })).toBeVisible()
   })
@@ -234,6 +261,8 @@ test.describe('Meditieren', () => {
 
     test('the cards keep their size and a tap still starts', async ({ page }) => {
       await openMeditieren(page)
+      // Erst zählen: `every` auf einer leeren Liste ist wahr, die Basislinie bewiese sonst nichts.
+      await expect(page.locator('.waschung img')).toHaveCount(10)
       await expect.poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth > 0))).toBe(true)
       const heights = () => page.locator('.card, .entry').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
       const withImages = await heights()
@@ -252,6 +281,7 @@ test.describe('Meditieren', () => {
       const first = entries(page).first()
       await first.click({ trial: true })
       const zone = (await first.locator('.waschung').boundingBox())!
+      await expectTapPassesThrough(page, zone.x + zone.width / 2, zone.y + zone.height / 2)
       await page.touchscreen.tap(zone.x + zone.width / 2, zone.y + zone.height / 2)
       await expect(page.getByRole('dialog', { name: 'Geführte Meditation' }).getByRole('heading', { name: 'Ankommen im Atem' })).toBeVisible()
     })
@@ -281,6 +311,375 @@ test.describe('Meditieren', () => {
       expect(button.y).toBeGreaterThanOrEqual(outer.y)
       expect(button.x + button.width).toBeLessThanOrEqual(outer.x + outer.width)
       expect(button.y + button.height).toBeLessThanOrEqual(outer.y + outer.height)
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+// Heute
+// ---------------------------------------------------------------------------------------------------------------
+
+const SETTINGS = { vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
+
+// Öffnet „Heute“ zur festen Zeit. `lastUsed` wird einmal je Test gesät (ein Merker in sessionStorage lässt ein Neuladen
+// im Test das Gemerkte behalten); ohne `lastUsed` ist die App leer und „Zuletzt genutzt“ bietet „Ankommen im Atem“ an.
+// Am 22.10. ist der Vorschlag am Morgen „Guten Morgen“, am 24.10. „Energie in der Mittagspause“ (der längste Titel).
+async function openHeute(page: Page, time = '08:00:00', lastUsed?: object, day?: string) {
+  await page.clock.setFixedTime(at(time, day))
+  if (lastUsed) {
+    await page.addInitScript((json) => {
+      if (sessionStorage.getItem('seeded')) return
+      sessionStorage.setItem('seeded', '1')
+      localStorage.setItem('ruhe.v1', json)
+    }, JSON.stringify({ version: 1, sessions: [], settings: SETTINGS, lastUsed }))
+  }
+  await page.goto('./')
+  await expect(page.getByRole('heading', { level: 2, name: 'Vorschlag des Tages', exact: true })).toBeVisible()
+}
+
+const heuteCard = (page: Page, heading: string) => page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: heading, exact: true }) })
+const vorschlag = (page: Page) => heuteCard(page, 'Vorschlag des Tages')
+const zuletzt = (page: Page) => heuteCard(page, 'Zuletzt genutzt')
+const aktivitaeten = (page: Page) => heuteCard(page, 'Aktivitäten')
+const isFullButton = (button: Locator) => button.evaluate((el) => el.classList.contains('button') && !el.classList.contains('button-line'))
+const isLineButton = (button: Locator) => button.evaluate((el) => el.classList.contains('button-line') && !el.classList.contains('button'))
+const rem = (page: Page) => page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+
+// Zweites steht rechts vom ersten, auf derselben Zeile (die Mitte des zweiten liegt in der Höhe des ersten).
+async function expectBeside(first: Locator, second: Locator) {
+  const [a, b] = [(await first.boundingBox())!, (await second.boundingBox())!]
+  expect(b.x, 'rechts daneben').toBeGreaterThanOrEqual(a.x + a.width - 1)
+  const middle = b.y + b.height / 2
+  expect(middle, 'auf derselben Zeile').toBeGreaterThan(a.y)
+  expect(middle).toBeLessThan(a.y + a.height)
+}
+
+// Spielt den Vorschlag kurz an und beendet ihn: Dabei wird seine Datei offline gespeichert.
+async function playSuggestionAndSave(page: Page) {
+  await vorschlag(page).getByRole('button', { name: 'Jetzt starten' }).click()
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await expect(savedMark(vorschlag(page))).toBeVisible({ timeout: 30_000 })
+}
+
+test.describe('Heute', () => {
+  for (const [time, farbe] of [
+    ['08:00:00', 'pfirsich'],
+    ['14:00:00', 'blaugruen'],
+    ['20:00:00', 'lavendel'],
+  ] as const) {
+    test(`the suggestion has the ${farbe} wash at ${time.slice(0, 5)}, a gold border, and no text lies in it`, async ({ page }) => {
+      await openHeute(page, time)
+      const card = vorschlag(page)
+      expect(await waschungIn(card)).toBe(farbe)
+      await expect(card.locator('.waschung img')).toHaveAttribute('alt', '')
+      await expect(card.locator('.waschung')).toHaveAttribute('aria-hidden', 'true')
+      await expectGoldBorder(card, 0.26)
+      await expectNoTextInWash(card)
+    })
+  }
+
+  test('the suggestion heading is still the h2, now in small caps', async ({ page }) => {
+    await openHeute(page)
+    const card = vorschlag(page)
+    const heading = card.getByRole('heading', { level: 2, name: 'Vorschlag des Tages', exact: true })
+    await expect(heading).toHaveText('Vorschlag des Tages') // der Text bleibt; die Versalien setzt das CSS
+    const style = await heading.evaluate((el) => {
+      const s = getComputedStyle(el)
+      return { transform: s.textTransform, size: parseFloat(s.fontSize), spacing: parseFloat(s.letterSpacing), weight: s.fontWeight, color: s.color, family: s.fontFamily }
+    })
+    const root = await rem(page)
+    expect(style.transform).toBe('uppercase')
+    expect(style.size).toBeCloseTo(0.72 * root, 1)
+    expect(style.spacing / style.size).toBeCloseTo(0.14, 2)
+    expect(style.weight).toBe('700')
+    // Gedämpft wie die Beschreibung darunter (`--text-muted`), kleine Schrift statt Fraunces-Titel.
+    expect(style.color).toBe(await card.locator('p.hint').first().evaluate((el) => getComputedStyle(el).color))
+    expect(style.family).not.toContain('Fraunces')
+    // Der Titel der Meditation darunter bleibt der Blickfang in Fraunces, rund 1.625rem.
+    const name = await card.locator('.name').evaluate((el) => ({ family: getComputedStyle(el).fontFamily, size: parseFloat(getComputedStyle(el).fontSize) }))
+    expect(name.family).toContain('Fraunces')
+    expect(name.size).toBeCloseTo(1.625 * root, 0)
+    // Überschrift, Titel, Beschreibung: von oben nach unten.
+    const [h, n, d] = await Promise.all([heading.boundingBox(), card.locator('.name').boundingBox(), card.locator('p.hint').first().boundingBox()])
+    expect(n!.y).toBeGreaterThan(h!.y + h!.height - 1)
+    expect(d!.y).toBeGreaterThan(n!.y + n!.height - 1)
+  })
+
+  test('the zone is the top right corner around the motif, above the description', async ({ page }) => {
+    await openHeute(page)
+    const card = vorschlag(page)
+    const [c, z, m, d] = await Promise.all([
+      card.boundingBox(),
+      card.locator('.waschung').boundingBox(),
+      card.locator('img.motiv').boundingBox(),
+      card.locator('p.hint').first().boundingBox(),
+    ])
+    // Oben rechts: bündig mit dem Innenrand (1 px Rand).
+    expect(Math.abs(z!.x + z!.width - (c!.x + c!.width - 1))).toBeLessThan(1)
+    expect(Math.abs(z!.y - (c!.y + 1))).toBeLessThan(1)
+    expect(z!.width).toBeLessThan(c!.width / 2)
+    // Das Motiv steht in der Zone, und die Beschreibung beginnt unter ihr.
+    expect(m!.x).toBeGreaterThanOrEqual(z!.x - 1)
+    expect(m!.x + m!.width).toBeLessThanOrEqual(z!.x + z!.width + 1)
+    expect(m!.y).toBeGreaterThanOrEqual(z!.y - 1)
+    expect(d!.y).toBeGreaterThanOrEqual(z!.y + z!.height - 1)
+  })
+
+  test('the start row: the full „Jetzt starten“, the length beside it, the mark once the file is saved', async ({ page }) => {
+    await openHeute(page)
+    const card = vorschlag(page)
+    const button = card.getByRole('button', { name: 'Jetzt starten' })
+    expect(await isFullButton(button)).toBe(true)
+    const length = card.getByText(/^\d+ Min$/)
+    await expect(length).toHaveCount(1)
+    await expect(savedMark(card)).toHaveCount(0)
+    await expectBeside(button, length)
+
+    // Die Länge ist leise: 0.78rem und gedämpft wie die Überschrift der Karte, nicht in der Farbe des Titels.
+    const [size, color, muted, titleColor] = await Promise.all([
+      length.evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+      length.evaluate((el) => getComputedStyle(el).color),
+      card.getByRole('heading', { level: 2 }).evaluate((el) => getComputedStyle(el).color),
+      card.locator('.name').evaluate((el) => getComputedStyle(el).color),
+    ])
+    expect(size).toBeCloseTo(0.78 * (await rem(page)), 1)
+    expect(color).toBe(muted)
+    expect(color).not.toBe(titleColor)
+
+    // Gespeichert: das Zeichen steht neben der Länge, der Name des Knopfs bleibt.
+    await playSuggestionAndSave(page)
+    await expect(savedMark(card)).toHaveCount(1)
+    await expectBeside(length, savedMark(card))
+    await expect(card.getByRole('button', { name: 'Jetzt starten' })).toBeVisible()
+    expect(await savedMark(card).evaluate((el) => getComputedStyle(el).color)).toBe(color)
+  })
+
+  test('offline, the hint stays below the start row and stays readable', async ({ page, context }) => {
+    await openHeute(page)
+    await context.setOffline(true)
+    const card = vorschlag(page)
+    const hint = card.getByText('Nicht offline verfügbar', { exact: true })
+    await expect(hint).toBeVisible()
+    const button = card.getByRole('button', { name: 'Jetzt starten' })
+    await expect(button).toBeDisabled()
+    // Unter der Zeile, nicht daneben; Länge und Knopf bleiben.
+    const [b, h] = [(await button.boundingBox())!, (await hint.boundingBox())!]
+    expect(h.y).toBeGreaterThanOrEqual(b.y + b.height - 1)
+    await expect(card.getByText(/^\d+ Min$/)).toBeVisible()
+    // Lesbar: 0.8125rem, 600, gedämpft, volle Deckkraft.
+    const style = await hint.evaluate((el) => {
+      const s = getComputedStyle(el)
+      return { size: parseFloat(s.fontSize), weight: s.fontWeight, opacity: s.opacity }
+    })
+    expect(style.size).toBeGreaterThanOrEqual(0.8125 * (await rem(page)) - 0.1)
+    expect(style.weight).toBe('600')
+    expect(style.opacity).toBe('1')
+    await expectNoTextInWash(card)
+    await expectNoTextInWash(zuletzt(page))
+  })
+
+  test('„Zuletzt genutzt“: the wash follows the stored session, the button is an outline button', async ({ page }) => {
+    // Atemübung: Farbe der Übung (Box → pfirsich). Das Gemerkte gewinnt gegen die Tageszeit (20 Uhr: lavendel).
+    await openHeute(page, '20:00:00', { kind: 'breath', pattern: 'box', minutes: 5 })
+    let card = zuletzt(page)
+    expect(await waschungIn(card)).toBe('pfirsich')
+    await expectGoldBorder(card, 0.26)
+    let button = card.getByRole('button', { name: 'Erneut starten' })
+    expect(await isLineButton(button)).toBe(true)
+    await expectNoTextInWash(card)
+
+    // Geführt: Farbe des Themas („Nach einem vollen Tag“ gehört zu „Stress & Ruhe“ → blaugruen).
+    await page.evaluate(() => localStorage.setItem('ruhe.v1', JSON.stringify({ ...JSON.parse(localStorage.getItem('ruhe.v1')!), lastUsed: { kind: 'guided', id: 'nach-einem-vollen-tag' } })))
+    await page.reload()
+    card = zuletzt(page)
+    await expect(card.getByText(/^Nach einem vollen Tag/)).toBeVisible()
+    expect(await waschungIn(card)).toBe('blaugruen')
+    button = card.getByRole('button', { name: 'Erneut starten' })
+    expect(await isLineButton(button)).toBe(true)
+    await expectNoTextInWash(card)
+
+    // Timer: Farbe der Tageszeit (20 Uhr → lavendel).
+    await page.evaluate(() =>
+      localStorage.setItem('ruhe.v1', JSON.stringify({ ...JSON.parse(localStorage.getItem('ruhe.v1')!), lastUsed: { kind: 'timer', minutes: 5, intervalMin: null, sound: null, lead: true } })),
+    )
+    await page.reload()
+    card = zuletzt(page)
+    await expect(card.getByText('Timer · 5 Min', { exact: true })).toBeVisible()
+    expect(await waschungIn(card)).toBe('lavendel')
+    expect(await isLineButton(card.getByRole('button', { name: 'Erneut starten' }))).toBe(true)
+    await expectNoTextInWash(card)
+  })
+
+  test('„Zuletzt genutzt“ without a stored session offers „Ankommen im Atem“ on the lavender wash', async ({ page }) => {
+    await openHeute(page)
+    const card = zuletzt(page)
+    await expect(card.getByText(/^Ankommen im Atem · \d+ Min$/)).toBeVisible()
+    expect(await waschungIn(card)).toBe('lavendel')
+    const button = card.getByRole('button', { name: 'Jetzt starten' })
+    expect(await isLineButton(button)).toBe(true)
+    await expectNoTextInWash(card)
+  })
+
+  test('„Zuletzt genutzt“: the zone is a small corner, heading and summary stay out of it', async ({ page }) => {
+    await openHeute(page, '08:00:00', { kind: 'guided', id: 'nach-einem-vollen-tag' })
+    const card = zuletzt(page)
+    const [c, z, h, s] = await Promise.all([card.boundingBox(), card.locator('.waschung').boundingBox(), card.getByRole('heading', { level: 2 }).boundingBox(), card.locator('p.hint').boundingBox()])
+    expect(Math.abs(z!.x + z!.width - (c!.x + c!.width - 1))).toBeLessThan(1)
+    expect(Math.abs(z!.y - (c!.y + 1))).toBeLessThan(1)
+    expect(z!.width).toBeLessThanOrEqual(c!.width * 0.45)
+    expect(z!.height).toBeLessThanOrEqual(c!.height / 2)
+    // Die Zone endet über der Zusammenfassung; die Überschrift steht links von ihr.
+    expect(s!.y).toBeGreaterThanOrEqual(z!.y + z!.height - 1)
+    expect(h!.x + h!.width).toBeLessThanOrEqual(z!.x + 1)
+    await expectNoTextInWash(card)
+  })
+
+  test('a tap on a wash lands on the card, not on the picture, and starts nothing', async ({ page }) => {
+    await openHeute(page, '08:00:00', { kind: 'breath', pattern: 'box', minutes: 5 })
+    // Vorschlag: links unten in der Zone, neben dem Motiv und unter der Überschrift (keine Bedienfläche).
+    const v = (await vorschlag(page).locator('.waschung').boundingBox())!
+    const motiv = (await vorschlag(page).locator('img.motiv').boundingBox())!
+    const pointV = { x: (v.x + motiv.x) / 2, y: motiv.y + motiv.height / 2 }
+    expect(pointV.x).toBeGreaterThan(v.x)
+    // Zuletzt: die Mitte der Zone.
+    const z = (await zuletzt(page).locator('.waschung').boundingBox())!
+    const pointZ = { x: z.x + z.width * 0.6, y: z.y + z.height / 2 }
+    for (const point of [pointV, pointZ]) {
+      await expectTapPassesThrough(page, point.x, point.y)
+      await page.touchscreen.tap(point.x, point.y)
+    }
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Morgen')
+  })
+
+  test('„Aktivitäten“: gold lines above the rows, titles in Fraunces, a chevron on each row, no wash', async ({ page }) => {
+    await openHeute(page)
+    const card = aktivitaeten(page)
+    expect(await waschungIn(card)).toBeNull()
+    await expectGoldBorder(card, 0.26)
+    const rows = card.getByRole('button')
+    await expect(rows).toHaveCount(3)
+    const root = await rem(page)
+    for (const [i, title] of ['Meditieren', 'Atemübung', 'Klänge'].entries()) {
+      const row = rows.nth(i)
+      // Die Linie über jeder Zeile, auch über der ersten.
+      const line = await row.evaluate((el) => {
+        const s = getComputedStyle(el.closest('li')!)
+        return { width: s.borderTopWidth, style: s.borderTopStyle, color: s.borderTopColor }
+      })
+      expect([line.width, line.style]).toEqual(['1px', 'solid'])
+      const [r, g, b, a] = parseColor(line.color)
+      expect([r, g, b]).toEqual([233, 196, 142])
+      expect(Math.abs(a - 0.28)).toBeLessThanOrEqual(0.01)
+
+      // Titel in Fraunces, 1.125rem; der Untertitel bleibt gedämpft und klein.
+      const name = row.locator('.row-title')
+      await expect(name).toHaveText(title)
+      const type = await name.evaluate((el) => ({ family: getComputedStyle(el).fontFamily, size: parseFloat(getComputedStyle(el).fontSize), weight: getComputedStyle(el).fontWeight }))
+      expect(type.family).toContain('Fraunces')
+      expect(type.size).toBeCloseTo(1.125 * root, 1)
+      expect(type.weight).toBe('400')
+
+      // Der Chevron: 18 px, Strich 1.5 in der starken Goldlinie, rechts in der Zeile, Schmuck.
+      const chevron = row.locator('svg[aria-hidden="true"]')
+      await expect(chevron).toHaveCount(1)
+      const mark = await chevron.evaluate((el) => {
+        const s = getComputedStyle(el)
+        return { width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height, stroke: s.stroke, strokeWidth: parseFloat(s.strokeWidth) }
+      })
+      expect([mark.width, mark.height]).toEqual([18, 18])
+      expect(mark.strokeWidth).toBeCloseTo(1.5, 1)
+      const [sr, sg, sb, sa] = parseColor(mark.stroke)
+      expect([sr, sg, sb]).toEqual([233, 196, 142])
+      expect(Math.abs(sa - 0.7)).toBeLessThanOrEqual(0.01)
+      const [text, arrow] = [(await row.locator('.row-text').boundingBox())!, (await chevron.boundingBox())!]
+      expect(arrow.x).toBeGreaterThanOrEqual(text.x + text.width - 1)
+      const box = (await row.boundingBox())!
+      expect(arrow.x + arrow.width).toBeLessThanOrEqual(box.x + box.width)
+    }
+    // Die Namen bleiben (der Chevron trägt nichts bei).
+    await expect(rows.nth(0)).toHaveAccessibleName('Meditieren Geführt oder mit Timer')
+    await expect(rows.nth(1)).toHaveAccessibleName('Atemübung 3 Min kohärent atmen')
+    await expect(rows.nth(2)).toHaveAccessibleName('Klänge Zur Ruhe kommen')
+  })
+
+  test('„Jetzt starten“ of the suggestion is the only full button on the screen', async ({ page }) => {
+    await openHeute(page, '08:00:00', { kind: 'breath', pattern: 'box', minutes: 5 })
+    await expect(page.locator('.screen button.button')).toHaveText(['Jetzt starten'])
+    await expect(vorschlag(page).locator('button.button')).toHaveCount(1)
+  })
+
+  test.describe('when the washes do not load', () => {
+    // Der Service Worker des ersten Besuchs würde die Bilder aus dem Speicher liefern, an `page.route` vorbei.
+    test.use({ serviceWorkers: 'block' })
+
+    test('the cards keep their size and „Jetzt starten“ still starts', async ({ page }) => {
+      await openHeute(page)
+      // Erst zählen (Vorschlag und Zuletzt), dann prüfen, dass alle geladen sind: `every` auf einer leeren Liste ist wahr.
+      await expect(page.locator('.waschung img')).toHaveCount(2)
+      await expect.poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth > 0))).toBe(true)
+      const heights = () => page.locator('.card').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
+      const withImages = await heights()
+      expect(withImages).toHaveLength(3)
+
+      await page.route('**/images/waschungen/**', (route) => route.fulfill({ status: 404 }))
+      await openHeute(page)
+      await expect(page.locator('.waschung img')).toHaveCount(2)
+      await expect
+        .poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth === 0)))
+        .toBe(true)
+      const without = await heights()
+      for (const [i, height] of without.entries()) expect(Math.abs(height - withImages[i])).toBeLessThanOrEqual(1)
+
+      await vorschlag(page).getByRole('button', { name: 'Jetzt starten' }).click()
+      await expect(page.getByRole('dialog', { name: 'Geführte Meditation' })).toBeVisible()
+    })
+  })
+
+  test.describe('on a small phone with large text', () => {
+    test.use({ viewport: { width: 360, height: 640 } })
+
+    test('nothing overflows, the start row wraps inside the card, and no text lies in a wash', async ({ page }) => {
+      // 24.10.: der längste Titel („Energie in der Mittagspause“) im schmalsten Fall.
+      await openHeute(page, '08:00:00', undefined, '2026-10-24')
+      await expect(vorschlag(page).locator('.name')).toHaveText('Energie in der Mittagspause')
+      await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+      // Gespeichert: Knopf, Länge und Zeichen – die längste Zeile der Startzeile. Das Gemerkte ist danach dieselbe
+      // Meditation, die Zusammenfassung von „Zuletzt genutzt“ also lang.
+      await playSuggestionAndSave(page)
+
+      expect(await pageFits(page)).toBe(true)
+      for (const card of [vorschlag(page), zuletzt(page), aktivitaeten(page)]) {
+        expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth), await card.innerText()).toBe(true)
+      }
+      await expectNoTextInWash(vorschlag(page))
+      await expectNoTextInWash(zuletzt(page))
+
+      // Knopf, Länge und Zeichen liegen ganz in der Karte, auch wenn die Zeile umbricht.
+      const card = (await vorschlag(page).boundingBox())!
+      for (const part of [vorschlag(page).getByRole('button', { name: 'Jetzt starten' }), vorschlag(page).getByText(/^\d+ Min$/), savedMark(vorschlag(page))]) {
+        const box = (await part.boundingBox())!
+        expect(box.x).toBeGreaterThanOrEqual(card.x)
+        expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width)
+      }
+      // Der Titel bricht lange Wörter um, statt ins Motiv zu laufen.
+      const [name, motiv] = [(await vorschlag(page).locator('.name').boundingBox())!, (await vorschlag(page).locator('img.motiv').boundingBox())!]
+      expect(name.x + name.width).toBeLessThanOrEqual(motiv.x + 1)
+      expect(await vorschlag(page).locator('.name').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+    })
+
+    // Noch größer als 130 %: Die Überschriften brechen vor der Zone um, statt in sie zu laufen.
+    test('offline, with both hints and at 160 %: nothing overflows and no text lies in a wash', async ({ page, context }) => {
+      await openHeute(page, '20:00:00')
+      await page.evaluate(() => (document.documentElement.style.fontSize = '160%'))
+      await context.setOffline(true)
+      await expect(page.getByText('Nicht offline verfügbar', { exact: true })).toHaveCount(2)
+      expect(await pageFits(page)).toBe(true)
+      for (const card of [vorschlag(page), zuletzt(page)]) {
+        expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth), await card.innerText()).toBe(true)
+        await expectNoTextInWash(card)
+      }
     })
   })
 })
