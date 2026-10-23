@@ -21,9 +21,12 @@ const timer = (over: Partial<Extract<LastUsed, { kind: 'timer' }>> = {}): LastUs
   ...over,
 })
 
+// Atemgeräusch an, kein Hintergrund: die Standardeinstellungen für Atemübungen.
+const WITH_SOUND = { sound: true, background: null }
+
 // Das Programm, das „Erneut starten“ für diese Sitzung startet.
 function programOf(last: LastUsed): ProgramSpec {
-  const start = lastUsedStart(last, true)
+  const start = lastUsedStart(last, WITH_SOUND)
   if (start.kind !== 'program') throw new Error(`erwartet: Programm, war: ${start.kind}`)
   return start.spec
 }
@@ -82,17 +85,17 @@ test('last used: a guided meditation reads „Titel · n Min“ with the length 
 test('last used: an unknown guided meditation falls back to „Ankommen im Atem“', () => {
   const fallback = meditationById(FALLBACK_ID)!
   expect(lastUsedSummary({ kind: 'guided', id: 'gibt-es-nicht' })).toBe(`${fallback.title} · ${durationLabel(fallback)}`)
-  expect(lastUsedStart({ kind: 'guided', id: 'gibt-es-nicht' }, true)).toEqual({ kind: 'guided', meditation: fallback })
+  expect(lastUsedStart({ kind: 'guided', id: 'gibt-es-nicht' }, WITH_SOUND)).toEqual({ kind: 'guided', meditation: fallback })
 })
 
 test('restarting a guided meditation starts the meditation of the catalog', () => {
-  const start = lastUsedStart({ kind: 'guided', id: GUIDED_ID }, true)
+  const start = lastUsedStart({ kind: 'guided', id: GUIDED_ID }, WITH_SOUND)
   expect(start).toEqual({ kind: 'guided', meditation: meditationById(GUIDED_ID) })
 })
 
 test('restarting a timer or an exercise starts a program', () => {
-  expect(lastUsedStart(timer({ minutes: 5 }), true).kind).toBe('program')
-  expect(lastUsedStart({ kind: 'breath', pattern: 'box', minutes: 5 }, true).kind).toBe('program')
+  expect(lastUsedStart(timer({ minutes: 5 }), WITH_SOUND).kind).toBe('program')
+  expect(lastUsedStart({ kind: 'breath', pattern: 'box', minutes: 5 }, WITH_SOUND).kind).toBe('program')
 })
 
 test('the card „Zuletzt genutzt“ without a session offers „Ankommen im Atem“ to start', () => {
@@ -125,7 +128,18 @@ test('the card „Zuletzt genutzt“ keeps a known session and offers to start i
 test('restarting a breathing exercise follows the breath sound setting', () => {
   const last: LastUsed = { kind: 'breath', pattern: 'box', minutes: 5 }
   expect(programOf(last).assets).toEqual(['breath'])
-  const silent = lastUsedStart(last, false)
+  const silent = lastUsedStart(last, { sound: false, background: null })
   if (silent.kind !== 'program') throw new Error('erwartet: Programm')
   expect(silent.spec.assets).toEqual([])
+})
+
+test('restarting a breathing exercise plays the background chosen for exercises, a timer keeps its own', () => {
+  const last: LastUsed = { kind: 'breath', pattern: 'kohaerent', minutes: 3 }
+  const start = lastUsedStart(last, { sound: true, background: 'meer' })
+  if (start.kind !== 'program') throw new Error('erwartet: Programm')
+  expect(start.spec).toMatchObject({ background: 'meer', backgroundVolume: 0.35, assets: ['breath'] })
+  expect(programOf(last).background).toBeNull()
+  const timerStart = lastUsedStart(timer({ sound: 'regen' }), { sound: true, background: 'meer' })
+  if (timerStart.kind !== 'program') throw new Error('erwartet: Programm')
+  expect(timerStart.spec.background).toBe('regen')
 })

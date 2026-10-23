@@ -1,5 +1,5 @@
 // Reiter „Heute“: Serien-Zeile und „Zuletzt genutzt“. Reine Funktionen, ohne Speicher- und DOM-Zugriff.
-import { breathProgram, timerProgram, type ProgramSpec } from '../audio/program'
+import { breathProgram, timerProgram, type BreathOptions, type ProgramSpec } from '../audio/program'
 import { patternById } from '../breath/patterns'
 import { durationLabel, FALLBACK_ID, meditationById, type Meditation } from '../content/catalog'
 import { clampMinutes } from '../meditation/timer-plan'
@@ -36,14 +36,17 @@ export function lastUsedSummary(last: LastUsed): string {
   return `${patternById(last.pattern).title} · ${last.minutes} Min`
 }
 
-/** Was „Erneut starten“ startet: genau die gemerkte Sitzung; eine Atemübung mit oder ohne Atemgeräusch. */
-export function lastUsedStart(last: LastUsed, breathSound: boolean): LastUsedStart {
+/**
+ * Was „Erneut starten“ startet: genau die gemerkte Sitzung; eine Atemübung so, wie Atemübungen
+ * gerade eingestellt sind (Atemgeräusch, Hintergrund).
+ */
+export function lastUsedStart(last: LastUsed, breath: BreathOptions): LastUsedStart {
   if (last.kind === 'guided') return { kind: 'guided', meditation: guidedMeditation(last.id) }
   if (last.kind === 'timer') {
     const spec = timerProgram({ minutes: timerMinutes(last), intervalMin: last.intervalMin, sound: last.sound, lead: last.lead })
     return { kind: 'program', spec }
   }
-  return { kind: 'program', spec: breathProgram(last.pattern, last.minutes, { sound: breathSound }) }
+  return { kind: 'program', spec: breathProgram(last.pattern, last.minutes, breath) }
 }
 
 /**

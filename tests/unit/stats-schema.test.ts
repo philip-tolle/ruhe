@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { parseData, emptyData, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
-import { SOUNDS } from '../../src/lib/sounds/catalog'
+import { MUSIC, SOUNDS } from '../../src/lib/sounds/catalog'
 import { BREATH_MINUTES, BREATH_PATTERNS } from '../../src/lib/breath/patterns'
 
 const session = { id: 'a', start: '2026-10-21T08:00:00.000Z', kind: 'breath', ref: '478', seconds: 76 }
@@ -8,7 +8,7 @@ const withSettings = (settings: unknown) => parseData({ version: 1, sessions: []
 const withLastUsed = (lastUsed: unknown) => parseData({ version: 1, sessions: [], settings: {}, lastUsed })
 
 test('defaults', () => {
-  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
+  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
   expect(emptyData()).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
 })
 test('emptyData hands out fresh objects', () => {
@@ -18,7 +18,7 @@ test('emptyData hands out fresh objects', () => {
   a.settings.vibration = false
   a.settings.timer.minutes = 99
   a.sessions.push({ id: 'x', start: session.start, kind: 'timer', ref: 'timer', seconds: 60 })
-  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
+  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
   expect(emptyData()).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
 })
 test('parseData accepts valid data and fills missing settings', () => {
@@ -58,7 +58,13 @@ test('sessions: all kinds and zero seconds are valid; unknown fields are dropped
 test('settings fall back to defaults field by field', () => {
   expect(withSettings({ vibration: 'ja', voiceBalance: 'x', timerSound: 'foo', guidedSound: 'bar', timerLead: 1, timer: 'x' })).toEqual(DEFAULT_SETTINGS)
   expect(withSettings({ vibration: false, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', timerLead: false, timer: { minutes: 25, intervalMin: 5 } }))
-    .toEqual({ vibration: false, breathSound: true, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', timerLead: false, timer: { minutes: 25, intervalMin: 5 } })
+    .toEqual({ vibration: false, breathSound: true, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', breathBackground: null, timerLead: false, timer: { minutes: 25, intervalMin: 5 } })
+})
+test('breathBackground accepts every nature sound, every music track and null, and defaults to none', () => {
+  for (const { id } of [...SOUNDS, ...MUSIC]) expect(withSettings({ breathBackground: id })?.breathBackground).toBe(id)
+  expect(withSettings({ breathBackground: null })?.breathBackground).toBeNull()
+  for (const v of ['nope', 3, undefined, {}, true]) expect(withSettings({ breathBackground: v })?.breathBackground).toBeNull()
+  expect(withSettings({ breathBackground: 'meer', timerSound: 'regen', guidedSound: 'wald' })).toMatchObject({ breathBackground: 'meer', timerSound: 'regen', guidedSound: 'wald' })
 })
 test('voiceBalance must be a finite number in [0, 1]', () => {
   for (const v of [0, 0.25, 1]) expect(withSettings({ voiceBalance: v })?.voiceBalance).toBe(v)
@@ -139,7 +145,7 @@ test('an unknown background falls back', () => {
 test('breathSound defaults to true and keeps a stored false', () => {
   // Gespeicherte Daten aus Meilenstein 4 kennen den Schalter noch nicht.
   const m4 = { vibration: false, voiceBalance: 0.4, timerSound: 'regen', guidedSound: null, timerLead: true, timer: { minutes: 15, intervalMin: 5 } }
-  expect(withSettings(m4)).toEqual({ ...m4, breathSound: true })
+  expect(withSettings(m4)).toEqual({ ...m4, breathSound: true, breathBackground: null })
   expect(withSettings({ breathSound: false })!.breathSound).toBe(false)
   expect(withSettings({ breathSound: 'nein' })!.breathSound).toBe(true)
 })

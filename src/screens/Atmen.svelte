@@ -1,23 +1,25 @@
 <script lang="ts">
   import ChoiceGroup from '../components/ChoiceGroup.svelte'
   import Motiv from '../components/Motiv.svelte'
+  import SoundSelect from '../components/SoundSelect.svelte'
   import Waschung from '../components/Waschung.svelte'
   import { breathProgram } from '../lib/audio/program'
   import { BREATH_MINUTES, BREATH_PATTERNS, type BreathPatternId } from '../lib/breath/patterns'
   import { rhythmLabel, tileTitle } from '../lib/breath/view'
   import { breathMotiv } from '../lib/content/motive'
   import { atemWaschung, waschLage } from '../lib/content/waschungen'
-  import { setLastUsed, stats } from '../lib/stats/store.svelte'
+  import { setLastUsed, stats, updateSettings } from '../lib/stats/store.svelte'
   import { startSession } from '../lib/ui/session-ui.svelte'
 
   const DURATIONS = BREATH_MINUTES.map((value) => ({ value, label: `${value} Min` }))
 
   let minutes = $state(3)
+  const settings = $derived(stats.data.settings)
 
   // Im Tipp selbst, damit der Audio-Start als Nutzergeste gilt.
   function start(pattern: BreathPatternId) {
     setLastUsed({ kind: 'breath', pattern, minutes })
-    startSession(breathProgram(pattern, minutes, { sound: stats.data.settings.breathSound }))
+    startSession(breathProgram(pattern, minutes, { sound: settings.breathSound, background: settings.breathBackground }))
   }
 </script>
 
@@ -29,6 +31,15 @@
   <div class="field">
     <span class="label" aria-hidden="true">Dauer</span>
     <ChoiceGroup label="Dauer" options={DURATIONS} value={minutes} onSelect={(value) => (minutes = value)} />
+  </div>
+
+  <!-- Gilt für alle Übungen und bleibt gemerkt, auch für die Atemübung auf „Heute“. -->
+  <div class="field">
+    <span class="label" aria-hidden="true">Hintergrundklang</span>
+    <SoundSelect
+      label="Hintergrundklang"
+      bind:value={() => settings.breathBackground, (breathBackground) => updateSettings({ breathBackground })}
+    />
   </div>
 
   <!-- Die ganze Kachel ist der Knopf. Sein Name ist „{Titel} starten“, die Beschreibung steht daneben (unsichtbar)

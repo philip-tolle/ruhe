@@ -31,7 +31,7 @@ Der Nutzer wünscht sich zwei Dinge:
 
 ### Nicht-Ziele
 
-- Keine Musik unter den Atemübungen.
+- Keine Musik unter den Atemübungen. *(Nach M5 auf Wunsch des Nutzers aufgehoben, siehe Abschnitt 11.)*
 - Kein eigener Lautstärkeregler für das Atemgeräusch.
 - Keine Wiedergabeliste und kein Wechsel zwischen Stücken während einer Sitzung, außer über die bestehende Hintergrundauswahl.
 - Keine neuen Naturklänge. Klangschale und Timer-Ablauf bleiben, wie sie sind.
@@ -137,7 +137,7 @@ Für jede Phase `ein` oder `aus` der Länge `L` (Sekunden), mit `D` als Dauer de
 - **Ohne Netz:** Nicht gespeicherte Musikstücke sind deaktiviert, mit dem Zusatz „ – nicht offline verfügbar“.
 - **Ist ein gewählter Hintergrund offline nicht da**, startet die Sitzung ohne Hintergrund. Das ist dasselbe Verhalten wie bei einem Ladefehler.
 - Bisherige Einstellungen bleiben erhalten.
-- Unter den Atemübungen gibt es weiterhin keinen Hintergrund.
+- Unter den Atemübungen gibt es weiterhin keinen Hintergrund. *(Nach M5 aufgehoben, siehe Abschnitt 11.)*
 
 ### 4.4 Reiter „Ich“
 
@@ -279,3 +279,13 @@ Für jede Phase `ein` oder `aus` der Länge `L` (Sekunden), mit `D` als Dauer de
 - **Motive:** Der Nutzer überließ die Auswahl dem Controller. Gewählt sind Flächen v3, Klavier v1, Obertöne v1, Bambusflöte v1, Salz v2 und Oberfläche v2. Für „Zwischen zwei Atemzügen“ wurden die Atemlinien (v4) gewählt statt einer Lotusblüte, weil das Motiv des Reiters „Ich“ schon eine Lotusblüte ist.
 - **Lautheit:** `scripts/musik.py` misst mit ebur128. loudnorm maß das kurze Ausatmen um 1,4 LU daneben.
 - **Kosten:** Die vier Stücke kosteten 3,27 $ und die Motiv-Entwürfe 0,41 $.
+
+## 11. Nachtrag: Hintergrund bei Atemübungen (23.10.2026)
+
+Der Nutzer wollte nach M5 auch bei Atemübungen Klänge oder Musik hören. Das Nicht-Ziel „Keine Musik unter den Atemübungen“ ist damit aufgehoben. Die Entscheidung fiel im Chat, ohne eigene Spec.
+
+- **Auswahl:** Auf „Atmen“ steht unter „Dauer“ die Auswahl „Hintergrundklang“. Es ist dieselbe Liste wie beim Timer. Standard ist „Keiner“.
+- **Gemerkt:** Die Wahl gilt für alle Übungen und steht in der neuen Einstellung `breathBackground`. Ein ungültiger Wert wird zu „Keiner“. Die Atemübung auf „Heute“ und „Erneut starten“ folgen derselben Wahl. `lastUsed` bleibt unverändert.
+- **Lautstärke:** Mit Atemgeräusch spielt der Hintergrund halb so laut wie sonst (`BREATH_BACKGROUND_VOLUME = 0.35`), damit er das Atemgeräusch nicht überdeckt. Ohne Atemgeräusch spielt er in der üblichen Lautstärke 0,7. Ein Regler wurde bewusst weggelassen.
+- **Offline und Fehler:** Es gilt dasselbe wie beim Timer. Ein Musikstück wird beim ersten Abspielen gespeichert. Ohne Netz sind ungespeicherte Stücke nicht wählbar. Lädt der Hintergrund nicht, läuft die Übung ohne ihn.
+- **Nicht enthalten:** Im laufenden Atem-Player lässt sich der Hintergrund nicht wechseln.

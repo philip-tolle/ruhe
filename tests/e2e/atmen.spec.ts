@@ -403,6 +403,63 @@ test('starting remembers the exercise and duration, and the labels follow the pa
   })
 })
 
+test('a background for the exercises is chosen under the duration, remembered and played, also from Heute', async ({ page }) => {
+  const sounds: string[] = []
+  page.on('request', (r) => {
+    if (r.url().includes('/audio/sounds/')) sounds.push(new URL(r.url()).pathname.split('/').pop()!)
+  })
+  const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('ruhe.v1') ?? 'null'))
+  await openAtmen(page)
+  const sound = page.getByRole('combobox', { name: 'Hintergrundklang' })
+  // Unter „Dauer“, über den Kacheln; ohne Wahl wie bisher ohne Hintergrund, mit derselben Liste wie beim Timer.
+  await expect(page.getByText('Hintergrundklang', { exact: true })).toBeVisible()
+  const [duration, select, firstTile] = await Promise.all([
+    page.getByRole('radiogroup', { name: 'Dauer' }).boundingBox(),
+    sound.boundingBox(),
+    tiles(page).first().boundingBox(),
+  ])
+  expect(select!.y).toBeGreaterThan(duration!.y + duration!.height)
+  expect(firstTile!.y).toBeGreaterThan(select!.y + select!.height)
+  expect(select!.height).toBeGreaterThanOrEqual(48)
+  await expect(sound.locator('option:checked')).toHaveText('Keiner')
+  const groups = await sound.locator('optgroup').evaluateAll((list) => list.map((group) => (group as HTMLOptGroupElement).label))
+  expect(groups).toEqual(['Musik', 'Natur'])
+
+  await page.getByRole('button', { name: 'Box-Atmung starten' }).click()
+  await expect(page.getByRole('heading', { name: 'Atmen · Box-Atmung' })).toBeVisible()
+  await page.waitForTimeout(500)
+  expect(sounds).toEqual([])
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+
+  await sound.selectOption({ label: 'Regen' })
+  await expect.poll(async () => (await stored()).settings.breathBackground).toBe('regen')
+  await page.getByRole('button', { name: 'Box-Atmung starten' }).click()
+  await expect(page.getByRole('heading', { name: 'Atmen · Box-Atmung' })).toBeVisible()
+  await expect.poll(() => sounds).toEqual(['regen.ogg'])
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+
+  // Nach dem Neuladen steht die Wahl noch da; die Atemübung auf „Heute“ und „Erneut starten“ spielen sie auch.
+  await page.reload()
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Atmen' }).click()
+  await expect(sound).toHaveValue('regen')
+  await sound.selectOption({ label: 'Wald mit Vögeln' })
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Heute' }).click()
+  await page.getByRole('button', { name: /^Atemübung/ }).click()
+  await expect(page.getByRole('heading', { name: 'Atmen · Kohärentes Atmen' })).toBeVisible()
+  await expect.poll(() => sounds).toEqual(['regen.ogg', 'wald.ogg'])
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  // Geladene Klänge behält die Engine; ein neuer Klang zeigt, dass auch „Erneut starten“ der Wahl folgt.
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Atmen' }).click()
+  await sound.selectOption({ label: 'Meeresrauschen' })
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Heute' }).click()
+  await page.getByRole('button', { name: 'Erneut starten' }).click()
+  await expect(page.getByRole('heading', { name: 'Atmen · Kohärentes Atmen' })).toBeVisible()
+  await expect.poll(() => sounds).toEqual(['regen.ogg', 'wald.ogg', 'meer.ogg'])
+})
+
 test('the countdown shows the seconds left of the phase', async ({ page }) => {
   await openAtmen(page)
   await page.getByRole('button', { name: 'Box-Atmung starten' }).click()

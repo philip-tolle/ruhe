@@ -142,7 +142,7 @@ export class AudioEngine {
       run.begin(out.input, assets, () => this.programCounted(run), () => this.finishSession(run))
       this.emit()
       // Der Hintergrund gehört zum Programm; ohne ihn (Ladefehler) läuft es weiter.
-      if (spec.background) await this.playSound(spec.background, Promise.resolve())
+      if (spec.background) await this.playSound(spec.background, Promise.resolve(), spec.backgroundVolume)
     }
     if (started.status === 'rejected') throw started.reason
   }

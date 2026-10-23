@@ -1,7 +1,7 @@
 import { test, expect, afterEach, vi } from 'vitest'
 import { AudioEngine } from '../../src/lib/audio/engine'
 import { createOutput, type Output } from '../../src/lib/audio/output'
-import { breathProgram, timerProgram, type ProgramSpec } from '../../src/lib/audio/program'
+import { BREATH_BACKGROUND_VOLUME, breathProgram, timerProgram, type ProgramSpec } from '../../src/lib/audio/program'
 import { scheduleBreath, type BreathBuffers } from '../../src/lib/audio/breath-sound'
 import { assetUrl } from '../../src/lib/sounds/catalog'
 import type { SessionResult } from '../../src/lib/stats/schema'
@@ -264,6 +264,13 @@ test('background sound plays and fades at finish', async () => {
   expect(gain.gain.value).toBe(0)
 })
 
+test('a program background plays at the volume the program asks for', async () => {
+  const e = make()
+  await e.startProgram(spec({ background: 'regen', backgroundVolume: 0.35 }))
+  expect(e.snapshot().volumes).toEqual({ regen: 0.35 })
+  expect(e.voiceCount()).toBe(1)
+})
+
 test('ending a program fades its sounds out instead of cutting them', async () => {
   const e = make()
   const seen = results(e)
@@ -445,7 +452,7 @@ test('breathProgram plays a breath sound at every in and out phase', async () =>
   const ctx = new OfflineAudioContext(1, 44100, 44100)
   const start = vi.spyOn(AudioBufferSourceNode.prototype, 'start')
   try {
-    const p = breathProgram('478', 1, { sound: true })
+    const p = breathProgram('478', 1, { sound: true, background: null })
     expect(p).toMatchObject({ kind: 'breath', ref: '478', title: 'Atmen · 4-7-8', lead: 0, length: 76, finish: 77, background: null, assets: ['breath'] })
     p.schedule(ctx, ctx.destination, 0, { strike: null, breath: breathBuffers(ctx) })
     expect(start.mock.calls.map(c => c[0])).toEqual([0, 11, 19, 30, 38, 49, 57, 68])
@@ -460,7 +467,7 @@ test('the sigh gives its 1 s Nachatmen a short sound of its own', async () => {
   const ctx = new OfflineAudioContext(1, 44100, 44100)
   const start = vi.spyOn(AudioBufferSourceNode.prototype, 'start')
   try {
-    breathProgram('seufzer', 1, { sound: true }).schedule(ctx, ctx.destination, 0, { strike: null, breath: breathBuffers(ctx) })
+    breathProgram('seufzer', 1, { sound: true, background: null }).schedule(ctx, ctx.destination, 0, { strike: null, breath: breathBuffers(ctx) })
     expect(start.mock.calls.slice(0, 3).map(c => c[0])).toEqual([0, 3, 4])
     const rates = (start.mock.contexts as AudioBufferSourceNode[]).slice(0, 3).map(s => Math.round(s.playbackRate.value * 10000) / 10000)
     expect(rates).toEqual([1.2, 1.25, 1.05])
@@ -473,11 +480,11 @@ test('with the breath sound off a breath program loads and schedules nothing', a
   const ctx = new OfflineAudioContext(1, 44100, 44100)
   const start = vi.spyOn(AudioBufferSourceNode.prototype, 'start')
   try {
-    const p = breathProgram('box', 1, { sound: false })
+    const p = breathProgram('box', 1, { sound: false, background: null })
     expect(p.assets).toEqual([])
     p.schedule(ctx, ctx.destination, 0, { strike: null, breath: null })()
     // Auch mit Atemgeräusch, aber ohne geladene Dateien bleibt es still.
-    breathProgram('box', 1, { sound: true }).schedule(ctx, ctx.destination, 0, { strike: null, breath: null })()
+    breathProgram('box', 1, { sound: true, background: null }).schedule(ctx, ctx.destination, 0, { strike: null, breath: null })()
     expect(start).not.toHaveBeenCalled()
   } finally {
     start.mockRestore()
@@ -487,7 +494,7 @@ test('with the breath sound off a breath program loads and schedules nothing', a
 test('ending a breath program mid-exhale stops the sounding breath at the fade and drops the ones to come', async () => {
   const rate = 8000
   const ctx = new OfflineAudioContext(1, rate * 30, rate)
-  const stop = breathProgram('478', 1, { sound: true }).schedule(ctx, ctx.destination, 0, { strike: null, breath: breathBuffers(ctx) })
+  const stop = breathProgram('478', 1, { sound: true, background: null }).schedule(ctx, ctx.destination, 0, { strike: null, breath: breathBuffers(ctx) })
   // Ausatmen ab 11 s (8 s lang). Bei 13 s endet das Programm und klingt bis 13,5 s aus.
   void ctx.suspend(13).then(() => { stop(13.5); return ctx.resume() })
   const peak = peakOf((await ctx.startRendering()).getChannelData(0), rate)
@@ -502,11 +509,29 @@ test('a breath program never loads the bowl and runs on silently when its breath
     throw new Error('Konnte nicht geladen werden: ' + url)
   })
   const seen = results(e)
-  const p = breathProgram('box', 1, { sound: true })
+  const p = breathProgram('box', 1, { sound: true, background: null })
   const schedule = vi.spyOn(p, 'schedule')
   await e.startProgram({ ...p, length: 1, finish: 1.5, schedule })
   expect(urls.sort()).toEqual([assetUrl('audio/breath/aus.ogg'), assetUrl('audio/breath/ein.ogg')])
   expect(schedule).toHaveBeenCalledWith(out!.ctx, expect.any(GainNode), expect.any(Number), { strike: null, breath: null })
   await expect.poll(() => seen.length, { timeout: 4000 }).toBe(1)
   expect(seen[0]).toMatchObject({ kind: 'breath', ref: 'box', seconds: 1 })
+})
+
+test('a breath program carries its background, quieter under the breath sound and as usual without it', () => {
+  expect(BREATH_BACKGROUND_VOLUME).toBe(0.35)
+  expect(breathProgram('box', 3, { sound: true, background: 'regen' })).toMatchObject({ background: 'regen', backgroundVolume: 0.35, assets: ['breath'] })
+  expect(breathProgram('478', 1, { sound: true, background: 'klavier' })).toMatchObject({ background: 'klavier', backgroundVolume: 0.35 })
+  const silent = breathProgram('box', 3, { sound: false, background: 'meer' })
+  expect(silent).toMatchObject({ background: 'meer', assets: [] })
+  expect(silent.backgroundVolume).toBeUndefined()
+  expect(breathProgram('box', 3, { sound: true, background: null }).background).toBeNull()
+})
+
+test('a breath exercise with a background plays it under the breath, and at the usual volume without breath sound', async () => {
+  const e = make()
+  await e.startProgram(breathProgram('box', 1, { sound: true, background: 'regen' }))
+  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { title: 'Atmen · Box-Atmung' }, volumes: { regen: 0.35 } })
+  await e.startProgram(breathProgram('box', 1, { sound: false, background: 'wald' }))
+  expect(e.snapshot().volumes).toEqual({ wald: 0.7 })
 })

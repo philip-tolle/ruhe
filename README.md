@@ -77,6 +77,7 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 6. Sperrbildschirm: Titel des Stücks; Pause und Weiter funktionieren.
 7. Anruf während der Musik, am besten kurz vor der Naht (nach etwa 4:50): Die Musik hält an; nach dem Auflegen geht es mit „Weiter“ an derselben Stelle weiter, ohne doppelten Anfang.
 8. Ein Stück in „Klänge“ antippen und kurz laufen lassen: Das Häkchen „offline gespeichert“ erscheint auf der Kachel. Läuft ein noch nicht gespeichertes Stück, wenn das Netz wegfällt, lässt es sich auf seiner Kachel weiter stoppen.
+9. „Atmen“: „Hintergrundklang“ auf „Regen“ stellen, Box-Atmung starten. Der Regen läuft leise unter dem Atemgeräusch, das deutlich hörbar bleibt. Mit „Stilles Klavier“ wiederholen. Danach die Atemübung auf „Heute“ starten: Der gewählte Hintergrund läuft auch dort. Mit „Atemgeräusch“ aus spielt der Hintergrund in normaler Lautstärke.
 
 > Hinweis: Musik: ElevenLabs Music (4 Stücke) und vom Nutzer mit Gemini erstellt (3 Stücke). Das Atemgeräusch ist eine echte Aufnahme (ElevenLabs).
 

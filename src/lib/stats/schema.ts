@@ -35,6 +35,8 @@ export interface Settings {
   timerSound: BackgroundId | null
   /** Zuletzt gewählter Hintergrund geführter Meditationen (eigener Wert, unabhängig vom Timer). */
   guidedSound: BackgroundId | null
+  /** Hintergrund bei Atemübungen (Naturklang oder Musik), für alle Übungen gleich; anfangs keiner. */
+  breathBackground: BackgroundId | null
   /** Vorlauf beim Timer. */
   timerLead: boolean
   /** Zuletzt gewählt im Timer. */
@@ -54,7 +56,7 @@ export interface AppData {
 }
 
 function defaultSettings(): Settings {
-  return { vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
+  return { vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
 }
 
 export const DEFAULT_SETTINGS: Settings = defaultSettings()
@@ -98,7 +100,7 @@ function parseSession(raw: unknown): Session | null {
 /** Jedes fehlende oder ungültige Feld bekommt seinen Standardwert. */
 function parseSettings(raw: Record<string, unknown>): Settings {
   const def = defaultSettings()
-  const { vibration, breathSound, voiceBalance, timerSound, guidedSound, timerLead } = raw
+  const { vibration, breathSound, voiceBalance, timerSound, guidedSound, breathBackground, timerLead } = raw
   const timer = isRecord(raw.timer) ? raw.timer : {}
   const { minutes, intervalMin } = timer
   return {
@@ -107,6 +109,7 @@ function parseSettings(raw: Record<string, unknown>): Settings {
     voiceBalance: typeof voiceBalance === 'number' && voiceBalance >= 0 && voiceBalance <= 1 ? voiceBalance : def.voiceBalance,
     timerSound: timerSound === null || isBackgroundId(timerSound) ? timerSound : def.timerSound,
     guidedSound: guidedSound === null || isBackgroundId(guidedSound) ? guidedSound : def.guidedSound,
+    breathBackground: breathBackground === null || isBackgroundId(breathBackground) ? breathBackground : def.breathBackground,
     timerLead: typeof timerLead === 'boolean' ? timerLead : def.timerLead,
     timer: {
       minutes: typeof minutes === 'number' && Number.isInteger(minutes) && minutes >= 1 && minutes <= MAX_TIMER_MINUTES ? minutes : def.timer.minutes,

@@ -22,6 +22,8 @@ export interface ProgramSpec {
   length: number
   finish: number
   background: BackgroundId | null
+  // Lautstärke des Hintergrunds (0 … 1); ohne Angabe die übliche der Engine.
+  backgroundVolume?: number
   // Was die Engine vor dem Einplanen lädt; was fehlt, kommt als null in `schedule`.
   assets: readonly ('strike' | 'breath')[]
   // Plant alle Klänge ab t0 ein und liefert eine Funktion, die alles Eingeplante stoppt: Was schon
@@ -75,11 +77,21 @@ export function timerProgram(s: TimerSettings): ProgramSpec {
   }
 }
 
+// Wie eine Atemübung klingt: mit oder ohne Atemgeräusch, mit oder ohne Hintergrund (Einstellungen).
+export interface BreathOptions {
+  sound: boolean
+  background: BackgroundId | null
+}
+
+// Unter dem leisen Atemgeräusch spielt der Hintergrund halb so laut wie sonst, damit er es nicht
+// überdeckt; ohne Atemgeräusch in der üblichen Lautstärke.
+export const BREATH_BACKGROUND_VOLUME = 0.35
+
 // Atemübung: ein leises Atemgeräusch zu jeder Ein- und Ausatemphase, so lang wie die Phase (die
-// Länge reicht bis zum nächsten Phasenbeginn); Halten bleibt still. Ohne Vorlauf und Hintergrund.
-// Ist das Atemgeräusch abgeschaltet (`sound`) oder lädt es nicht, läuft die Übung still. Nach dem
-// letzten Zyklus bleibt 1 s, bevor das Programm endet.
-export function breathProgram(id: BreathPatternId, minutes: number, opts: { sound: boolean }): ProgramSpec {
+// Länge reicht bis zum nächsten Phasenbeginn); Halten bleibt still. Ohne Vorlauf, auf Wunsch mit
+// Hintergrund. Ist das Atemgeräusch abgeschaltet (`sound`) oder lädt es nicht, läuft die Übung
+// still. Nach dem letzten Zyklus bleibt 1 s, bevor das Programm endet.
+export function breathProgram(id: BreathPatternId, minutes: number, opts: BreathOptions): ProgramSpec {
   const plan = breathPlan(id, minutes)
   return {
     kind: 'breath',
@@ -88,7 +100,8 @@ export function breathProgram(id: BreathPatternId, minutes: number, opts: { soun
     lead: 0,
     length: plan.length,
     finish: plan.length + 1,
-    background: null,
+    background: opts.background,
+    backgroundVolume: opts.sound ? BREATH_BACKGROUND_VOLUME : undefined,
     assets: opts.sound ? ['breath'] : [],
     schedule(ctx, destination, t0, { breath }) {
       if (!breath) return () => {}

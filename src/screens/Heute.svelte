@@ -31,7 +31,9 @@
   const days = $derived(streak(stats.data.sessions, new Date()))
   // Ohne Gemerktes (oder mit einer unbekannten Meditation) steht hier „Ankommen im Atem“.
   const card = $derived(lastUsedCard(stats.data.lastUsed))
-  const start = $derived(lastUsedStart(card.last, stats.data.settings.breathSound))
+  // Atemübungen klingen hier so, wie sie unter „Atmen“ eingestellt sind.
+  const breathOptions = $derived({ sound: stats.data.settings.breathSound, background: stats.data.settings.breathBackground })
+  const start = $derived(lastUsedStart(card.last, breathOptions))
 
   const urlOf = (m: Meditation) => absoluteAudioUrl(m, location.href)
 
@@ -48,7 +50,7 @@
   // „Erneut starten“ ändert nichts am Gemerkten: Es ist ja schon die letzte Sitzung.
   function breatheNow() {
     setLastUsed({ kind: 'breath', pattern: 'kohaerent', minutes: 3 })
-    startSession(breathProgram('kohaerent', 3, { sound: stats.data.settings.breathSound }))
+    startSession(breathProgram('kohaerent', 3, breathOptions))
   }
 </script>
 
