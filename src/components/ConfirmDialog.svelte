@@ -78,7 +78,7 @@
     max-width: 400px;
     max-height: 100%;
     padding: 28px 24px 24px;
-    border: 1px solid var(--surface-border);
+    border: 1px solid var(--gold-line);
     border-radius: 28px;
     background: var(--sky-mid);
     box-shadow: 0 18px 48px rgb(5 8 24 / 0.5);

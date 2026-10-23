@@ -97,28 +97,35 @@
 
   <Calendar {sessions} />
 
+  <!-- Die Zeilen trennt eine feine Goldlinie, ab der zweiten. -->
   <div class="card">
     <h2>Einstellungen</h2>
-    <Switch
-      label="Vibration bei Atemübungen"
-      checked={settings.vibration}
-      onToggle={() => updateSettings({ vibration: !settings.vibration })}
-    />
-    <Switch
-      label="10 Sekunden ankommen"
-      checked={settings.timerLead}
-      onToggle={() => updateSettings({ timerLead: !settings.timerLead })}
-    />
-    <div class="field">
-      <span class="label" aria-hidden="true">Hintergrundklang beim Timer</span>
-      <SoundSelect
-        label="Hintergrundklang beim Timer"
-        bind:value={() => settings.timerSound, (timerSound) => updateSettings({ timerSound })}
-      />
-    </div>
-    <div class="field">
-      <span class="label" aria-hidden="true">Balance Stimme ↔ Hintergrund</span>
-      <BalanceSlider value={balance} onInput={(value) => (dragging = value)} onChange={saveBalance} />
+    <div class="settings">
+      <div class="setting">
+        <Switch
+          label="Vibration bei Atemübungen"
+          checked={settings.vibration}
+          onToggle={() => updateSettings({ vibration: !settings.vibration })}
+        />
+      </div>
+      <div class="setting">
+        <Switch
+          label="10 Sekunden ankommen"
+          checked={settings.timerLead}
+          onToggle={() => updateSettings({ timerLead: !settings.timerLead })}
+        />
+      </div>
+      <div class="setting field">
+        <span class="label" aria-hidden="true">Hintergrundklang beim Timer</span>
+        <SoundSelect
+          label="Hintergrundklang beim Timer"
+          bind:value={() => settings.timerSound, (timerSound) => updateSettings({ timerSound })}
+        />
+      </div>
+      <div class="setting field">
+        <span class="label" aria-hidden="true">Balance Stimme ↔ Hintergrund</span>
+        <BalanceSlider value={balance} onInput={(value) => (dragging = value)} onChange={saveBalance} />
+      </div>
     </div>
   </div>
 
@@ -189,7 +196,7 @@
     justify-content: space-between;
     gap: 6px;
     padding: 16px 8px;
-    border: 1px solid var(--surface-border);
+    border: 1px solid var(--gold-line);
     border-radius: 24px;
     background: var(--surface);
     text-align: center;
@@ -212,6 +219,29 @@
 
   .card {
     align-items: stretch;
+  }
+
+  /* Einstellungszeilen: Schalter und Felder, durch Goldlinien getrennt (über jeder Zeile außer der ersten). */
+  .settings {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .setting {
+    padding: 10px 0;
+  }
+
+  .setting:first-child {
+    padding-top: 0;
+  }
+
+  .setting:last-child {
+    padding-bottom: 0;
+  }
+
+  .setting + .setting {
+    border-top: 1px solid rgb(233 196 142 / 0.28);
   }
 
   .field {

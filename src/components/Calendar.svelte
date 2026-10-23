@@ -1,9 +1,12 @@
 <script lang="ts">
   // Monatskalender: Tage mit mindestens einer gezählten Sitzung sind markiert. Er öffnet im
   // laufenden Monat; die Knöpfe blättern monatsweise, auch über Jahresgrenzen.
+  import { tageszeitWaschung } from '../lib/content/waschungen'
   import type { Session } from '../lib/stats/schema'
   import { daysInMonth } from '../lib/stats/summary'
   import { calendarWeeks, dayLabel, monthTitle, shiftMonth, WEEKDAYS } from '../lib/ui/ich-view'
+  import { tageszeitUi } from '../lib/ui/tageszeit.svelte'
+  import Waschung from './Waschung.svelte'
 
   let { sessions }: { sessions: Session[] } = $props()
 
@@ -37,7 +40,9 @@
   </svg>
 {/snippet}
 
+<!-- Die Waschung der Tageszeit liegt in der Ecke oben rechts, um „Nächster Monat“; der Monatstitel steht links davon. -->
 <div class="card calendar">
+  <Waschung farbe={tageszeitWaschung(tageszeitUi.current)} />
   <div class="head">
     <button type="button" class="nav" aria-label="Vorheriger Monat" onclick={() => page(-1)}>
       {@render chevron('previous')}
@@ -87,10 +92,26 @@
   .calendar {
     --row: 44px;
     --head-row: 32px;
+    /* Zone der Waschung: in der Höhe von der Oberkante bis zu den Wochentagen (Innenabstand 20 + Kopfzeile 48 +
+       Abstand 12). Breit ist sie bis zur Hälfte der Karte minus der halben Breite des längsten Monatstitels
+       („September 2027“: gemessen 7,5 em bei 1.1875rem, also knapp 4,5rem je Hälfte; hier 4,7rem und 2 px Luft):
+       Der mittig stehende Titel reicht nie in sie hinein, auch bei großer Schrift und auf 360 px. Mindestens der
+       Knopf samt Innenabstand (48 + 12 px) bleibt in ihr. */
+    --wash-w: clamp(60px, calc(50% - 4.7rem - 2px), 120px);
+    --wash-h: 80px;
 
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
     align-items: stretch;
     gap: 12px;
     padding: 20px 12px 16px;
+  }
+
+  /* Inhalt über der Waschung */
+  .calendar > :global(:not(.waschung)) {
+    position: relative;
+    z-index: 1;
   }
 
   .head {

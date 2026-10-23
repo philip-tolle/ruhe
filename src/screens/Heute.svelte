@@ -248,13 +248,6 @@
 
   .zuletzt h2 {
     margin-right: calc(var(--wash-w) - 24px);
-    font-size: 1.1875rem;
-    line-height: 1.2;
-  }
-
-  .activities h2 {
-    font-size: 1.1875rem;
-    line-height: 1.2;
   }
 
   /* Der Start: Knopf, daneben leise Länge und Häkchen; der Hinweis „Nicht offline verfügbar“ steht darunter. */

@@ -67,7 +67,7 @@
     max-width: var(--column-width);
     max-height: min(88dvh, 720px);
     padding: 12px var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 28px);
-    border: 1px solid var(--surface-border);
+    border: 1px solid var(--gold-line);
     border-bottom: 0;
     border-radius: 28px 28px 0 0;
     background: var(--sky-mid);

@@ -156,11 +156,6 @@
     min-width: 0;
   }
 
-  .timer h2 {
-    font-size: 1.1875rem;
-    line-height: 1.2;
-  }
-
   .hint {
     color: var(--text-muted);
     font-size: 0.875rem;

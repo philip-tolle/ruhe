@@ -226,12 +226,12 @@ test('the motif sits at the top of its tile, at the start, above the title, and 
   await openAtmen(page)
   for (const t of TILES) {
     const target = tile(page, t.title)
-    await expectMotiv(target.locator('img'), t.motiv, 80)
+    await expectMotiv(target.locator('img.motiv'), t.motiv, 80)
     const place = await target.evaluate((el, title) => {
       const rect = (e: Element) => e.getBoundingClientRect()
       const heading = [...el.querySelectorAll('span')].find((s) => s.textContent!.replace(/\u00ad/g, '') === title)!
       const tileRect = rect(el)
-      const motif = rect(el.querySelector('img')!)
+      const motif = rect(el.querySelector('img.motiv')!)
       const text = rect(heading)
       return {
         fromStart: motif.left - tileRect.left,
@@ -262,7 +262,7 @@ test('tapping anywhere on a tile starts it with the chosen duration', async ({ p
   await page.getByRole('button', { name: 'Fertig' }).click()
 
   // Und auf das Motiv.
-  await tile(page, 'Langes Ausatmen').locator('img').click()
+  await tile(page, 'Langes Ausatmen').locator('img.motiv').click()
   await expect(page.getByRole('heading', { name: 'Atmen · Langes Ausatmen' })).toBeVisible()
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ruhe.v1') ?? 'null').lastUsed)).toEqual({
     kind: 'breath',
@@ -278,7 +278,7 @@ test.describe('when the motifs do not load', () => {
   test('the tiles keep their size, names and texts', async ({ page }) => {
     await openAtmen(page)
     await expect(tiles(page)).toHaveCount(6)
-    for (const t of TILES) await expectMotiv(tile(page, t.title).locator('img'), t.motiv, 80)
+    for (const t of TILES) await expectMotiv(tile(page, t.title).locator('img.motiv'), t.motiv, 80)
     const withImages = await tileBoxes(page)
 
     await page.route('**/images/motive/**', (route) => route.fulfill({ status: 404 }))
@@ -321,7 +321,8 @@ test.describe('on a narrow screen with large system text', () => {
         const problems: string[] = []
         if (el.scrollWidth > el.clientWidth) problems.push(`${el.getAttribute('aria-label')}: scrollWidth ${el.scrollWidth} > ${el.clientWidth}`)
         if (el.scrollHeight > el.clientHeight) problems.push(`${el.getAttribute('aria-label')}: scrollHeight ${el.scrollHeight} > ${el.clientHeight}`)
-        for (const child of el.querySelectorAll('*')) {
+        // Die Waschung (ihr Bild ist größer als die Zone und von ihr beschnitten) prüft karten.spec.ts.
+        for (const child of el.querySelectorAll('*:not(.waschung, .waschung *)')) {
           const r = child.getBoundingClientRect()
           if (r.left < outer.left - 0.5 || r.right > outer.right + 0.5 || r.top < outer.top - 0.5 || r.bottom > outer.bottom + 0.5) {
             problems.push(`${el.getAttribute('aria-label')}: ${child.tagName.toLowerCase()} "${child.textContent}" ragt heraus`)

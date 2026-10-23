@@ -72,7 +72,7 @@
     position: relative;
     display: flex;
     min-height: 196px;
-    border: 1px solid var(--surface-border);
+    border: 1px solid var(--gold-line);
     border-radius: 24px;
     background: linear-gradient(160deg, rgb(238 240 250 / 0.09), rgb(238 240 250 / 0.03));
   }

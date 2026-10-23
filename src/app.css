@@ -289,6 +289,14 @@ main.with-player-bar {
   backdrop-filter: blur(14px);
 }
 
+/* Titel der Karten sind überall gleich groß (Spec 4.1 §2.5): Fraunces 400 wie jede h2, 1.1875rem. Größere h2 (Blatt,
+   Dialog, Player) stehen nicht in einer Karte. Eine kleine Überschrift in Versalien setzt ihre Größe selbst (Klasse
+   der Komponente, mehr Gewicht als diese Regel). */
+.card h2 {
+  font-size: 1.1875rem;
+  line-height: 1.2;
+}
+
 /* Text nur für Hilfstechnik (etwa die Beschreibung, die zu einem Knopf vorgelesen wird): nicht zu sehen, aber im Baum. */
 .visually-hidden {
   position: absolute;

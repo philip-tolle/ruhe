@@ -735,3 +735,345 @@ test.describe('Heute', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------------------------------------------
+// Atmen
+// ---------------------------------------------------------------------------------------------------------------
+
+// Öffnet einen Reiter zur festen Zeit (Meditieren hat oben `openMeditieren`, Heute `openHeute`).
+async function openTab(page: Page, tab: 'Atmen' | 'Klänge' | 'Ich', time = '08:00:00') {
+  await page.clock.setFixedTime(at(time))
+  await page.goto('./')
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: tab }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(tab)
+}
+
+// Der Akzent der Stimmung, wie ihn der Browser auflöst (`var(--accent)` an einer Probe).
+const accentOf = (page: Page) =>
+  page.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--accent)'
+    document.body.append(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    return color
+  })
+
+// Die sechs Kacheln in der Reihenfolge der Liste, mit der Farbe ihrer Übung.
+const ATEM = [
+  { title: '4-7-8', farbe: 'lavendel' },
+  { title: 'Box-Atmung', farbe: 'pfirsich' },
+  { title: 'Kohärentes Atmen', farbe: 'blaugruen' },
+  { title: 'Langes Ausatmen', farbe: 'lavendel' },
+  { title: 'Physiologischer Seufzer', farbe: 'blaugruen' },
+  { title: 'Wechselatmung', farbe: 'pfirsich' },
+]
+const atemTile = (page: Page, title: string) => page.getByRole('button', { name: `${title} starten` })
+const atemTiles = (page: Page) => page.getByRole('button', { name: /starten$/ })
+
+test.describe('Atmen', () => {
+  test('every tile has the wash of its exercise, in turn, and a gold border', async ({ page }) => {
+    await openTab(page, 'Atmen')
+    await expect(atemTiles(page)).toHaveCount(6)
+    await expect(page.locator('.waschung img')).toHaveCount(6)
+    for (const [i, t] of ATEM.entries()) {
+      const tile = atemTile(page, t.title)
+      expect(await waschungIn(tile), t.title).toBe(t.farbe)
+      // Lage reihum 0, 1, 2 (Index modulo 3); die Waschung ist Schmuck.
+      await expect(tile.locator(':scope > .waschung')).toHaveClass(new RegExp(`\\blage-${i % 3}\\b`))
+      await expect(tile.locator('.waschung img')).toHaveAttribute('alt', '')
+      await expect(tile.locator('.waschung')).toHaveAttribute('aria-hidden', 'true')
+      await expectGoldBorder(tile, 0.26)
+    }
+  })
+
+  test('the zone sits in the top right corner, beside the motif and above the title', async ({ page }) => {
+    await openTab(page, 'Atmen')
+    for (const t of ATEM) {
+      const tile = atemTile(page, t.title)
+      const [c, z, m, title] = await Promise.all([
+        tile.boundingBox(),
+        tile.locator('.waschung').boundingBox(),
+        tile.locator('img.motiv').boundingBox(),
+        tile.locator('.title').boundingBox(),
+      ])
+      // Oben rechts, bündig mit dem Innenrand (1 px Rand).
+      expect(Math.abs(z!.x + z!.width - (c!.x + c!.width - 1)), t.title).toBeLessThan(1)
+      expect(Math.abs(z!.y - (c!.y + 1)), t.title).toBeLessThan(1)
+      // Neben dem Motiv (beginnt an seinem rechten Rand), nicht darüber hinaus nach unten: Der Titel steht darunter.
+      expect(z!.x, t.title).toBeGreaterThanOrEqual(m!.x + m!.width - 1)
+      expect(z!.height, t.title).toBeLessThanOrEqual(m!.y + m!.height - c!.y + 1)
+      expect(title!.y, t.title).toBeGreaterThanOrEqual(z!.y + z!.height - 1)
+    }
+  })
+
+  test('no text lies in a wash, and the effect line keeps the accent', async ({ page }) => {
+    await openTab(page, 'Atmen')
+    const accent = await accentOf(page)
+    for (const t of ATEM) {
+      const tile = atemTile(page, t.title)
+      await expectNoTextInWash(tile)
+      expect(await tile.locator('.effect').evaluate((el) => getComputedStyle(el).color), t.title).toBe(accent)
+    }
+  })
+
+  test('a tap on the wash starts the exercise', async ({ page }) => {
+    await openTab(page, 'Atmen')
+    const tile = atemTile(page, 'Box-Atmung')
+    await tile.click({ trial: true }) // wartet, bis der Bildschirm eingeblendet ist
+    const zone = (await tile.locator('.waschung').boundingBox())!
+    const [x, y] = [zone.x + zone.width / 2, zone.y + zone.height / 2]
+    await expectTapPassesThrough(page, x, y)
+    await page.touchscreen.tap(x, y)
+    await expect(page.getByRole('heading', { name: 'Atmen · Box-Atmung' })).toBeVisible()
+  })
+
+  test.describe('when the washes do not load', () => {
+    // Der Service Worker des ersten Besuchs würde die Bilder aus dem Speicher liefern, an `page.route` vorbei.
+    test.use({ serviceWorkers: 'block' })
+
+    test('the tiles keep their size and a tap still starts', async ({ page }) => {
+      await openTab(page, 'Atmen')
+      // Erst zählen: `every` auf einer leeren Liste ist wahr, die Basislinie bewiese sonst nichts.
+      await expect(page.locator('.waschung img')).toHaveCount(6)
+      await expect.poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth > 0))).toBe(true)
+      const heights = () => atemTiles(page).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
+      const withImages = await heights()
+      expect(withImages).toHaveLength(6)
+
+      await page.route('**/images/waschungen/**', (route) => route.fulfill({ status: 404 }))
+      await openTab(page, 'Atmen')
+      // Die Bilder sind wirklich ausgefallen (sonst prüfte der Test nichts).
+      await expect(page.locator('.waschung img')).toHaveCount(6)
+      await expect
+        .poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth === 0)))
+        .toBe(true)
+      const without = await heights()
+      for (const [i, height] of without.entries()) expect(Math.abs(height - withImages[i])).toBeLessThanOrEqual(1)
+
+      const tile = atemTile(page, '4-7-8')
+      await tile.click({ trial: true })
+      const zone = (await tile.locator('.waschung').boundingBox())!
+      await expectTapPassesThrough(page, zone.x + zone.width / 2, zone.y + zone.height / 2)
+      await page.touchscreen.tap(zone.x + zone.width / 2, zone.y + zone.height / 2)
+      await expect(page.getByRole('heading', { name: 'Atmen · 4-7-8' })).toBeVisible()
+    })
+  })
+
+  test.describe('on a small phone with large text', () => {
+    test.use({ viewport: { width: 360, height: 640 } })
+
+    test('nothing overflows, the titles start below the zone, and no text lies in a wash', async ({ page }) => {
+      await openTab(page, 'Atmen')
+      for (const size of ['100%', '130%']) {
+        await page.evaluate((value) => (document.documentElement.style.fontSize = value), size)
+        expect(await pageFits(page), size).toBe(true)
+        for (const t of ATEM) {
+          const tile = atemTile(page, t.title)
+          expect(await tile.evaluate((el) => el.scrollWidth <= el.clientWidth), `${t.title} bei ${size}`).toBe(true)
+          await expectNoTextInWash(tile)
+          const [z, title] = await Promise.all([tile.locator('.waschung').boundingBox(), tile.locator('.title').boundingBox()])
+          expect(title!.y, `${t.title} bei ${size}`).toBeGreaterThanOrEqual(z!.y + z!.height - 1)
+        }
+      }
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+// Klänge
+// ---------------------------------------------------------------------------------------------------------------
+
+test.describe('Klänge', () => {
+  test('no tile has a wash; idle tiles have the gold border, an active one keeps the accent', async ({ page }) => {
+    await openTab(page, 'Klänge')
+    const tiles = page.locator('.screen .tile')
+    await expect(tiles).toHaveCount(8)
+    await expect(page.locator('.screen .waschung')).toHaveCount(0)
+    await expect(tiles.locator('img.waschung')).toHaveCount(0)
+    for (const tile of await tiles.all()) await expectGoldBorder(tile, 0.26)
+
+    // Eine Kachel an: Ihr Rand wechselt in den Akzent, alle anderen bleiben golden.
+    await page.getByRole('button', { name: 'Regen', exact: true }).click()
+    const active = page.locator('.screen .tile.active')
+    await expect(active).toHaveCount(1)
+    const accent = parseColor(await accentOf(page))
+    await expect.poll(async () => parseColor(await active.evaluate((el) => getComputedStyle(el).borderTopColor))).toEqual(accent)
+    const idle = page.locator('.screen .tile:not(.active)')
+    await expect(idle).toHaveCount(7)
+    for (const tile of await idle.all()) await expectGoldBorder(tile, 0.26)
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+// Ich
+// ---------------------------------------------------------------------------------------------------------------
+
+const ichCards = (page: Page) => page.locator('.screen .card')
+const calendar = (page: Page) => page.locator('.screen .card').filter({ has: page.getByRole('table') })
+const ichCard = (page: Page, heading: string) => page.locator('.screen .card').filter({ has: page.getByRole('heading', { level: 2, name: heading, exact: true }) })
+
+test.describe('Ich', () => {
+  test('the key figures and every card have the gold border', async ({ page }) => {
+    await openTab(page, 'Ich')
+    const figures = page.locator('dl > div')
+    await expect(figures).toHaveCount(3)
+    for (const figure of await figures.all()) await expectGoldBorder(figure, 0.26)
+    await expect(ichCards(page)).toHaveCount(4) // Kalender, Einstellungen, Offline, Backup
+    for (const card of await ichCards(page).all()) await expectGoldBorder(card, 0.26)
+  })
+
+  for (const [time, farbe] of [
+    ['08:00:00', 'pfirsich'],
+    ['14:00:00', 'blaugruen'],
+    ['20:00:00', 'lavendel'],
+  ] as const) {
+    test(`only the calendar has a wash, ${farbe} at ${time.slice(0, 5)}`, async ({ page }) => {
+      await openTab(page, 'Ich', time)
+      await expect(page.locator('.waschung')).toHaveCount(1)
+      expect(await waschungIn(calendar(page))).toBe(farbe)
+      await expect(calendar(page).locator('.waschung img')).toHaveAttribute('alt', '')
+      await expect(calendar(page).locator('.waschung')).toHaveAttribute('aria-hidden', 'true')
+      for (const heading of ['Einstellungen', 'Offline', 'Backup']) expect(await waschungIn(ichCard(page, heading)), heading).toBeNull()
+    })
+  }
+
+  test('the calendar zone is the top right corner around „Nächster Monat“, with no text in it', async ({ page }) => {
+    await openTab(page, 'Ich')
+    const card = calendar(page)
+    const [c, z, next, title] = await Promise.all([
+      card.boundingBox(),
+      card.locator('.waschung').boundingBox(),
+      card.getByRole('button', { name: 'Nächster Monat' }).boundingBox(),
+      // Der Text des Monatstitels, nicht die Fläche der Überschrift (die füllt ihre ganze Spalte).
+      card.getByRole('heading', { level: 2 }).evaluate((el) => {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        const r = range.getBoundingClientRect()
+        return { right: r.right }
+      }),
+    ])
+    expect(Math.abs(z!.x + z!.width - (c!.x + c!.width - 1))).toBeLessThan(1)
+    expect(Math.abs(z!.y - (c!.y + 1))).toBeLessThan(1)
+    expect(z!.width).toBeLessThanOrEqual(c!.width * 0.35)
+    // Der Knopf sitzt in der Zone, die Zone endet über den Wochentagen.
+    expect(next!.x + next!.width / 2).toBeGreaterThan(z!.x)
+    expect(next!.y + next!.height / 2).toBeLessThan(z!.y + z!.height)
+    const weekdays = (await card.locator('thead th').first().boundingBox())!
+    expect(weekdays.y).toBeGreaterThanOrEqual(z!.y + z!.height - 1)
+    // Der Monatstitel steht links von ihr.
+    expect(title.right).toBeLessThanOrEqual(z!.x + 1)
+    await expectNoTextInWash(card)
+  })
+
+  test('the rows of the settings are divided by gold lines from the second row on', async ({ page }) => {
+    await openTab(page, 'Ich')
+    const rows = [
+      page.getByRole('switch', { name: 'Vibration bei Atemübungen' }),
+      page.getByRole('switch', { name: '10 Sekunden ankommen' }),
+      page.getByRole('combobox', { name: 'Hintergrundklang beim Timer' }),
+      page.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' }),
+    ]
+    for (const [i, control] of rows.entries()) {
+      const row = await control.evaluate((el) => {
+        const s = getComputedStyle(el.closest('.setting')!)
+        return { width: s.borderTopWidth, style: s.borderTopStyle, color: s.borderTopColor, padding: parseFloat(s.paddingTop) }
+      })
+      if (i === 0) {
+        // Die erste Zeile hat keine Linie (die Überschrift steht darüber).
+        expect(row.width).toBe('0px')
+        continue
+      }
+      expect([row.width, row.style]).toEqual(['1px', 'solid'])
+      const [r, g, b, a] = parseColor(row.color)
+      expect([r, g, b]).toEqual([233, 196, 142])
+      expect(Math.abs(a - 0.28)).toBeLessThanOrEqual(0.01)
+      expect(row.padding).toBeGreaterThan(0)
+    }
+    // Die Hinweise und Überschriften der anderen Karten sind keine Zeilen.
+    await expect(ichCard(page, 'Offline').locator('.setting')).toHaveCount(0)
+    await expect(ichCard(page, 'Backup').locator('.setting')).toHaveCount(0)
+  })
+
+  test.describe('on a small phone with large text', () => {
+    test.use({ viewport: { width: 360, height: 640 } })
+
+    test('nothing overflows, and no month title lies in the wash', async ({ page }) => {
+      await openTab(page, 'Ich')
+      expect(await pageFits(page)).toBe(true)
+      await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+      expect(await pageFits(page)).toBe(true)
+      for (const card of await ichCards(page).all()) {
+        expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth), await card.innerText()).toBe(true)
+      }
+      // Alle zwölf Monatstitel (September ist der breiteste): keiner reicht in die Zone.
+      const card = calendar(page)
+      for (let month = 0; month < 12; month++) {
+        await expectNoTextInWash(card)
+        expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth), await card.getByRole('heading', { level: 2 }).innerText()).toBe(true)
+        await card.getByRole('button', { name: 'Nächster Monat' }).click()
+      }
+      expect(await pageFits(page)).toBe(true)
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+// Dialoge
+// ---------------------------------------------------------------------------------------------------------------
+
+test.describe('Dialoge', () => {
+  test('the timer sheet has the gold border', async ({ page }) => {
+    await openMeditieren(page)
+    await page.getByRole('button', { name: 'Timer einstellen' }).click()
+    const sheet = page.getByRole('dialog', { name: 'Meditations-Timer' })
+    await expect(sheet).toBeVisible()
+    await expectGoldBorder(sheet, 0.26)
+  })
+
+  test('„Übung beenden?“ has the gold border', async ({ page }) => {
+    await openTab(page, 'Atmen')
+    await atemTile(page, '4-7-8').click()
+    await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+    await page.goBack()
+    const confirm = page.getByRole('alertdialog', { name: 'Übung beenden?' })
+    await expect(confirm).toBeVisible()
+    await expectGoldBorder(confirm, 0.26)
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+// Überschriften der Karten (Ruling R3)
+// ---------------------------------------------------------------------------------------------------------------
+
+test.describe('card headings', () => {
+  // Eine Regel für alle Karten: Fraunces 400, 1.1875rem. Nur die kleine Versalien-Überschrift des Vorschlags (Heute)
+  // ist eine andere Sorte Überschrift und bleibt bei 0.72rem.
+  async function expectCardHeadings(page: Page, expected: number) {
+    const root = await rem(page)
+    const headings = await page.locator('.card h2:not(.kicker)').evaluateAll((els) =>
+      els.map((el) => ({ text: el.textContent, size: parseFloat(getComputedStyle(el).fontSize), family: getComputedStyle(el).fontFamily, weight: getComputedStyle(el).fontWeight })),
+    )
+    expect(headings).toHaveLength(expected)
+    for (const h of headings) {
+      expect(h.size, h.text!).toBeCloseTo(1.1875 * root, 1)
+      expect(h.family, h.text!).toContain('Fraunces')
+      expect(h.weight, h.text!).toBe('400')
+    }
+  }
+
+  test('Heute: „Zuletzt genutzt“ and „Aktivitäten“', async ({ page }) => {
+    await openHeute(page)
+    await expectCardHeadings(page, 2)
+  })
+
+  test('Meditieren: the timer card', async ({ page }) => {
+    await openMeditieren(page)
+    await expectCardHeadings(page, 1)
+  })
+
+  test('Ich: the month, „Einstellungen“, „Offline“ and „Backup“', async ({ page }) => {
+    await openTab(page, 'Ich')
+    await expectCardHeadings(page, 4)
+  })
+})
