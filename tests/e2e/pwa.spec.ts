@@ -68,6 +68,34 @@ test('all 28 painted motifs are precached and available offline', async ({ page,
   expect(broken).toEqual([])
 })
 
+test('the three washes are precached and available offline', async ({ page, context }) => {
+  const farben = (JSON.parse(readFileSync('content/waschungen.json', 'utf8')).waschungen as { id: string }[]).map((w) => w.id)
+  expect(farben).toEqual(['lavendel', 'pfirsich', 'blaugruen'])
+  await page.goto('./')
+  await page.evaluate(async () => { await navigator.serviceWorker.ready })
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+  const urls = farben.map((farbe) => new URL(`images/waschungen/${farbe}.webp`, page.url()).href)
+  // Wie bei den Motiven: Workbox hängt eine Revision an die Adresse an; die Liste der fehlenden Dateien macht
+  // einen Fehlschlag lesbar.
+  const missing = await page.evaluate(async (list) => {
+    const absent: string[] = []
+    for (const url of list) if (!((await caches.match(url, { ignoreSearch: true })) instanceof Response)) absent.push(url)
+    return absent
+  }, urls)
+  expect(missing).toEqual([])
+  await context.setOffline(true)
+  const broken = await page.evaluate(async (list) => {
+    const bad: string[] = []
+    for (const url of list) {
+      const response = await fetch(url)
+      if (!response.ok || response.headers.get('Content-Type') !== 'image/webp') bad.push(url)
+    }
+    return bad
+  }, urls)
+  expect(broken).toEqual([])
+})
+
 test('a saved meditation is served from the cache with range support while offline', async ({ page, context }) => {
   await page.goto('./')
   await page.evaluate(async () => { await navigator.serviceWorker.ready })
