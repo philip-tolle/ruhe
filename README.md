@@ -104,17 +104,17 @@ Die 28 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entsteh
 Die drei Waschungen (`lavendel`, `pfirsich`, `blaugruen`) liegen als `public/images/waschungen/<farbe>.webp`. Sie sitzen als zarter Hauch in der rechten oberen Ecke der Karten (`src/components/Waschung.svelte`). Entstehung und Werkzeug wie bei den Motiven: eine Claude-Sitzung mit dem ElevenLabs-Connector (kein API-Schlüssel nötig, es wird keiner gespeichert) und `scripts/freistellen.py`.
 
 1. **Prompt aufstellen:** `content/waschungen.json` hält das Schema. `prompt` beschreibt eine einzelne breite Waschung auf reinem Schwarz; `<COLOURS>` wird durch das `colours` der Farbe ersetzt (z. B. „lavender and soft violet“). Dazu `model` und der Befehl `freistellen`. Je Farbe stehen außerdem `id`, `flow` und `generation` (Quelle im Connector) und die Größe des fertigen Bildes.
-2. **Erzeugen und auswählen:** Modell `gpt-image-2.5-sunburst`, eine Variante je Farbe kostet etwa 190 Credits. Die Varianten erscheinen auf einer Auswahlseite, und du wählst eine.
-3. **Freistellen:** Das gewählte Bild als PNG speichern und ausführen:
+2. **Erzeugen und auswählen:** Modell `gpt-image-2.5-sunburst`, etwa 190 Credits je Variante; jeder Aufruf zählt, wiederhole ihn also nicht ohne Grund. Die Varianten werden nebeneinandergelegt, eine wird gewählt.
+3. **Freistellen:** Das gewählte Bild als PNG speichern und dann ausführen:
 
    ```bash
    python3 scripts/freistellen.py <quelle.png> public/images/waschungen/<farbe>.webp --schwarz --breite 900
    ```
 
    `--schwarz` macht aus dem hellsten Kanal die Deckkraft und beschneidet auf die Waschung (nicht quadratisch), `--breite` ist die Breite des fertigen Bildes. Heraus kommt ein WebP mit Alpha.
-4. **Budget:** höchstens 120 KB je Datei, zusammen höchstens 300 KB. Der Test prüft das.
+4. **Budget:** höchstens 120 KB je Datei, zusammen höchstens 300 KB. Der Test prüft das. Die drei Dateien füllen davon 297 KB, es bleiben nur rund 3 KB Luft: Eine neue Waschung sollte also etwa so groß sein wie die, die sie ersetzt.
 5. **Eintragen:** Quelle, Größe und `colours` der neuen Fassung kommen in `content/waschungen.json`. Eine neue Farbe braucht außerdem einen Eintrag in `src/lib/content/waschungen.ts`; der Service Worker nimmt die Datei beim nächsten Build von selbst in den Precache auf.
-6. **Deckkraft:** `--wash-opacity` in `src/app.css` (Standard 0.35, erlaubt 0.2 bis 0.45). Wirkt eine Waschung zu kräftig oder zu blass, ändere diesen Wert, nicht die Datei.
+6. **Deckkraft:** `--wash-opacity` in `src/app.css` (Standard 0.35, erlaubt 0.2 bis 0.45). Wirkt eine Waschung zu kräftig oder zu blass, ändere diesen Wert, nicht die Datei. Gesperrte Einträge unter „Meditieren“ setzen `--wash-opacity: 0.2` lokal (`src/screens/Meditieren.svelte`), die Waschung tritt dort bewusst zurück.
 7. **Regel:** Schrift liegt nie in der Zone einer Waschung, nur auf einer deckenden Fläche wie einem Linienknopf. Deshalb prüft kein Kontrasttest die Schrift über der Waschung; `expectNoTextInWash` in `tests/e2e/karten.spec.ts` prüft stattdessen, dass keine Schrift die Zone berührt. Wer eine Karte umbaut, muss ihr Layout also so einrichten, dass der Text außerhalb der Ecke bleibt (Größe der Zone über `--wash-w` und `--wash-h` der Karte).
 
 ## Entwicklung

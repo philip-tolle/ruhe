@@ -164,7 +164,7 @@ Symbol `ich` neben der Überschrift; alle Karten im neuen Kartenstil; Inhalt unv
 - Alle Player (Timer, Atem, geführte Meditation) zeigen den Himmel der Tageszeit; Ring und Hauptknopf im Akzent der Tageszeit.
 - Der Atem-Player bekommt die Atem-Blüte (Abschnitt 5) statt Kreis, Schein und Phasenring.
 
-*Ergänzung vom 23.10.2026 (Meilenstein 4.1):* Die Karten haben einen feinen Goldrand und Goldlinien, in text-freien Ecken sitzen gemalte Waschungen (Lavendel, Pfirsich, Blaugrün), Länge und „offline gespeichert“ treten leise zurück, und Aktionsknöpfe in Karten sind Umriss-Knöpfe. Wo das von diesem Abschnitt abweicht, gilt `docs/superpowers/specs/2026-10-23-ruhe-m4-1-karten-design.md`.
+*Ergänzung vom 23.10.2026 (Meilenstein 4.1):* Die Karten haben einen feinen Goldrand und Goldlinien, in text-freien Ecken sitzen gemalte Waschungen (Lavendel, Pfirsich, Blaugrün), Länge und „offline gespeichert“ treten leise zurück, und die übrigen Aktionsknöpfe in Karten sind Umriss-Knöpfe; voll bleiben „Jetzt starten“ (Heute) und „Alle offline speichern“ (Ich). Wo das von diesem Abschnitt abweicht, gilt `docs/superpowers/specs/2026-10-23-ruhe-m4-1-karten-design.md`.
 
 ## 5. Atem-Blüte
 

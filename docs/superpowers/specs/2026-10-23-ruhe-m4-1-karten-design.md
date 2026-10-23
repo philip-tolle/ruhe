@@ -74,7 +74,7 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
 2. **Freistellen:**
    - `scripts/freistellen.py` bekommt den Modus `--schwarz`.
    - Die Deckkraft ergibt sich aus dem hellsten Kanal, die Farbe wird davon befreit (unvormultipliziert).
-   - Dann wird auf die Waschung beschnitten, **ohne** quadratisch aufzufüllen, auf die Zielbreite **900 px** verkleinert und als WebP mit Alpha (Qualität 80) gespeichert.
+   - Dann wird auf die Waschung beschnitten, **ohne** quadratisch aufzufüllen, auf die Zielbreite **900 px** verkleinert und als WebP mit Alpha (Qualität 76) gespeichert.
    - Zur Einschätzung gibt das Skript die hellste Farbe der Waschung aus: das 99. Perzentil der vormultiplizierten Helligkeit.
 3. **Ablage:**
    - Die Bilder liegen als `public/images/waschungen/<farbe>.webp`.
@@ -116,7 +116,7 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
   - **Zuletzt genutzt:** Waschung nach §3.4, Knopf als `.button-line`.
   - **Aktivitäten:** Titel in Fraunces, Goldlinien zwischen den Zeilen, Chevron rechts.
 - **Meditieren:**
-  - Timer-Karte: Motiv links, Titel und Zusammenfassung, rechts der Umriss-Knopf „Einstellen“ mit dem zugänglichen Namen „Timer einstellen“. Bei sehr schmalem Platz darf der Knopf unter den Text rutschen. Waschung in der Tageszeit-Farbe.
+  - Timer-Karte: Motiv links, Titel und Zusammenfassung, rechts der Umriss-Knopf „Einstellen“ mit dem zugänglichen Namen „Timer einstellen“. Auf Handys bis rund 412 px, ebenso bei großer Systemschrift (Karte schmaler als 22,5rem), steht der Knopf unter dem Text, damit „Meditations-Timer“ auf einer Zeile bleibt (Ruling R5); auf breiten Bildschirmen steht er rechts daneben. Waschung in der Tageszeit-Farbe.
   - „Geführte Meditationen“ mit kurzer Goldlinie, Themen mit auslaufender Goldlinie.
   - Jede Meditation als eigene Karte mit Waschung in der Farbe des Themas (Lage = Index modulo 3), Titel in Fraunces, Länge und Häkchen leise, Play-Kreis mit Ring.
 - **Atmen:**
@@ -126,7 +126,7 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
 - **Ich:**
   - Kennzahlen-Kacheln und alle Karten mit Goldrand.
   - Die Kalender-Karte, die oberste Karte, bekommt die Waschung in der Tageszeit-Farbe; die übrigen Karten keine.
-  - Goldlinien zwischen den Einstellungszeilen.
+  - Goldlinien über jeder Einstellungszeile, auch über der ersten, wie bei den Aktivitäten (Ruling R4).
 - **Einstell-Blatt (Timer) und Abschluss-Dialog:** nur der Goldrand. Der Abschluss-Dialog ist die Rückfrage „… beenden?“ (`ConfirmDialog.svelte`); `SessionDone.svelte` hat keinen Rahmen und bleibt unverändert.
 
 ## 5. Technik & Struktur
