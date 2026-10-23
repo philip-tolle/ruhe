@@ -314,9 +314,9 @@ describe('Goldlinien, Waschung und Linienknopf (Meilenstein 4.1)', () => {
       }
     })
 
-    test('hält die Knopf-Regeln ein: Berührfläche ≥ 44 px, Pillenform, Druck-Skalierung, sichtbarer Fokus', () => {
+    test('hält die Knopf-Regeln ein: Berührfläche ≥ 48 px, Pillenform, Druck-Skalierung, sichtbarer Fokus', () => {
       const block = line()
-      expect(Number(block.match(/min-height:\s*(\d+)px;/)?.[1]), 'min-height').toBeGreaterThanOrEqual(44)
+      expect(Number(block.match(/min-height:\s*(\d+)px;/)?.[1]), 'min-height').toBeGreaterThanOrEqual(48)
       expect(block).toMatch(/border-radius:\s*999px;/)
       // Der Fokusring kommt aus der globalen `:focus-visible`-Regel mit --focus-ring; der Knopf darf ihn nicht abschalten.
       expect(block).not.toMatch(/outline:\s*(none|0)/)

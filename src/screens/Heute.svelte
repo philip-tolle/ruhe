@@ -53,16 +53,17 @@
 </script>
 
 <!-- Wie in der Liste der Meditationen: Offline startet nur, was gespeichert ist; sonst steht der Grund da.
-     `line`: Umriss-Knopf (Zuletzt genutzt) statt des vollen Akzent-Knopfs (Vorschlag). `meta`: daneben leise die Länge
-     und, wenn die Datei gespeichert ist, das Häkchen; beides bricht zusammen um, wenn die Zeile zu schmal wird. -->
-{#snippet guidedStart(m: Meditation, label: string, where: string, line: boolean, meta: boolean)}
+     `variant`: voller Akzent-Knopf (`primary`, Vorschlag) oder Umriss-Knopf (`line`, Zuletzt genutzt). `meta`: daneben
+     leise die Länge und, wenn die Datei gespeichert ist, das Häkchen; beides bricht zusammen um, wenn die Zeile zu
+     schmal wird. -->
+{#snippet guidedStart(m: Meditation, label: string, where: string, { variant, meta = false }: { variant: 'primary' | 'line'; meta?: boolean })}
   {@const status = offline.saved[urlOf(m)]}
   {@const available = startable(status, offline.online)}
   <div class="start">
     <div class="start-row">
       <button
         type="button"
-        class={line ? 'button-line' : 'button'}
+        class={variant === 'line' ? 'button-line' : 'button'}
         disabled={!available}
         aria-describedby={available ? undefined : `hint-${where}`}
         onclick={() => startGuidedSession(m)}
@@ -118,7 +119,7 @@
       </div>
       <p class="hint">{suggestion.description}</p>
     </div>
-    {@render guidedStart(suggestion, 'Jetzt starten', 'suggestion', false, true)}
+    {@render guidedStart(suggestion, 'Jetzt starten', 'suggestion', { variant: 'primary', meta: true })}
   </div>
 
   <!-- Waschung nach dem Gemerkten (Thema, Übung oder Tageszeit) in einer schmalen Ecke oben rechts. -->
@@ -127,7 +128,7 @@
     <h2>Zuletzt genutzt</h2>
     <p class="hint">{card.summary}</p>
     {#if start.kind === 'guided'}
-      {@render guidedStart(start.meditation, card.action, 'last-used', true, false)}
+      {@render guidedStart(start.meditation, card.action, 'last-used', { variant: 'line' })}
     {:else}
       <div class="start">
         <button type="button" class="button-line" onclick={() => startSession(start.spec)}>{card.action}</button>
@@ -220,18 +221,18 @@
     overflow-wrap: anywhere;
   }
 
-  /* Schmale Karte bei großer Systemschrift (360 px, ab etwa 115 %): Der längste Titel („Energie in der Mittagspause“)
-     passt sonst nicht in die Spalte neben dem Motiv und bräche mitten im Wort. Abfrage in rem: wächst mit der Schrift. */
-  @container (max-width: 18rem) {
-    .suggestion-head .name {
-      font-size: 1.3rem;
-    }
-  }
-
-  /* Der Titel der Meditation ist der Blickfang der Karte, aber keine Überschrift: unter „h2“ der Karte. */
+  /*
+    Der Titel der Meditation ist der Blickfang der Karte, aber keine Überschrift: unter „h2“ der Karte. Auf schmaler
+    Karte darf er nicht über die Spalte neben dem Motiv hinauswachsen, sonst bräche der längste Titel („Energie in der
+    Mittagspause“) bei größerer Systemschrift mitten im Wort. Die Obergrenze richtet sich nach der Spalte: Breite der
+    Karte (100cqw) ohne Motiv und Abstand (Zonenbreite − Innenabstand), geteilt durch 6,4 – so breit ist „Mittagspause“
+    in em, mit etwas Luft. Auf 360 px bleibt der Titel bei 100 % bei den vollen 1.625rem (Obergrenze 26,6 px); mit
+    größerer Systemschrift wächst er nicht über die Spalte hinaus. Ohne Container-Einheiten gilt die erste Zeile.
+  */
   .name {
     font-family: var(--font-display), Georgia, 'Times New Roman', serif;
     font-size: 1.625rem;
+    font-size: min(1.625rem, calc((100cqw - var(--wash-w) + 24px) / 6.4));
     line-height: 1.2;
     letter-spacing: -0.01em;
   }
@@ -269,10 +270,6 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 14px;
-  }
-
-  .start .button-line {
-    min-height: 48px;
   }
 
   .meta {

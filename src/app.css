@@ -328,7 +328,7 @@ main.with-player-bar {
 /*
   Umriss-Knopf für Aktionen in Karten (höchstens ein voller Akzent-Knopf je Bildschirm): 1px Rand im Akzent (55 %),
   Fläche 8 % Akzent über dem Himmel der Stimmung, Schrift im Akzent. Die Fläche ist deckend: Der Knopf darf in der
-  Ecke einer Karte über der Waschung stehen und trägt seine Schrift selbst. Berührfläche ≥ 44 px; den Fokusring
+  Ecke einer Karte über der Waschung stehen und trägt seine Schrift selbst. Berührfläche ≥ 48 px; den Fokusring
   liefert die globale `:focus-visible`-Regel.
 */
 .button-line {
@@ -336,7 +336,7 @@ main.with-player-bar {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 48px;
   padding: 0 22px;
   /* Zuerst der volle Akzent als Rückfall: Ohne color-mix() verwirft der Browser die nächste Zeile. */
   border: 1px solid var(--accent);

@@ -354,6 +354,25 @@ async function expectBeside(first: Locator, second: Locator) {
   expect(middle).toBeLessThan(a.y + a.height)
 }
 
+// Kein Wort des Textes bricht mitten im Wort um: Jedes Wort liegt auf einer Zeile (ein Range-Rechteck). Gedacht für
+// Titel ohne Bindestrich; ein Bindestrich dürfte umbrechen.
+async function expectWordsWhole(el: Locator) {
+  const broken = await el.evaluate((node) => {
+    const text = node.firstChild as Text
+    const found: string[] = []
+    let at = 0
+    for (const word of text.textContent!.split(' ')) {
+      const range = document.createRange()
+      range.setStart(text, at)
+      range.setEnd(text, at + word.length)
+      if (range.getClientRects().length > 1) found.push(word)
+      at += word.length + 1
+    }
+    return found
+  })
+  expect(broken, 'Wörter, die mitten im Wort umbrechen').toEqual([])
+}
+
 // Spielt den Vorschlag kurz an und beendet ihn: Dabei wird seine Datei offline gespeichert.
 async function playSuggestionAndSave(page: Page) {
   await vorschlag(page).getByRole('button', { name: 'Jetzt starten' }).click()
@@ -640,13 +659,24 @@ test.describe('Heute', () => {
   test.describe('on a small phone with large text', () => {
     test.use({ viewport: { width: 360, height: 640 } })
 
-    test('nothing overflows, the start row wraps inside the card, and no text lies in a wash', async ({ page }) => {
-      // 24.10.: der längste Titel („Energie in der Mittagspause“) im schmalsten Fall.
+    test('the longest title keeps its full size at 100 % and breaks between words', async ({ page }) => {
+      // 24.10.: „Energie in der Mittagspause“ im schmalsten Fall. 1.625rem sind 26 px.
+      await openHeute(page, '08:00:00', undefined, '2026-10-24')
+      const name = vorschlag(page).locator('.name')
+      await expect(name).toHaveText('Energie in der Mittagspause')
+      expect(await name.evaluate((el) => getComputedStyle(el).fontSize)).toBe('26px')
+      await expectWordsWhole(name)
+      expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+      expect(await pageFits(page)).toBe(true)
+      await expectNoTextInWash(vorschlag(page))
+    })
+
+    test('at 130 %: nothing overflows, the title breaks between words, and no text lies in a wash', async ({ page }) => {
       await openHeute(page, '08:00:00', undefined, '2026-10-24')
       await expect(vorschlag(page).locator('.name')).toHaveText('Energie in der Mittagspause')
       await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
-      // Gespeichert: Knopf, Länge und Zeichen – die längste Zeile der Startzeile. Das Gemerkte ist danach dieselbe
-      // Meditation, die Zusammenfassung von „Zuletzt genutzt“ also lang.
+      // Gespeichert: Knopf, Länge und Zeichen. Das Gemerkte ist danach dieselbe Meditation, die Zusammenfassung von
+      // „Zuletzt genutzt“ also lang.
       await playSuggestionAndSave(page)
 
       expect(await pageFits(page)).toBe(true)
@@ -656,20 +686,42 @@ test.describe('Heute', () => {
       await expectNoTextInWash(vorschlag(page))
       await expectNoTextInWash(zuletzt(page))
 
-      // Knopf, Länge und Zeichen liegen ganz in der Karte, auch wenn die Zeile umbricht.
-      const card = (await vorschlag(page).boundingBox())!
-      for (const part of [vorschlag(page).getByRole('button', { name: 'Jetzt starten' }), vorschlag(page).getByText(/^\d+ Min$/), savedMark(vorschlag(page))]) {
-        const box = (await part.boundingBox())!
-        expect(box.x).toBeGreaterThanOrEqual(card.x)
-        expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width)
-      }
-      // Der Titel bricht lange Wörter um, statt ins Motiv zu laufen.
-      const [name, motiv] = [(await vorschlag(page).locator('.name').boundingBox())!, (await vorschlag(page).locator('img.motiv').boundingBox())!]
-      expect(name.x + name.width).toBeLessThanOrEqual(motiv.x + 1)
-      expect(await vorschlag(page).locator('.name').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+      // Der Titel bricht zwischen den Wörtern um und läuft nicht ins Motiv.
+      const name = vorschlag(page).locator('.name')
+      await expectWordsWhole(name)
+      const [box, motiv] = [(await name.boundingBox())!, (await vorschlag(page).locator('img.motiv').boundingBox())!]
+      expect(box.x + box.width).toBeLessThanOrEqual(motiv.x + 1)
+      expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
     })
 
-    // Noch größer als 130 %: Die Überschriften brechen vor der Zone um, statt in sie zu laufen.
+    test('at 160 %: the start row wraps, the length and the mark sit under the button, all inside the card', async ({ page }) => {
+      await openHeute(page)
+      await page.evaluate(() => (document.documentElement.style.fontSize = '160%'))
+      await playSuggestionAndSave(page)
+
+      const card = vorschlag(page)
+      const [c, button, length, mark] = await Promise.all([
+        card.boundingBox(),
+        card.getByRole('button', { name: 'Jetzt starten' }).boundingBox(),
+        card.getByText(/^\d+ Min$/).boundingBox(),
+        savedMark(card).boundingBox(),
+      ])
+      // Wirklich umgebrochen: Länge und Zeichen stehen unter dem Knopf, linksbündig mit ihm, nebeneinander.
+      expect(length!.y).toBeGreaterThanOrEqual(button!.y + button!.height - 1)
+      expect(Math.abs(length!.x - button!.x)).toBeLessThanOrEqual(1)
+      expect(mark!.x).toBeGreaterThanOrEqual(length!.x + length!.width - 1)
+      expect(Math.abs(mark!.y + mark!.height / 2 - (length!.y + length!.height / 2))).toBeLessThan(length!.height)
+      // Alles liegt in der Karte.
+      for (const box of [button!, length!, mark!]) {
+        expect(box.x).toBeGreaterThanOrEqual(c!.x)
+        expect(box.x + box.width).toBeLessThanOrEqual(c!.x + c!.width)
+        expect(box.y + box.height).toBeLessThanOrEqual(c!.y + c!.height)
+      }
+      expect(await pageFits(page)).toBe(true)
+      expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+      await expectNoTextInWash(card)
+    })
+
     test('offline, with both hints and at 160 %: nothing overflows and no text lies in a wash', async ({ page, context }) => {
       await openHeute(page, '20:00:00')
       await page.evaluate(() => (document.documentElement.style.fontSize = '160%'))
