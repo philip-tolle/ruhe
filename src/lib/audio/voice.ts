@@ -5,6 +5,10 @@ export interface Voice {
   // Beendet alle Quellen der Stimme zum Zeitpunkt `when` (AudioContext-Uhr).
   // Standard: sofort.
   stop(when?: number): void
+  // Nur gestreamte Stimmen (Musik): Ihre Elemente laufen nicht mit der Audio-Uhr. `hold` hält an,
+  // was gerade klingt, ohne es freizugeben; `resume` spielt es weiter.
+  hold?(): void
+  resume?(): Promise<void>
 }
 
 // Die Sprechstimme einer geführten Meditation.
