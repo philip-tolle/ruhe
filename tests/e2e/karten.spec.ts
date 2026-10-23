@@ -816,6 +816,9 @@ async function openTab(page: Page, tab: 'Atmen' | 'Klänge' | 'Ich', time = '08:
   await page.goto('./')
   await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: tab }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(tab)
+  // Der Bildschirm gleitet 0,6 s lang ein (`screen-in`): Gemessen wird erst, wenn er steht, sonst liegen
+  // zwei nacheinander gemessene Rechtecke an verschiedenen Stellen.
+  await page.locator('.screen').first().evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
 }
 
 // Der Akzent der Stimmung, wie ihn der Browser auflöst (`var(--accent)` an einer Probe).
@@ -958,7 +961,7 @@ test.describe('Klänge', () => {
   test('no tile has a wash; idle tiles have the gold border, an active one keeps the accent', async ({ page }) => {
     await openTab(page, 'Klänge')
     const tiles = page.locator('.screen .tile')
-    await expect(tiles).toHaveCount(8)
+    await expect(tiles).toHaveCount(15) // sieben Musikstücke, acht Naturklänge
     await expect(page.locator('.screen .waschung')).toHaveCount(0)
     for (const tile of await tiles.all()) await expectGoldBorder(tile, 0.26)
 
@@ -969,7 +972,7 @@ test.describe('Klänge', () => {
     const accent = parseColor(await accentOf(page))
     await expect.poll(async () => parseColor(await active.evaluate((el) => getComputedStyle(el).borderTopColor))).toEqual(accent)
     const idle = page.locator('.screen .tile:not(.active)')
-    await expect(idle).toHaveCount(7)
+    await expect(idle).toHaveCount(14)
     for (const tile of await idle.all()) await expectGoldBorder(tile, 0.26)
   })
 })
