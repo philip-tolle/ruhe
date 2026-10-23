@@ -59,6 +59,14 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 
 > Hinweis: Die Stimmung folgt allein der Uhrzeit (Morgen 5–11 Uhr, Tag 11–17 Uhr, Abend 17–5 Uhr). Willst du alle drei sehen, ohne zu warten, schalte in den Handy-Einstellungen die automatische Uhrzeit aus und stell sie um; beim Zurückkehren in die App wechselt die Stimmung. Starte dabei keine Sitzung – sonst landet sie mit falschem Datum in der Statistik. Danach die automatische Uhrzeit wieder einschalten.
 
+## Handy-Checkliste Meilenstein 4.1
+
+1. Meditieren: Wirken Goldränder, Waschungen und Titel edel und ruhig, nicht unruhig?
+2. Länge und „offline gespeichert“ (das Häkchen im Kreis ersetzt das frühere „✓ offline“) sind leise, aber auffindbar.
+3. „Nicht offline verfügbar“ fällt auf (Flugmodus, nicht gespeicherte Meditation).
+4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
+5. Scrollen bleibt flüssig.
+
 ## Meditationen vertonen
 
 Die Texte stehen in `content/meditations/<id>.md`, die fertigen Dateien entstehen mit `scripts/meditations.mjs` (`npm run meditations <Befehl>`; braucht ffmpeg und ffprobe). Gesprochen wird in einer Claude-Sitzung über den ElevenLabs-Connector. Dafür ist kein API-Schlüssel nötig, und es wird keiner gespeichert.
@@ -90,6 +98,24 @@ Die 28 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entsteh
 5. **Zielgrößen** (`--size`): Symbole 168, Themen 192, Vorschlag 288, Atem-Kacheln 240, Klang-Kacheln 480, Blütenblätter 360 px.
 6. **Budget:** höchstens 60 KB je Datei (Klang-Motive 90 KB), zusammen höchstens 1,5 MB. Der Test prüft das.
 7. **Eintragen:** Die neue ID kommt in `src/lib/content/motive.ts`, das Motiv mit Quelle, Ausschnitt und Größe in `content/motive.json`. `npm test` meldet eine fehlende, falsch große oder zu schwere Datei; `npm run check` meldet einen Klang, eine Atemübung, ein Thema oder eine Tageszeit ohne Motiv. Beim nächsten Build nimmt der Service Worker die Datei von selbst in den Precache auf.
+
+### Waschungen malen
+
+Die drei Waschungen (`lavendel`, `pfirsich`, `blaugruen`) liegen als `public/images/waschungen/<farbe>.webp`. Sie sitzen als zarter Hauch in der rechten oberen Ecke der Karten (`src/components/Waschung.svelte`). Entstehung und Werkzeug wie bei den Motiven: eine Claude-Sitzung mit dem ElevenLabs-Connector (kein API-Schlüssel nötig, es wird keiner gespeichert) und `scripts/freistellen.py`.
+
+1. **Prompt aufstellen:** `content/waschungen.json` hält das Schema. `prompt` beschreibt eine einzelne breite Waschung auf reinem Schwarz; `<COLOURS>` wird durch das `colours` der Farbe ersetzt (z. B. „lavender and soft violet“). Dazu `model` und der Befehl `freistellen`. Je Farbe stehen außerdem `id`, `flow` und `generation` (Quelle im Connector) und die Größe des fertigen Bildes.
+2. **Erzeugen und auswählen:** Modell `gpt-image-2.5-sunburst`, eine Variante je Farbe kostet etwa 190 Credits. Die Varianten erscheinen auf einer Auswahlseite, und du wählst eine.
+3. **Freistellen:** Das gewählte Bild als PNG speichern und ausführen:
+
+   ```bash
+   python3 scripts/freistellen.py <quelle.png> public/images/waschungen/<farbe>.webp --schwarz --breite 900
+   ```
+
+   `--schwarz` macht aus dem hellsten Kanal die Deckkraft und beschneidet auf die Waschung (nicht quadratisch), `--breite` ist die Breite des fertigen Bildes. Heraus kommt ein WebP mit Alpha.
+4. **Budget:** höchstens 120 KB je Datei, zusammen höchstens 300 KB. Der Test prüft das.
+5. **Eintragen:** Quelle, Größe und `colours` der neuen Fassung kommen in `content/waschungen.json`. Eine neue Farbe braucht außerdem einen Eintrag in `src/lib/content/waschungen.ts`; der Service Worker nimmt die Datei beim nächsten Build von selbst in den Precache auf.
+6. **Deckkraft:** `--wash-opacity` in `src/app.css` (Standard 0.35, erlaubt 0.2 bis 0.45). Wirkt eine Waschung zu kräftig oder zu blass, ändere diesen Wert, nicht die Datei.
+7. **Regel:** Schrift liegt nie in der Zone einer Waschung, nur auf einer deckenden Fläche wie einem Linienknopf. Deshalb prüft kein Kontrasttest die Schrift über der Waschung; `expectNoTextInWash` in `tests/e2e/karten.spec.ts` prüft stattdessen, dass keine Schrift die Zone berührt. Wer eine Karte umbaut, muss ihr Layout also so einrichten, dass der Text außerhalb der Ecke bleibt (Größe der Zone über `--wash-w` und `--wash-h` der Karte).
 
 ## Entwicklung
 

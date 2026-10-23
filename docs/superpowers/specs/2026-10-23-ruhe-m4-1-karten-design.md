@@ -127,18 +127,19 @@ Nach dem ersten Blick auf das Handy wünscht sich der Nutzer eine noch hochwerti
   - Kennzahlen-Kacheln und alle Karten mit Goldrand.
   - Die Kalender-Karte, die oberste Karte, bekommt die Waschung in der Tageszeit-Farbe; die übrigen Karten keine.
   - Goldlinien zwischen den Einstellungszeilen.
-- **Einstell-Blatt (Timer) und Abschluss-Dialog:** nur der Goldrand.
+- **Einstell-Blatt (Timer) und Abschluss-Dialog:** nur der Goldrand. Der Abschluss-Dialog ist die Rückfrage „… beenden?“ (`ConfirmDialog.svelte`); `SessionDone.svelte` hat keinen Rahmen und bleibt unverändert.
 
 ## 5. Technik & Struktur
 
 - **Neu:**
   - `src/components/Waschung.svelte`
-  - `src/lib/content/waschungen.ts` mit `WASCH_FARBEN`, `waschUrl(farbe)`, `themaWaschung`, `tageszeitWaschung`, `atemWaschung` und `zuletztWaschung`.
+  - `src/components/OfflineMark.svelte` (Häkchen im Kreis, „offline gespeichert“)
+  - `src/lib/content/waschungen.ts` mit `WASCH_FARBEN`, `waschUrl(farbe)`, `themaWaschung`, `tageszeitWaschung`, `atemWaschung`, `zuletztWaschung` und `waschLage(index)`.
   - `content/waschungen.json`
   - `public/images/waschungen/*.webp`
 - **Geändert:**
   - `app.css`: Tokens, `.card`-Rand, `.button-line`, Linien-Hilfsklassen `.rule` (kurz) und `.rule-fade` (auslaufend).
-  - `Heute.svelte`, `Meditieren.svelte`, `Atmen.svelte`, `SoundTile.svelte`, `Ich.svelte`, `Calendar.svelte`, `Sheet.svelte`, `SessionDone.svelte`.
+  - `Heute.svelte`, `Meditieren.svelte`, `Atmen.svelte`, `SoundTile.svelte`, `Ich.svelte`, `Calendar.svelte`, `Sheet.svelte`, `ConfirmDialog.svelte`.
   - `scripts/freistellen.py` (Modus `--schwarz`), README „Motive malen“ (Abschnitt Waschungen).
 - **Grenzen:**
   - Keine Änderung an Engine, Speicher, Statistik oder Inhalten.
