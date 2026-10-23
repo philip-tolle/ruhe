@@ -16,7 +16,7 @@ import type { FadeOut, ProgramRun, ProgramSnapshot, SessionRun } from './program
 import { Sessions } from './sessions'
 import { sleepPlan } from './sleep-timer'
 import type { Voice } from './voice'
-import { assetUrl, backgroundById, EFFECTS, musicUrl, type BackgroundId } from '../sounds/catalog'
+import { assetUrl, backgroundById, BREATH, EFFECTS, musicUrl, type BackgroundId } from '../sounds/catalog'
 import type { SessionResult } from '../stats/schema'
 
 export type { ProgramSnapshot } from './program-run'
@@ -118,17 +118,27 @@ export class AudioEngine {
   // Startet ein Programm als neue Sitzung: Es beendet laufende Klänge und eine laufende Sitzung
   // (die dabei ihr Ergebnis meldet) und verwirft den Sleep-Countdown; während einer Sitzung
   // gilt kein Sleep-Timer. Output-Start und Durchlauf entstehen vor dem ersten `await`, also noch
-  // in der Nutzergeste, und ohne Umweg über idle. Eingeplant wird, sobald die Klangschale geladen
-  // ist (fehlt sie, läuft das Programm ohne Schalen). Scheitert der Start des Outputs, steht das
+  // in der Nutzergeste, und ohne Umweg über idle. Eingeplant wird, sobald geladen ist, was das
+  // Programm braucht (`assets`: Klangschale, Atemgeräusch); fehlt etwas, läuft es ohne. Scheitert der Start des Outputs, steht das
   // Programm trotzdem bereit (pausiert, „Weiter“ spielt es ab Beginn); der Fehler kommt danach.
   async startProgram(spec: ProgramSpec): Promise<void> {
     const out = this.ensureOutput()
     const run = this.sessions.createProgram(spec, out.ctx)
     const starting = this.beginSession(run)
-    const [started, strike] = await Promise.allSettled([starting, this.load(out.ctx, assetUrl(EFFECTS[0].file))])
+    const wanted = (asset: 'strike' | 'breath', file: string) =>
+      spec.assets.includes(asset) ? this.load(out.ctx, assetUrl(file)) : Promise.resolve(null)
+    const breathFile = (id: 'ein' | 'aus') => BREATH.find((b) => b.id === id)!.file
+    const [started, strike, ein, aus] = await Promise.allSettled([
+      starting,
+      wanted('strike', EFFECTS[0].file),
+      wanted('breath', breathFile('ein')),
+      wanted('breath', breathFile('aus')),
+    ])
     // Inzwischen abgelöst (Sitzung, Klang, Stopp): Dieser Durchlauf beginnt nie und meldet nichts.
     if (this.sessions.holds(run)) {
-      const assets = { strike: strike.status === 'fulfilled' ? strike.value : null }
+      const loaded = (r: PromiseSettledResult<AudioBuffer | null>) => (r.status === 'fulfilled' ? r.value : null)
+      const [inhale, exhale] = [loaded(ein), loaded(aus)]
+      const assets = { strike: loaded(strike), breath: inhale && exhale ? { ein: inhale, aus: exhale } : null }
       run.begin(out.input, assets, () => this.programCounted(run), () => this.finishSession(run))
       this.emit()
       // Der Hintergrund gehört zum Programm; ohne ihn (Ladefehler) läuft es weiter.

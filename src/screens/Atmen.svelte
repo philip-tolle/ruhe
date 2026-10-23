@@ -7,7 +7,7 @@
   import { rhythmLabel, tileTitle } from '../lib/breath/view'
   import { breathMotiv } from '../lib/content/motive'
   import { atemWaschung, waschLage } from '../lib/content/waschungen'
-  import { setLastUsed } from '../lib/stats/store.svelte'
+  import { setLastUsed, stats } from '../lib/stats/store.svelte'
   import { startSession } from '../lib/ui/session-ui.svelte'
 
   const DURATIONS = BREATH_MINUTES.map((value) => ({ value, label: `${value} Min` }))
@@ -17,7 +17,7 @@
   // Im Tipp selbst, damit der Audio-Start als Nutzergeste gilt.
   function start(pattern: BreathPatternId) {
     setLastUsed({ kind: 'breath', pattern, minutes })
-    startSession(breathProgram(pattern, minutes))
+    startSession(breathProgram(pattern, minutes, { sound: stats.data.settings.breathSound }))
   }
 </script>
 

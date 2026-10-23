@@ -36,14 +36,14 @@ export function lastUsedSummary(last: LastUsed): string {
   return `${patternById(last.pattern).title} · ${last.minutes} Min`
 }
 
-/** Was „Erneut starten“ startet: genau die gemerkte Sitzung. */
-export function lastUsedStart(last: LastUsed): LastUsedStart {
+/** Was „Erneut starten“ startet: genau die gemerkte Sitzung; eine Atemübung mit oder ohne Atemgeräusch. */
+export function lastUsedStart(last: LastUsed, breathSound: boolean): LastUsedStart {
   if (last.kind === 'guided') return { kind: 'guided', meditation: guidedMeditation(last.id) }
   if (last.kind === 'timer') {
     const spec = timerProgram({ minutes: timerMinutes(last), intervalMin: last.intervalMin, sound: last.sound, lead: last.lead })
     return { kind: 'program', spec }
   }
-  return { kind: 'program', spec: breathProgram(last.pattern, last.minutes) }
+  return { kind: 'program', spec: breathProgram(last.pattern, last.minutes, { sound: breathSound }) }
 }
 
 /**

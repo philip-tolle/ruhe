@@ -8,7 +8,7 @@ const withSettings = (settings: unknown) => parseData({ version: 1, sessions: []
 const withLastUsed = (lastUsed: unknown) => parseData({ version: 1, sessions: [], settings: {}, lastUsed })
 
 test('defaults', () => {
-  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
+  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
   expect(emptyData()).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
 })
 test('emptyData hands out fresh objects', () => {
@@ -18,7 +18,7 @@ test('emptyData hands out fresh objects', () => {
   a.settings.vibration = false
   a.settings.timer.minutes = 99
   a.sessions.push({ id: 'x', start: session.start, kind: 'timer', ref: 'timer', seconds: 60 })
-  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
+  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
   expect(emptyData()).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
 })
 test('parseData accepts valid data and fills missing settings', () => {
@@ -58,7 +58,7 @@ test('sessions: all kinds and zero seconds are valid; unknown fields are dropped
 test('settings fall back to defaults field by field', () => {
   expect(withSettings({ vibration: 'ja', voiceBalance: 'x', timerSound: 'foo', guidedSound: 'bar', timerLead: 1, timer: 'x' })).toEqual(DEFAULT_SETTINGS)
   expect(withSettings({ vibration: false, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', timerLead: false, timer: { minutes: 25, intervalMin: 5 } }))
-    .toEqual({ vibration: false, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', timerLead: false, timer: { minutes: 25, intervalMin: 5 } })
+    .toEqual({ vibration: false, breathSound: true, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', timerLead: false, timer: { minutes: 25, intervalMin: 5 } })
 })
 test('voiceBalance must be a finite number in [0, 1]', () => {
   for (const v of [0, 0.25, 1]) expect(withSettings({ voiceBalance: v })?.voiceBalance).toBe(v)
@@ -134,4 +134,12 @@ test('settings and the timer of lastUsed keep a music background', () => {
 test('an unknown background falls back', () => {
   expect(withSettings({ timerSound: 'gibt-es-nicht', guidedSound: 'auch-nicht' })).toMatchObject({ timerSound: null, guidedSound: null })
   expect(withLastUsed({ kind: 'timer', minutes: 10, intervalMin: null, sound: 'gibt-es-nicht', lead: true })!.lastUsed).toBeUndefined()
+})
+
+test('breathSound defaults to true and keeps a stored false', () => {
+  // Gespeicherte Daten aus Meilenstein 4 kennen den Schalter noch nicht.
+  const m4 = { vibration: false, voiceBalance: 0.4, timerSound: 'regen', guidedSound: null, timerLead: true, timer: { minutes: 15, intervalMin: 5 } }
+  expect(withSettings(m4)).toEqual({ ...m4, breathSound: true })
+  expect(withSettings({ breathSound: false })!.breathSound).toBe(false)
+  expect(withSettings({ breathSound: 'nein' })!.breathSound).toBe(true)
 })

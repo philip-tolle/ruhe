@@ -5,11 +5,12 @@
 import { breathPlan, patternById, type BreathPatternId } from '../breath/patterns'
 import { timerPlan, type TimerSettings } from '../meditation/timer-plan'
 import type { BackgroundId } from '../sounds/catalog'
-import { scheduleCue } from './cue'
+import { scheduleBreath, type BreathBuffers } from './breath-sound'
 import { scheduleStrike } from './strike'
 
 export interface ProgramAssets {
   strike: AudioBuffer | null // Klangschale; null, wenn sie nicht geladen werden konnte
+  breath: BreathBuffers | null // Atemgeräusch; null, wenn abgeschaltet oder nicht geladen
 }
 
 export interface ProgramSpec {
@@ -21,6 +22,8 @@ export interface ProgramSpec {
   length: number
   finish: number
   background: BackgroundId | null
+  // Was die Engine vor dem Einplanen lädt; was fehlt, kommt als null in `schedule`.
+  assets: readonly ('strike' | 'breath')[]
   // Plant alle Klänge ab t0 ein und liefert eine Funktion, die alles Eingeplante stoppt: Was schon
   // klingt, endet bei `when` (Audio-Uhr, Standard: sofort), was noch nicht eingesetzt hat, sofort.
   schedule(ctx: BaseAudioContext, destination: AudioNode, t0: number, assets: ProgramAssets): (when?: number) => void
@@ -32,8 +35,8 @@ interface Scheduled {
 }
 
 // Was bis jetzt nicht eingesetzt hat, stoppt sofort: Unter dem Ausblenden des Programms begänne
-// sonst noch eine Schale oder ein Hinweiston. Ein gerade klingender Hinweiston läuft dabei bis
-// `when` auf seinem unhörbaren Rest weiter (der letzte Stopp gilt). Abgebaut wird mit dem Gain
+// sonst noch eine Schale oder ein Atemzug. Ein gerade klingender Atemzug läuft dabei bis `when`
+// weiter und blendet mit dem Programm aus (der letzte Stopp gilt). Abgebaut wird mit dem Gain
 // des Programms.
 function stopper(ctx: BaseAudioContext, scheduled: Scheduled[]): (when?: number) => void {
   return (when) => {
@@ -60,6 +63,7 @@ export function timerProgram(s: TimerSettings): ProgramSpec {
     length: plan.length,
     finish: plan.finish,
     background: s.sound,
+    assets: ['strike'],
     schedule(ctx, destination, t0, { strike }) {
       if (!strike) return () => {}
       const scheduled = plan.strikes.map((offset) => {
@@ -71,9 +75,11 @@ export function timerProgram(s: TimerSettings): ProgramSpec {
   }
 }
 
-// Atemübung: ein Hinweiston zu Beginn jeder Phase, ohne Vorlauf und Hintergrund. Nach dem letzten
-// Zyklus bleibt 1 s, bevor das Programm endet.
-export function breathProgram(id: BreathPatternId, minutes: number): ProgramSpec {
+// Atemübung: ein leises Atemgeräusch zu jeder Ein- und Ausatemphase, so lang wie die Phase (die
+// Länge reicht bis zum nächsten Phasenbeginn); Halten bleibt still. Ohne Vorlauf und Hintergrund.
+// Ist das Atemgeräusch abgeschaltet (`sound`) oder lädt es nicht, läuft die Übung still. Nach dem
+// letzten Zyklus bleibt 1 s, bevor das Programm endet.
+export function breathProgram(id: BreathPatternId, minutes: number, opts: { sound: boolean }): ProgramSpec {
   const plan = breathPlan(id, minutes)
   return {
     kind: 'breath',
@@ -83,10 +89,15 @@ export function breathProgram(id: BreathPatternId, minutes: number): ProgramSpec
     length: plan.length,
     finish: plan.length + 1,
     background: null,
-    schedule(ctx, destination, t0) {
-      const scheduled = plan.cues.map((cue) => {
+    assets: opts.sound ? ['breath'] : [],
+    schedule(ctx, destination, t0, { breath }) {
+      if (!breath) return () => {}
+      const scheduled: Scheduled[] = []
+      plan.cues.forEach((cue, i) => {
         const at = t0 + cue.at
-        return { node: scheduleCue(ctx, destination, at, cue.kind), at }
+        const length = (plan.cues[i + 1]?.at ?? plan.length) - cue.at
+        const node = scheduleBreath(ctx, destination, at, cue.kind, length, breath)
+        if (node) scheduled.push({ node, at })
       })
       return stopper(ctx, scheduled)
     },

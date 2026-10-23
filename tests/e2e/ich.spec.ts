@@ -20,7 +20,7 @@ const SESSIONS = [
   session('s-21', '2026-10-21T07:30:00+02:00', 'timer', 'timer', 600),
   session('s-sep', '2026-09-03T21:00:00+02:00', 'breath', '478', 76),
 ]
-const SETTINGS = { vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
+const SETTINGS = { vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
 const backupOf = (sessions: object[], settings: object = SETTINGS) => ({ version: 1, sessions, settings })
 
 // addInitScript läuft bei jeder Navigation (auch Neuladen); ein Merker in sessionStorage lässt es nur
@@ -235,6 +235,20 @@ test('settings are saved at once and shared with the timer sheet', async ({ page
   await expect(vibration).toHaveAttribute('aria-checked', 'false')
   await expect(lead).toHaveAttribute('aria-checked', 'false')
   await expect(sound.locator('option:checked')).toHaveText('Keiner')
+})
+
+test('the breath sound switch sits below vibration and is remembered', async ({ page }) => {
+  await open(page)
+  const breath = page.getByRole('switch', { name: 'Atemgeräusch bei Atemübungen' })
+  await expect(breath).toHaveAttribute('aria-checked', 'true')
+  const names = await page.getByRole('switch').evaluateAll((switches) => switches.map((s) => s.textContent?.trim()))
+  expect(names.indexOf('Atemgeräusch bei Atemübungen')).toBe(names.indexOf('Vibration bei Atemübungen') + 1)
+  await breath.click()
+  await expect(breath).toHaveAttribute('aria-checked', 'false')
+  expect((await stored(page)).settings.breathSound).toBe(false)
+  await page.reload()
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Ich' }).click()
+  await expect(breath).toHaveAttribute('aria-checked', 'false')
 })
 
 test('the balance slider is saved on release', async ({ page }) => {

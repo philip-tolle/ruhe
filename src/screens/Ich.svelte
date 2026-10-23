@@ -110,6 +110,13 @@
       </div>
       <div class="setting">
         <Switch
+          label="Atemgeräusch bei Atemübungen"
+          checked={settings.breathSound}
+          onToggle={() => updateSettings({ breathSound: !settings.breathSound })}
+        />
+      </div>
+      <div class="setting">
+        <Switch
           label="10 Sekunden ankommen"
           checked={settings.timerLead}
           onToggle={() => updateSettings({ timerLead: !settings.timerLead })}

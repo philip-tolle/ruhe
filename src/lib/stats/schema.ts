@@ -27,6 +27,8 @@ export interface SessionResult {
 
 export interface Settings {
   vibration: boolean
+  /** Leises Atemgeräusch bei Atemübungen. */
+  breathSound: boolean
   /** Balance Stimme ↔ Hintergrund (0 … 1), für Meilenstein 3. */
   voiceBalance: number
   /** Standard-Hintergrund des Timers (Naturklang oder Musik). */
@@ -52,7 +54,7 @@ export interface AppData {
 }
 
 function defaultSettings(): Settings {
-  return { vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
+  return { vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
 }
 
 export const DEFAULT_SETTINGS: Settings = defaultSettings()
@@ -96,11 +98,12 @@ function parseSession(raw: unknown): Session | null {
 /** Jedes fehlende oder ungültige Feld bekommt seinen Standardwert. */
 function parseSettings(raw: Record<string, unknown>): Settings {
   const def = defaultSettings()
-  const { vibration, voiceBalance, timerSound, guidedSound, timerLead } = raw
+  const { vibration, breathSound, voiceBalance, timerSound, guidedSound, timerLead } = raw
   const timer = isRecord(raw.timer) ? raw.timer : {}
   const { minutes, intervalMin } = timer
   return {
     vibration: typeof vibration === 'boolean' ? vibration : def.vibration,
+    breathSound: typeof breathSound === 'boolean' ? breathSound : def.breathSound,
     voiceBalance: typeof voiceBalance === 'number' && voiceBalance >= 0 && voiceBalance <= 1 ? voiceBalance : def.voiceBalance,
     timerSound: timerSound === null || isBackgroundId(timerSound) ? timerSound : def.timerSound,
     guidedSound: guidedSound === null || isBackgroundId(guidedSound) ? guidedSound : def.guidedSound,

@@ -57,7 +57,7 @@ const spec = (over: Partial<GuidedSpec> = {}): GuidedSpec => ({
 })
 
 const timer = (): ProgramSpec => ({
-  kind: 'timer', ref: 'timer', title: 'Meditation · 1 Min', lead: 0, length: 10, finish: 11, background: null,
+  kind: 'timer', ref: 'timer', title: 'Meditation · 1 Min', lead: 0, length: 10, finish: 11, background: null, assets: ['strike'],
   schedule: vi.fn(() => vi.fn()),
 })
 
