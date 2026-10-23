@@ -24,29 +24,61 @@
     pointer-events: none;
     z-index: 0;
     opacity: var(--wash-opacity, 0.35);
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 45%), linear-gradient(to bottom, #000 55%, transparent);
+    /* Weich eingeblendet (Stufen etwa wie smoothstep): Ein gerader Verlauf setzte am Zonenrand mit einem Knick ein,
+       den das Auge als senkrechte Kante sieht. */
+    --waschung-maske: linear-gradient(
+        to right,
+        transparent,
+        rgb(0 0 0 / 0.06) 10%,
+        rgb(0 0 0 / 0.22) 20%,
+        rgb(0 0 0 / 0.5) 31%,
+        rgb(0 0 0 / 0.8) 42%,
+        #000 55%
+      ),
+      linear-gradient(
+        to bottom,
+        #000 40%,
+        rgb(0 0 0 / 0.8) 52%,
+        rgb(0 0 0 / 0.5) 65%,
+        rgb(0 0 0 / 0.22) 78%,
+        rgb(0 0 0 / 0.06) 89%,
+        transparent
+      );
+    -webkit-mask-image: var(--waschung-maske);
     -webkit-mask-composite: source-in;
-    mask-image: linear-gradient(to right, transparent, #000 45%), linear-gradient(to bottom, #000 55%, transparent);
+    mask-image: var(--waschung-maske);
     mask-composite: intersect;
+    /* Nicht kacheln: Bei einer Zone mit Bruchteil-Breite käme sonst das deckende rechte Ende des Verlaufs am linken
+       Rand wieder hervor, als heller Strich von einem Pixel. */
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    /* Liegt der linke oder untere Rand der Zone zwischen zwei Gerätepixeln, ließ Chromium dort eine Pixelspalte des
+       Bildes an der Maske vorbei. Dort ist die Maske ohnehin durchsichtig: 1 px abschneiden. */
+    clip-path: inset(0 0 1px 1px);
   }
 
-  /* Das Bild ist breiter als die Zone und ragt oben und rechts über sie hinaus, so dass sein dichter rechter
-     Teil in der Ecke sitzt. Die Seiten richten sich nach der Höhe (`width: auto`). */
+  /* Abgestimmt auf Zonen von flach (Listeneintrag 104 × 76 px) bis hoch und schmal (Ecke einer Kachel): Das Bild
+     richtet sich nach der Breite der Zone (dreifach, mindestens 220 px), die Höhe folgt dem Bild. So sitzt in jeder
+     Zone derselbe dichte Ausschnitt als Wolke oben rechts, statt dass eine hohe Zone das Bild aufbläht und nur den
+     ausfransenden Rand zeigt. Der Versatz in Prozent des Bildes schiebt es oben und rechts über die Zone hinaus:
+     Lage 0 zeigt etwa das zweite Drittel von rechts. Gespiegelt und gedreht wird um die Bildmitte; Lage 1 zeigt
+     damit den dichten linken Teil des Bildes, Lage 2 hebt den rechten leicht an. */
   .waschung img {
     position: absolute;
-    top: -15%;
-    right: -15%;
-    height: 150%;
-    width: auto;
+    top: 0;
+    right: 0;
+    width: max(300%, 220px);
+    height: auto;
     max-width: none;
+    transform: translate(10%, -14%);
     user-select: none;
   }
 
   .lage-1 img {
-    transform: scaleX(-1) rotate(6deg);
+    transform: translate(10%, -14%) scaleX(-1) rotate(6deg);
   }
 
   .lage-2 img {
-    transform: rotate(-12deg);
+    transform: translate(10%, -14%) rotate(-12deg);
   }
 </style>

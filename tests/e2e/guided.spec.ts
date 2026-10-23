@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { expectMotiv } from './motiv'
 
 // Die Aufnahmen können neu entstehen (andere Länge, wieder ein Platzhalter): Die Tests verlassen sich nie
@@ -23,6 +23,9 @@ const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 // Ein Eintrag der Liste, gleich ob gespeichert oder nicht.
 const entry = (page: Page, title: string) =>
   page.getByRole('button', { name: new RegExp(`^${escape(title)}, \\d+ Minuten?(, offline verfügbar)?$`) })
+
+// Das Zeichen „offline gespeichert“ (Häkchen im Kreis) in einem Eintrag oder auf der Seite.
+const savedMark = (scope: Page | Locator) => scope.getByRole('img', { name: 'offline gespeichert' })
 
 // Restzeit im Player in Sekunden (Anzeige m:ss).
 async function remaining(page: Page): Promise<number> {
@@ -71,7 +74,7 @@ test('the guided meditations are listed by theme with their length', async ({ pa
       // Ein Platzhalter ist als Vorabversion gekennzeichnet, eine echte Aufnahme nicht; gespeichert ist noch keine.
       if (PLACEHOLDER.get(title)) await expect(entries.nth(index)).toContainText('Vorabversion')
       else await expect(entries.nth(index)).not.toContainText('Vorabversion')
-      await expect(entries.nth(index)).not.toContainText('✓ offline')
+      await expect(savedMark(entries.nth(index))).toHaveCount(0)
       await expect(entries.nth(index)).toBeEnabled()
     }
   }
@@ -85,20 +88,21 @@ test('the guided meditations are listed by theme with their length', async ({ pa
 test('the timer card and every theme show their painting', async ({ page }) => {
   await openMeditieren(page)
   const timerCard = page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Meditations-Timer' }) })
-  await expectMotiv(timerCard.locator('img'), 'timer', 56)
+  // Das Motiv; die gemalte Waschung in der Ecke ist ein eigenes Bild (karten.spec.ts).
+  await expectMotiv(timerCard.locator('img.motiv'), 'timer', 56)
 
   const list = page.getByRole('region', { name: 'Geführte Meditationen' })
   const motive = { 'Einsteiger & Achtsamkeit': 'thema-achtsamkeit', 'Stress & Ruhe': 'thema-stress', 'Fokus & Energie': 'thema-fokus' }
   for (const [theme, motiv] of Object.entries(motive)) {
     const group = list.getByRole('region', { name: theme })
     // Ein Motiv je Thema, im Kopf der Gruppe links der Überschrift; die Einträge bleiben schlanke Zeilen.
-    await expect(group.locator('img')).toHaveCount(1)
-    const image = group.locator('img')
+    await expect(group.locator('img.motiv')).toHaveCount(1)
+    const image = group.locator('img.motiv')
     await expectMotiv(image, motiv, 64)
     const heading = (await group.getByRole('heading', { level: 3 }).boundingBox())!
     const box = (await image.boundingBox())!
     expect(box.x + box.width).toBeLessThanOrEqual(heading.x)
-    await expect(group.getByRole('button').locator('img')).toHaveCount(0)
+    await expect(group.getByRole('button').locator('img.motiv')).toHaveCount(0)
   }
 })
 
@@ -331,13 +335,13 @@ test('a played meditation is saved; offline only saved ones can start', async ({
   await page.getByRole('button', { name: 'Fertig' }).click()
   const saved = page.getByRole('button', { name: /^Drei-Minuten-Atempause, \d+ Minuten, offline verfügbar$/ })
   await expect(saved).toBeVisible()
-  await expect(saved).toContainText('✓ offline')
+  await expect(savedMark(saved)).toBeVisible()
 
   // Der Status kommt aus dem Cache, auch nach dem Neuladen.
   await page.reload()
   await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Meditieren' }).click()
   await expect(saved).toBeVisible()
-  await expect(entry(page, 'Guten Morgen')).not.toContainText('✓ offline')
+  await expect(savedMark(entry(page, 'Guten Morgen'))).toHaveCount(0)
 
   await context.setOffline(true)
   const hints = page.getByText('Nicht offline verfügbar', { exact: true })
@@ -357,7 +361,7 @@ test('offline at launch, an entry is not held back before the cache has been rea
   await entry(page, 'Drei-Minuten-Atempause').click()
   await page.getByRole('button', { name: 'Beenden' }).click()
   await page.getByRole('button', { name: 'Fertig' }).click()
-  await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(1)
+  await expect(savedMark(page)).toHaveCount(1)
   await page.evaluate(async () => { await navigator.serviceWorker.ready })
 
   // Beim nächsten Start ohne Netz hält der Test das Lesen des Caches an: Der Status ist noch offen.
@@ -379,14 +383,14 @@ test('offline at launch, an entry is not held back before the cache has been rea
   await expect(entry(page, 'Guten Morgen')).toBeEnabled()
   await expect(entry(page, 'Drei-Minuten-Atempause')).toBeEnabled()
   await expect(page.getByText('Nicht offline verfügbar', { exact: true })).toHaveCount(0)
-  await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(0)
+  await expect(savedMark(page)).toHaveCount(0)
 
   // Gelesen: Die gespeicherte bleibt startbar, die übrigen acht sind gesperrt.
   await page.evaluate(() => (window as unknown as { __releaseCache: () => void }).__releaseCache())
   await expect(page.getByText('Nicht offline verfügbar', { exact: true })).toHaveCount(8)
   await expect(entry(page, 'Guten Morgen')).toBeDisabled()
   await expect(page.getByRole('button', { name: /^Drei-Minuten-Atempause, \d+ Minuten, offline verfügbar$/ })).toBeEnabled()
-  await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(1)
+  await expect(savedMark(page)).toHaveCount(1)
 })
 
 test('a saved long meditation plays from the cache past minute 7, online and offline', async ({ page, context }) => {
@@ -444,7 +448,7 @@ test('a saved long meditation plays from the cache past minute 7, online and off
   await entry(page, TITLE).click()
   await page.getByRole('button', { name: 'Beenden' }).click()
   await page.getByRole('button', { name: 'Fertig' }).click()
-  await expect(entry(page, TITLE)).toContainText('✓ offline', { timeout: 30_000 })
+  await expect(savedMark(entry(page, TITLE))).toBeVisible({ timeout: 30_000 })
 
   // Neu laden: Jetzt steuert der Service Worker die Seite, und die Datei kommt aus dem Cache.
   await page.evaluate(async () => { await navigator.serviceWorker.ready })

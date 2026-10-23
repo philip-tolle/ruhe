@@ -405,9 +405,9 @@ test.describe('saving all meditations', () => {
     expect(await page.evaluate(() => (window as unknown as { __persist: number }).__persist)).toBe(1)
     expect(await cachedAddresses(page)).toHaveLength(9)
 
-    // „Meditieren“ zeigt überall „✓ offline“, ohne dass eine Datei nochmals geladen wird.
+    // „Meditieren“ zeigt überall das Zeichen „offline gespeichert“, ohne dass eine Datei nochmals geladen wird.
     await nav(page, 'Meditieren')
-    await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(9)
+    await expect(page.getByRole('img', { name: 'offline gespeichert' })).toHaveCount(9)
     await expect(page.getByText('Nicht offline verfügbar')).toHaveCount(0)
     expect(requests).toHaveLength(9)
 
@@ -444,7 +444,7 @@ test.describe('saving all meditations', () => {
     expect(await cachedAddresses(page)).toHaveLength(2)
 
     await nav(page, 'Meditieren')
-    await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(2)
+    await expect(page.getByRole('img', { name: 'offline gespeichert' })).toHaveCount(2)
 
     // Wieder bei Ich: Ein neuer Versuch (jetzt ist Platz) lädt nur den Rest und meldet Erfolg.
     await nav(page, 'Ich')
@@ -549,7 +549,7 @@ test.describe('saving all meditations', () => {
     expect(requests).toHaveLength(9)
 
     await nav(page, 'Meditieren')
-    await expect(page.getByText('✓ offline', { exact: true })).toHaveCount(8)
+    await expect(page.getByRole('img', { name: 'offline gespeichert' })).toHaveCount(8)
 
     // Ein neuer Versuch lädt nur die fehlende Datei.
     await nav(page, 'Ich')
