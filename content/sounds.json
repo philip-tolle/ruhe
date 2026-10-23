@@ -56,5 +56,115 @@
       "file": "audio/sounds/klangschale.ogg",
       "prompt": "Single strike of a Tibetan singing bowl, clear warm resonance, long natural decay, close recording"
     }
+  ],
+  "music": [
+    {
+      "id": "schwebend",
+      "title": "Schwebende Flächen",
+      "file": "audio/music/schwebend.opus",
+      "version": "3044473748",
+      "seconds": 300.0,
+      "bytes": 3758659,
+      "source": {
+        "kind": "elevenlabs",
+        "prompt": "Instrumental ambient meditation music, very slow and calm, no drums, no vocals. Warm, dark, soft synth pads that swell gently, with sparse low piano notes from a pentatonic scale every few seconds, deep reverb, no bright high frequencies. Gentle fade in, stays still and floating, long fade out at the end.",
+        "flow": "okOZzzvC1AkFQC5zHLFu",
+        "generation": "iPIUVTgIv4kggwcXpI6c"
+      }
+    },
+    {
+      "id": "klavier",
+      "title": "Stilles Klavier",
+      "file": "audio/music/klavier.opus",
+      "version": "48cb8fd575",
+      "seconds": 300.0,
+      "bytes": 3884269,
+      "source": {
+        "kind": "elevenlabs",
+        "prompt": "Instrumental meditation music, very slow and calm, no drums, no vocals. A solo soft felt piano playing sparse, gentle notes and open chords from a pentatonic scale, long sustain, deep warm reverb, lots of space and silence between phrases, dark and intimate tone, no bright high frequencies. Gentle fade in, long fade out at the end.",
+        "flow": "okOZzzvC1AkFQC5zHLFu",
+        "generation": "zkAlia2TVLtW6txWvq0n"
+      }
+    },
+    {
+      "id": "obertoene",
+      "title": "Obertöne",
+      "file": "audio/music/obertoene.opus",
+      "version": "dc479fbe11",
+      "seconds": 300.0,
+      "bytes": 3889928,
+      "source": {
+        "kind": "elevenlabs",
+        "prompt": "Instrumental meditation music, very slow and calm, no drums, no vocals. Tibetan singing bowls struck softly every few seconds and left to ring out, layered over a low, warm overtone drone with gently shimmering harmonics, pentatonic tones, deep reverb, dark and grounding, no bright high frequencies. Gentle fade in, long fade out at the end. Begins softly from silence.",
+        "flow": "okOZzzvC1AkFQC5zHLFu",
+        "generation": "OcFs17qXFdXiHZGZnK3U"
+      }
+    },
+    {
+      "id": "bambusfloete",
+      "title": "Bambusflöte",
+      "file": "audio/music/bambusfloete.opus",
+      "version": "7ad78cd4c9",
+      "seconds": 300.0,
+      "bytes": 3945264,
+      "source": {
+        "kind": "elevenlabs",
+        "prompt": "Instrumental meditation music, very slow and calm, no drums, no vocals. A soft, breathy bamboo flute playing slow pentatonic phrases with long pauses, gentle harp notes underneath, over a warm low sustained pad, deep reverb, dark and peaceful, no bright high frequencies. Gentle fade in, long fade out at the end.",
+        "flow": "okOZzzvC1AkFQC5zHLFu",
+        "generation": "Zu9WqUY36jrpQB02DMFV"
+      }
+    },
+    {
+      "id": "zwischen-zwei-atemzuegen",
+      "title": "Zwischen zwei Atemzügen",
+      "file": "audio/music/zwischen-zwei-atemzuegen.opus",
+      "version": "3233c59522",
+      "seconds": 174.2,
+      "bytes": 2228039,
+      "source": {
+        "kind": "gemini",
+        "title": "Between Two Breaths"
+      }
+    },
+    {
+      "id": "salz-und-sternenlicht",
+      "title": "Salz und Sternenlicht",
+      "file": "audio/music/salz-und-sternenlicht.opus",
+      "version": "bd634a068a",
+      "seconds": 151.3,
+      "bytes": 1938622,
+      "source": {
+        "kind": "gemini",
+        "title": "Salt and Starlight"
+      }
+    },
+    {
+      "id": "unter-der-oberflaeche",
+      "title": "Unter der Oberfläche",
+      "file": "audio/music/unter-der-oberflaeche.opus",
+      "version": "ed482d5efc",
+      "seconds": 159.2,
+      "bytes": 1972826,
+      "source": {
+        "kind": "gemini",
+        "title": "Underneath the Surface"
+      }
+    }
+  ],
+  "breath": [
+    {
+      "id": "ein",
+      "file": "audio/breath/ein.ogg",
+      "prompt": "A single soft, calm human inhale through the nose, slow and relaxed, gently rising, close-up and intimate, clean quiet studio recording, no voice, no other sounds.",
+      "flow": "okOZzzvC1AkFQC5zHLFu",
+      "generation": "PMTn0SaseKGi9cK0XYaW"
+    },
+    {
+      "id": "aus",
+      "file": "audio/breath/aus.ogg",
+      "prompt": "A single soft, calm human exhale through slightly open lips, slow, long and relaxed, a gentle airy release that fades out, close-up and intimate, clean quiet studio recording, no voice, no other sounds.",
+      "flow": "okOZzzvC1AkFQC5zHLFu",
+      "generation": "phrVHCICpt5jeevhud6K"
+    }
   ]
 }
