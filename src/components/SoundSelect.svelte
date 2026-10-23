@@ -1,7 +1,7 @@
 <script lang="ts">
   // Auswahl des Hintergrunds: „Keiner“, dann die Gruppe „Musik“, dann „Natur“ mit den acht Klängen.
-  // Der Timer-Sheet, der Reiter „Ich“ und der Player geführter Meditationen teilen sich Liste und
-  // Aussehen. Ohne Netz ist ein Musikstück nur wählbar, wenn es offline gespeichert ist (wie ein
+  // Der Timer-Sheet, der Bildschirm „Atmen“, der Reiter „Ich“ und der Player geführter Meditationen
+  // teilen sich Liste und Aussehen. Ohne Netz ist ein Musikstück nur wählbar, wenn es offline gespeichert ist (wie ein
   // Eintrag unter „Meditieren“); Naturklänge liegen immer vor.
   import { onMount } from 'svelte'
   import { startable } from '../lib/meditation/guided-view'

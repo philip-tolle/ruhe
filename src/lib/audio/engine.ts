@@ -117,10 +117,12 @@ export class AudioEngine {
 
   // Startet ein Programm als neue Sitzung: Es beendet laufende Klänge und eine laufende Sitzung
   // (die dabei ihr Ergebnis meldet) und verwirft den Sleep-Countdown; während einer Sitzung
-  // gilt kein Sleep-Timer. Output-Start und Durchlauf entstehen vor dem ersten `await`, also noch
-  // in der Nutzergeste, und ohne Umweg über idle. Eingeplant wird, sobald geladen ist, was das
-  // Programm braucht (`assets`: Klangschale, Atemgeräusch); fehlt etwas, läuft es ohne. Scheitert der Start des Outputs, steht das
-  // Programm trotzdem bereit (pausiert, „Weiter“ spielt es ab Beginn); der Fehler kommt danach.
+  // gilt kein Sleep-Timer. Output-Start, Durchlauf und Hintergrund entstehen vor dem ersten `await`,
+  // also noch in der Nutzergeste (ein Musikstück startet dabei sein Element), und ohne Umweg über
+  // idle. Eingeplant wird, sobald geladen ist, was das Programm braucht (`assets`: Klangschale,
+  // Atemgeräusch); fehlt etwas, läuft es ohne, ebenso ohne Hintergrund (Ladefehler). Scheitert der
+  // Start des Outputs, steht das Programm trotzdem bereit (pausiert, „Weiter“ spielt es ab Beginn);
+  // der Fehler kommt danach. Wird es vorher abgelöst, verfällt auch der ladende Hintergrund.
   async startProgram(spec: ProgramSpec): Promise<void> {
     const out = this.ensureOutput()
     const run = this.sessions.createProgram(spec, out.ctx)
@@ -128,6 +130,7 @@ export class AudioEngine {
     const wanted = (asset: 'strike' | 'breath', file: string) =>
       spec.assets.includes(asset) ? this.load(out.ctx, assetUrl(file)) : Promise.resolve(null)
     const breathFile = (id: 'ein' | 'aus') => BREATH.find((b) => b.id === id)!.file
+    const background = spec.background && this.playSound(spec.background, starting, spec.backgroundVolume)
     const [started, strike, ein, aus] = await Promise.allSettled([
       starting,
       wanted('strike', EFFECTS[0].file),
@@ -141,9 +144,8 @@ export class AudioEngine {
       const assets = { strike: loaded(strike), breath: inhale && exhale ? { ein: inhale, aus: exhale } : null }
       run.begin(out.input, assets, () => this.programCounted(run), () => this.finishSession(run))
       this.emit()
-      // Der Hintergrund gehört zum Programm; ohne ihn (Ladefehler) läuft es weiter.
-      if (spec.background) await this.playSound(spec.background, Promise.resolve(), spec.backgroundVolume)
     }
+    await Promise.allSettled([background])
     if (started.status === 'rejected') throw started.reason
   }
 

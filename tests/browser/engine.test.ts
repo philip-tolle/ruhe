@@ -4,6 +4,7 @@ import { loadBuffer } from '../../src/lib/audio/loops'
 import { createOutput, type Output } from '../../src/lib/audio/output'
 import { assetUrl } from '../../src/lib/sounds/catalog'
 import { createMusicVoice, type MusicVoice } from '../../src/lib/audio/music'
+import { breathProgram } from '../../src/lib/audio/program'
 import { toneUrl } from './wav'
 
 type Loader = (ctx: BaseAudioContext, url: string) => Promise<AudioBuffer>
@@ -414,6 +415,28 @@ test('switching between music and nature keeps exactly one voice', async () => {
   expect(e.snapshot().volumes).toEqual({ regen: 0.7 })
   await expect.poll(() => e.voiceCount(), { timeout: 3000 }).toBe(1)
   expect(e.snapshot().state).toBe('playing')
+})
+
+test('a program creates its music background at once, still in the tap, at the program volume', async () => {
+  const { made, factory } = fakeMusic()
+  const e = makeMusic(factory)
+  const starting = e.startProgram(breathProgram('box', 1, { sound: true, background: 'klavier' }))
+  // Vor dem ersten `await`: Das Element startet noch in der Nutzergeste, nicht erst nach dem Laden des Atemgeräuschs.
+  expect(made).toHaveLength(1)
+  made[0].settle(true)
+  await starting
+  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { title: 'Atmen · Box-Atmung' }, volumes: { klavier: 0.35 } })
+})
+
+test('a program superseded before its music is ready drops the music', async () => {
+  const { made, factory } = fakeMusic()
+  const e = makeMusic(factory)
+  const first = e.startProgram(breathProgram('box', 1, { sound: true, background: 'klavier' }))
+  const second = e.startProgram(breathProgram('478', 1, { sound: true, background: null }))
+  made[0].settle(true)
+  await Promise.all([first, second])
+  expect(made[0].stop).toHaveBeenCalled()
+  expect(e.snapshot()).toMatchObject({ program: { title: 'Atmen · 4-7-8' }, volumes: {}, loading: [] })
 })
 
 test('tapping a second piece before the first is ready stops the first', async () => {

@@ -1,7 +1,7 @@
 // Katalog aller Klänge: acht echte Aufnahmen der Natur (ElevenLabs, nahtlose 30-s-Schleifen), sieben
 // Musikstücke (gestreamt, Schleife mit Überblendung), dazu der Einzelanschlag der Klangschale und die
 // beiden Atemgeräusche. Die Daten stehen in content/sounds.json. Ein Hintergrund (Klänge, Timer,
-// geführte Meditation) ist entweder ein Naturklang oder ein Musikstück.
+// Atemübung, geführte Meditation) ist entweder ein Naturklang oder ein Musikstück.
 import catalog from '../../../content/sounds.json'
 import { softBreaks } from '../text'
 

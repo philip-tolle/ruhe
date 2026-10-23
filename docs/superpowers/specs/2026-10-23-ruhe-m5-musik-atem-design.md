@@ -22,7 +22,7 @@ Der Nutzer wünscht sich zwei Dinge:
 
 ### Erfolgskriterien
 
-- 7 Musikstücke spielen in „Klänge“ und als Hintergrund von Timer und geführter Meditation.
+- 7 Musikstücke spielen in „Klänge“ und als Hintergrund von Timer und geführter Meditation (seit §11 auch bei Atemübungen).
 - Jedes Stück läuft beliebig lange ohne hörbare Naht.
 - Die Musik ist im Speicher kein Problem: Sie wird gestreamt, nie ganz dekodiert.
 - In jeder Atemübung hört man beim Ein- und Ausatmen ein leises Atemgeräusch, das zur Länge der Phase passt; Halten bleibt still.
@@ -133,7 +133,7 @@ Für jede Phase `ein` oder `aus` der Länge `L` (Sekunden), mit `D` als Dauer de
 
 ### 4.3 Hintergrundauswahl
 
-- `SoundSelect` (Timer, geführter Player, Reiter „Ich“) wird gegliedert: „Keiner“, dann `<optgroup label="Musik">` mit den 7 Stücken, dann `<optgroup label="Natur">` mit den 8 Klängen.
+- `SoundSelect` (Timer, geführter Player, Reiter „Ich“, seit §11 auch „Atmen“) wird gegliedert: „Keiner“, dann `<optgroup label="Musik">` mit den 7 Stücken, dann `<optgroup label="Natur">` mit den 8 Klängen.
 - **Ohne Netz:** Nicht gespeicherte Musikstücke sind deaktiviert, mit dem Zusatz „ – nicht offline verfügbar“.
 - **Ist ein gewählter Hintergrund offline nicht da**, startet die Sitzung ohne Hintergrund. Das ist dasselbe Verhalten wie bei einem Ladefehler.
 - Bisherige Einstellungen bleiben erhalten.
@@ -176,7 +176,7 @@ Für jede Phase `ein` oder `aus` der Länge `L` (Sekunden), mit `D` als Dauer de
   - Eigene `pause`-Ereignisse der Elemente sind keine Unterbrechung. Unterbrechungen erkennt die Engine wie bisher am Anker.
   - `stop(when)` pausiert beide Elemente zum Zeitpunkt `when` (Marke auf der Audio-Uhr) und gibt sie frei (`src` entfernen).
 - **Ablösen:** Naturklänge bleiben dekodierte Schleifen (`createLoopVoice`). Ablösen und Überblenden zwischen Klang und Musik laufen über die bestehenden Kanäle der Engine.
-- **Sitzungen:** Musik als Hintergrund von Timer und geführter Meditation läuft über denselben Weg (`playSound`). Fehlt sie, läuft die Sitzung ohne Hintergrund weiter.
+- **Sitzungen:** Musik als Hintergrund von Timer und geführter Meditation (seit §11 auch Atemübung) läuft über denselben Weg (`playSound`). Fehlt sie, läuft die Sitzung ohne Hintergrund weiter.
 
 ### 5.3 Atemgeräusch in der Engine
 
@@ -288,4 +288,5 @@ Der Nutzer wollte nach M5 auch bei Atemübungen Klänge oder Musik hören. Das N
 - **Gemerkt:** Die Wahl gilt für alle Übungen und steht in der neuen Einstellung `breathBackground`. Ein ungültiger Wert wird zu „Keiner“. Die Atemübung auf „Heute“ und „Erneut starten“ folgen derselben Wahl. `lastUsed` bleibt unverändert.
 - **Lautstärke:** Mit Atemgeräusch spielt der Hintergrund halb so laut wie sonst (`BREATH_BACKGROUND_VOLUME = 0.35`), damit er das Atemgeräusch nicht überdeckt. Ohne Atemgeräusch spielt er in der üblichen Lautstärke 0,7. Ein Regler wurde bewusst weggelassen.
 - **Offline und Fehler:** Es gilt dasselbe wie beim Timer. Ein Musikstück wird beim ersten Abspielen gespeichert. Ohne Netz sind ungespeicherte Stücke nicht wählbar. Lädt der Hintergrund nicht, läuft die Übung ohne ihn.
+- **Start im Tipp:** `startProgram` stößt den Hintergrund jetzt vor dem ersten `await` an, wie `startGuided`. So startet ein Musikstück sein Element noch in der Nutzergeste und nicht erst, nachdem das Atemgeräusch geladen ist. Das gilt auch für den Timer. Wird das Programm vorher abgelöst, verfällt der ladende Hintergrund.
 - **Nicht enthalten:** Im laufenden Atem-Player lässt sich der Hintergrund nicht wechseln.
