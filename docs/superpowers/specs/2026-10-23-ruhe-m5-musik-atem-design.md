@@ -272,3 +272,10 @@ Für jede Phase `ein` oder `aus` der Länge `L` (Sekunden), mit `D` als Dauer de
 | Hörproben Atem | 0,03 $ (erledigt) |
 | 4 Musikstücke zu 5 Minuten | etwa 3,30 $ |
 | 7 Motive | etwa 1 $ |
+
+## 10. Ergänzungen aus der Umsetzung (23.10.2026)
+
+- **Speichern beim ersten Abspielen:** Ein Musikstück wird beim ersten Abspielen im Hintergrund vollständig gespeichert, wie eine Meditation. Das gilt in „Klänge“, als Hintergrund eines Timers oder einer geführten Meditation und bei einem Wechsel im Player.
+- **Motive:** Der Nutzer überließ die Auswahl dem Controller. Gewählt sind Flächen v3, Klavier v1, Obertöne v1, Bambusflöte v1, Salz v2 und Oberfläche v2. Für „Zwischen zwei Atemzügen“ wurden die Atemlinien (v4) gewählt statt einer Lotusblüte, weil das Motiv des Reiters „Ich“ schon eine Lotusblüte ist.
+- **Lautheit:** `scripts/musik.py` misst mit ebur128. loudnorm maß das kurze Ausatmen um 1,4 LU daneben.
+- **Kosten:** Die vier Stücke kosteten 3,27 $ und die Motiv-Entwürfe 0,41 $.
