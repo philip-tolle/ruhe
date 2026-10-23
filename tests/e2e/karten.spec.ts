@@ -80,6 +80,16 @@ async function expectGoldBorder(el: Locator, alpha: number) {
 
 const pageFits = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
+// Der Text liegt auf genau einer Zeile: Der Range über den Textknoten hat ein einziges Zeilenrechteck.
+async function expectOneLine(el: Locator) {
+  const lines = await el.evaluate((node) => {
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    return range.getClientRects().length
+  })
+  expect(lines, `„${await el.innerText()}“ bricht um`).toBe(1)
+}
+
 // Aus einem Titel wird ein Muster: Sonderzeichen entschärfen.
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -144,11 +154,44 @@ test.describe('Meditieren', () => {
     const button = card.getByRole('button', { name: 'Timer einstellen' })
     await expect(button).toHaveText('Einstellen')
     await expect(button).toHaveClass(/\bbutton-line\b/)
-    // Auf dem Handy steht der Knopf rechts neben dem Text, nicht darunter.
+    // Auf dem Handy (Pixel 7, 412 px) steht der Knopf unter dem Text, nicht daneben (Ruling R5).
     const text = (await card.locator('.timer-text').boundingBox())!
     const box = (await button.boundingBox())!
-    expect(box.x).toBeGreaterThanOrEqual(text.x + text.width)
-    expect(box.y).toBeLessThan(text.y + text.height)
+    expect(box.y).toBeGreaterThanOrEqual(text.y + text.height - 1)
+  })
+
+  // Ruling R5: Auf Handys bis rund 412 px steht der Knopf unter dem Text, damit „Meditations-Timer“ auf einer Zeile
+  // bleibt; erst auf breiten Bildschirmen steht er daneben (auch dann ohne Umbruch im Titel).
+  for (const width of [412, 393, 360]) {
+    test.describe(`the timer card at ${width} px`, () => {
+      test.use({ viewport: { width, height: 800 } })
+
+      test('the title is one line, the button sits under the text, and no text lies in the wash', async ({ page }) => {
+        await openMeditieren(page)
+        const card = timerCard(page)
+        await expectOneLine(card.getByRole('heading', { level: 2, name: 'Meditations-Timer' }))
+        const text = (await card.locator('.timer-text').boundingBox())!
+        const button = (await card.getByRole('button', { name: 'Timer einstellen' }).boundingBox())!
+        expect(button.y, 'unter dem Text').toBeGreaterThanOrEqual(text.y + text.height - 1)
+        await expectNoTextInWash(card)
+        expect(await pageFits(page)).toBe(true)
+      })
+    })
+  }
+
+  test.describe('the timer card on a wide screen', () => {
+    test.use({ viewport: { width: 800, height: 800 } })
+
+    test('the button sits beside the text, and the title is still one line', async ({ page }) => {
+      await openMeditieren(page)
+      const card = timerCard(page)
+      await expectOneLine(card.getByRole('heading', { level: 2, name: 'Meditations-Timer' }))
+      const text = (await card.locator('.timer-text').boundingBox())!
+      const button = (await card.getByRole('button', { name: 'Timer einstellen' }).boundingBox())!
+      expect(button.x, 'rechts neben dem Text').toBeGreaterThanOrEqual(text.x + text.width - 1)
+      expect(button.y).toBeLessThan(text.y + text.height)
+      await expectNoTextInWash(card)
+    })
   })
 
   test('the timer wash follows the time of day', async ({ page }) => {
@@ -312,6 +355,27 @@ test.describe('Meditieren', () => {
       expect(button.x + button.width).toBeLessThanOrEqual(outer.x + outer.width)
       expect(button.y + button.height).toBeLessThanOrEqual(outer.y + outer.height)
     })
+
+    test('a theme heading that wraps keeps a visible fading line of at least 24 px', async ({ page }) => {
+      await openMeditieren(page)
+      await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+      let wrapped = 0
+      for (const theme of THEMES) {
+        const group = guided(page).getByRole('region', { name: theme.title })
+        const heading = group.getByRole('heading', { level: 3 })
+        const lines = await heading.evaluate((el) => {
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          return range.getClientRects().length
+        })
+        if (lines > 1) wrapped++
+        const fade = (await group.locator('.rule-fade').boundingBox())!
+        expect(fade.width, `Linie neben „${theme.title}“`).toBeGreaterThanOrEqual(24)
+      }
+      // Der Test prüft nur etwas, wenn mindestens eine Überschrift wirklich umbricht.
+      expect(wrapped, 'umgebrochene Themenüberschriften').toBeGreaterThan(0)
+      expect(await pageFits(page)).toBe(true)
+    })
   })
 })
 
@@ -357,6 +421,10 @@ async function expectBeside(first: Locator, second: Locator) {
 // Kein Wort des Textes bricht mitten im Wort um: Jedes Wort liegt auf einer Zeile (ein Range-Rechteck). Gedacht für
 // Titel ohne Bindestrich; ein Bindestrich dürfte umbrechen.
 async function expectWordsWhole(el: Locator) {
+  // Erst die Schriften: Mit der Ersatzschrift lägen die Umbrüche anders als auf dem Handy.
+  await el.page().evaluate(async () => {
+    await document.fonts.ready
+  })
   const broken = await el.evaluate((node) => {
     const text = node.firstChild as Text
     const found: string[] = []
@@ -518,14 +586,16 @@ test.describe('Heute', () => {
     expect(await isLineButton(button)).toBe(true)
     await expectNoTextInWash(card)
 
-    // Timer: Farbe der Tageszeit (20 Uhr → lavendel).
+    // Timer: Farbe der Tageszeit. Um 14 Uhr ist das blaugruen; um 20 Uhr (lavendel) wäre es von der Ersatz-Meditation
+    // „Ankommen im Atem“ (lavendel) nicht zu unterscheiden, und eine falsch verdrahtete Tageszeit fiele nicht auf.
+    await page.clock.setFixedTime(at('14:00:00'))
     await page.evaluate(() =>
       localStorage.setItem('ruhe.v1', JSON.stringify({ ...JSON.parse(localStorage.getItem('ruhe.v1')!), lastUsed: { kind: 'timer', minutes: 5, intervalMin: null, sound: null, lead: true } })),
     )
     await page.reload()
     card = zuletzt(page)
     await expect(card.getByText('Timer · 5 Min', { exact: true })).toBeVisible()
-    expect(await waschungIn(card)).toBe('lavendel')
+    expect(await waschungIn(card)).toBe('blaugruen')
     expect(await isLineButton(card.getByRole('button', { name: 'Erneut starten' }))).toBe(true)
     await expectNoTextInWash(card)
   })
@@ -890,7 +960,6 @@ test.describe('Klänge', () => {
     const tiles = page.locator('.screen .tile')
     await expect(tiles).toHaveCount(8)
     await expect(page.locator('.screen .waschung')).toHaveCount(0)
-    await expect(tiles.locator('img.waschung')).toHaveCount(0)
     for (const tile of await tiles.all()) await expectGoldBorder(tile, 0.26)
 
     // Eine Kachel an: Ihr Rand wechselt in den Akzent, alle anderen bleiben golden.
@@ -966,7 +1035,7 @@ test.describe('Ich', () => {
     await expectNoTextInWash(card)
   })
 
-  test('the rows of the settings are divided by gold lines from the second row on', async ({ page }) => {
+  test('the rows of the settings are divided by gold lines, above every row', async ({ page }) => {
     await openTab(page, 'Ich')
     const rows = [
       page.getByRole('switch', { name: 'Vibration bei Atemübungen' }),
@@ -974,20 +1043,17 @@ test.describe('Ich', () => {
       page.getByRole('combobox', { name: 'Hintergrundklang beim Timer' }),
       page.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' }),
     ]
-    for (const [i, control] of rows.entries()) {
+    for (const control of rows) {
+      // Wie in „Aktivitäten“ (Ruling R4, Spec §2.4): eine Linie über jeder Zeile, auch über der ersten.
       const row = await control.evaluate((el) => {
         const s = getComputedStyle(el.closest('.setting')!)
         return { width: s.borderTopWidth, style: s.borderTopStyle, color: s.borderTopColor, padding: parseFloat(s.paddingTop) }
       })
-      if (i === 0) {
-        // Die erste Zeile hat keine Linie (die Überschrift steht darüber).
-        expect(row.width).toBe('0px')
-        continue
-      }
       expect([row.width, row.style]).toEqual(['1px', 'solid'])
       const [r, g, b, a] = parseColor(row.color)
       expect([r, g, b]).toEqual([233, 196, 142])
       expect(Math.abs(a - 0.28)).toBeLessThanOrEqual(0.01)
+      // Das Bedienelement klebt nicht an der Linie.
       expect(row.padding).toBeGreaterThan(0)
     }
     // Die Hinweise und Überschriften der anderen Karten sind keine Zeilen.

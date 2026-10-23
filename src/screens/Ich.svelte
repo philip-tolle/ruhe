@@ -97,7 +97,7 @@
 
   <Calendar {sessions} />
 
-  <!-- Die Zeilen trennt eine feine Goldlinie, ab der zweiten. -->
+  <!-- Über jeder Zeile steht eine feine Goldlinie, wie bei den Aktivitäten auf Heute. -->
   <div class="card">
     <h2>Einstellungen</h2>
     <div class="settings">
@@ -221,7 +221,7 @@
     align-items: stretch;
   }
 
-  /* Einstellungszeilen: Schalter und Felder, durch Goldlinien getrennt (über jeder Zeile außer der ersten). */
+  /* Einstellungszeilen: Schalter und Felder, durch Goldlinien getrennt (über jeder Zeile, auch der ersten). */
   .settings {
     display: flex;
     flex-direction: column;
@@ -230,18 +230,11 @@
 
   .setting {
     padding: 10px 0;
-  }
-
-  .setting:first-child {
-    padding-top: 0;
+    border-top: 1px solid rgb(233 196 142 / 0.28);
   }
 
   .setting:last-child {
     padding-bottom: 0;
-  }
-
-  .setting + .setting {
-    border-top: 1px solid rgb(233 196 142 / 0.28);
   }
 
   .field {

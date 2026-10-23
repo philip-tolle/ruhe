@@ -122,8 +122,9 @@
   /*
     Timer-Karte: Motiv · Text · Umriss-Knopf in einer Zeile. Die Waschung füllt die Knopfspalte bis in die obere
     rechte Ecke (Knopf, Abstand davor, Innenabstand rechts); der Text endet genau davor. Der Knopf ist deckend und
-    darf in der Zone stehen. Ist die Karte schmal (kleines Handy oder große Systemschrift), rutscht der Knopf unter
-    den Text (unten, Abfrage in rem: wächst mit der Schrift).
+    darf in der Zone stehen. Ist die Karte schmal (Handy bis rund 412 px oder große Systemschrift), rutscht der Knopf
+    unter den Text (Abfrage in rem: wächst mit der Schrift). Daneben braucht „Meditations-Timer“ (10,3rem) samt Motiv,
+    Abständen und Knopf rund 22,3rem; die Schwelle liegt mit 22,5rem knapp darüber, damit der Titel daneben nie umbricht.
   */
   .timer {
     --timer-button: 6.75rem;
@@ -171,7 +172,7 @@
 
   /* Schmal: Der Text füllt die erste Zeile neben dem Motiv (56 + 14 px, 1 px Spielraum), der Knopf bricht um und
      steht unter dem Text. Die Waschung bleibt oben rechts in einer schmalen Ecke; der Text hält Abstand zu ihr. */
-  @container (max-width: 19.5rem) {
+  @container (max-width: 22.5rem) {
     .timer-text {
       flex-basis: calc(100% - 71px);
       padding-right: calc(var(--wash-narrow) - 20px);

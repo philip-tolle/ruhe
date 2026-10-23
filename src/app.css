@@ -291,7 +291,10 @@ main.with-player-bar {
 
 /* Titel der Karten sind überall gleich groß (Spec 4.1 §2.5): Fraunces 400 wie jede h2, 1.1875rem. Größere h2 (Blatt,
    Dialog, Player) stehen nicht in einer Karte. Eine kleine Überschrift in Versalien setzt ihre Größe selbst (Klasse
-   der Komponente, mehr Gewicht als diese Regel). */
+   der Komponente, mehr Gewicht als diese Regel).
+   Größe und Zeilenhöhe sind Maß für zwei Zonen der Waschung: die Breite der Kalenderzone (`Calendar.svelte`, 4,7rem je
+   Hälfte des Monatstitels) und die Höhe der Zone von „Zuletzt genutzt“ (`Heute.svelte`, `--wash-h` mit `* 1.2`).
+   Wer sie ändert, passt beide an (tests/e2e/karten.spec.ts meldet jede Abweichung mit `expectNoTextInWash`). */
 .card h2 {
   font-size: 1.1875rem;
   line-height: 1.2;
@@ -367,7 +370,8 @@ main.with-player-bar {
   transform: scale(0.98);
 }
 
-/* Kurze Linie unter einer großen Abschnittsüberschrift (`<span class="rule" aria-hidden="true">`): 40 × 1 px, 8 px Abstand. */
+/* Kurze Linie unter einer großen Abschnittsüberschrift (`<span class="rule" aria-hidden="true">`): 40 × 1 px, 8 px Abstand.
+   Achtung: Der `margin-top` addiert sich zu einem `gap` des Elternelements (Flex/Grid); dort den Abstand nur einmal setzen. */
 .rule {
   display: block;
   flex: none;
@@ -377,10 +381,11 @@ main.with-player-bar {
   background: var(--gold-line-strong);
 }
 
-/* Auslaufende Linie neben einer Themenüberschrift: füllt den Rest der Zeile, von Gold nach transparent. */
+/* Auslaufende Linie neben einer Themenüberschrift: füllt den Rest der Zeile, von Gold nach transparent. Bricht die
+   Überschrift um (große Schrift, schmales Handy), schrumpft sie bis 24 px, nicht bis 0: Die Linie bleibt sichtbar. */
 .rule-fade {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 24px;
   height: 1px;
   background: linear-gradient(to right, rgb(233 196 142 / 0.5), transparent);
 }
