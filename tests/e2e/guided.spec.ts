@@ -491,3 +491,20 @@ test.describe('on a small phone', () => {
     expect(await player.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
   })
 })
+
+test('offline, unsaved music options are disabled with a hint', async ({ page, context }) => {
+  await openMeditieren(page)
+  await entry(page, 'Guten Morgen').click()
+  const player = page.getByRole('dialog', { name: 'Geführte Meditation' })
+  const sound = player.getByRole('combobox', { name: 'Hintergrundklang' })
+  await expect(sound.getByRole('option', { name: 'Stilles Klavier', exact: true })).toBeEnabled()
+
+  await context.setOffline(true)
+  await expect(sound.getByRole('option', { name: 'Stilles Klavier – nicht offline verfügbar', exact: true })).toBeDisabled()
+  await expect(sound.locator('optgroup[label="Musik"] option:disabled')).toHaveCount(7)
+  await expect(sound.getByRole('option', { name: 'Regen', exact: true })).toBeEnabled()
+  await expect(sound.getByRole('option', { name: 'Keiner', exact: true })).toBeEnabled()
+
+  await context.setOffline(false)
+  await expect(sound.getByRole('option', { name: 'Stilles Klavier', exact: true })).toBeEnabled()
+})

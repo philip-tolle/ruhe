@@ -204,6 +204,7 @@ test('settings are saved at once and shared with the timer sheet', async ({ page
   await expect(sound.locator('option:checked')).toHaveText('Keiner')
   await expect(sound.getByRole('option')).toHaveText([
     'Keiner',
+    'Schwebende Flächen', 'Stilles Klavier', 'Obertöne', 'Bambusflöte', 'Zwischen zwei Atemzügen', 'Salz und Sternenlicht', 'Unter der Oberfläche',
     'Regen',
     'Meeresrauschen',
     'Wind',

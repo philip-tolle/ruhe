@@ -1,20 +1,40 @@
 <script lang="ts">
-  // Auswahl des Hintergrundklangs („Keiner“ oder einer der acht Klänge). Der Timer-Sheet, der
-  // Reiter „Ich“ und der Player geführter Meditationen teilen sich Liste und Aussehen.
-  import { SOUNDS, type BackgroundId } from '../lib/sounds/catalog'
+  // Auswahl des Hintergrunds: „Keiner“, dann die Gruppe „Musik“, dann „Natur“ mit den acht Klängen.
+  // Der Timer-Sheet, der Reiter „Ich“ und der Player geführter Meditationen teilen sich Liste und
+  // Aussehen. Ohne Netz ist ein Musikstück nur wählbar, wenn es offline gespeichert ist (wie ein
+  // Eintrag unter „Meditieren“); Naturklänge liegen immer vor.
+  import { onMount } from 'svelte'
+  import { startable } from '../lib/meditation/guided-view'
+  import { offline, refreshSaved } from '../lib/offline/status.svelte'
+  import { MUSIC, SOUNDS, type BackgroundId } from '../lib/sounds/catalog'
+  import { absoluteMusicUrl } from '../lib/ui/offline-ui.svelte'
 
   let {
     label,
     value = $bindable(),
     disabled = false,
   }: { label: string; value: BackgroundId | null; disabled?: boolean } = $props()
+
+  const music = MUSIC.map((m) => ({ ...m, url: absoluteMusicUrl(m, location.href) }))
+
+  onMount(() => {
+    void refreshSaved(music.map((m) => m.url))
+  })
 </script>
 
 <select aria-label={label} bind:value {disabled}>
   <option value={null}>Keiner</option>
-  {#each SOUNDS as item (item.id)}
-    <option value={item.id}>{item.title}</option>
-  {/each}
+  <optgroup label="Musik">
+    {#each music as item (item.id)}
+      {@const available = startable(offline.saved[item.url], offline.online)}
+      <option value={item.id} disabled={!available}>{available ? item.title : `${item.title} – nicht offline verfügbar`}</option>
+    {/each}
+  </optgroup>
+  <optgroup label="Natur">
+    {#each SOUNDS as item (item.id)}
+      <option value={item.id}>{item.title}</option>
+    {/each}
+  </optgroup>
 </select>
 
 <style>

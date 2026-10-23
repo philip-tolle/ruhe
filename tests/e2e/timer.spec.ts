@@ -188,3 +188,25 @@ test.describe('when the bowl does not load', () => {
     expect(await page.evaluate(() => navigator.mediaSession.playbackState)).toBe('playing')
   })
 })
+
+test('the background select groups music before nature and a music piece runs under the timer', async ({ page }) => {
+  await openMeditieren(page)
+  await page.getByRole('button', { name: 'Timer einstellen' }).click()
+  const sound = page.getByLabel('Hintergrundklang')
+  const groups = await sound.locator('optgroup').evaluateAll((list) => list.map((group) => (group as HTMLOptGroupElement).label))
+  expect(groups).toEqual(['Musik', 'Natur'])
+  await expect(sound.locator('option').first()).toHaveText('Keiner')
+  await expect(sound.locator('optgroup[label="Musik"] option')).toHaveText(['Schwebende Flächen', 'Stilles Klavier', 'Obertöne', 'Bambusflöte', 'Zwischen zwei Atemzügen', 'Salz und Sternenlicht', 'Unter der Oberfläche'])
+  await expect(sound.locator('optgroup[label="Natur"] option')).toHaveCount(8)
+
+  await sound.selectOption({ label: 'Stilles Klavier' })
+  await page.getByRole('button', { name: 'Starten' }).click()
+  await expect(page.getByText('Ankommen', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Beenden' }).click()
+  await page.getByRole('button', { name: 'Fertig' }).click()
+  await expect(page.getByText('10 Min · ohne Zwischenschale · Stilles Klavier')).toBeVisible()
+
+  await page.reload()
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Meditieren' }).click()
+  await expect(page.getByText('10 Min · ohne Zwischenschale · Stilles Klavier')).toBeVisible()
+})
