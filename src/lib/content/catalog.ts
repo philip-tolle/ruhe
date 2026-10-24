@@ -16,8 +16,9 @@ export const CATEGORY_TITLE: Record<Category, string> = {
   alltag: 'Achtsam im Alltag',
 }
 
-// Reihenfolge der Themen in der Liste (Spec 3.2, Spec M7 §4): die bisherigen, danach die neuen.
-const CATEGORY_ORDER: readonly Category[] = ['achtsamkeit', 'stress', 'fokus', 'mitgefuehl', 'gefuehle', 'alltag']
+// Reihenfolge der Themen in der Liste (Spec 3.2, Spec M7 §4): die von `CATEGORY_TITLE`, die bisherigen, danach die
+// neuen. Als `Record` über `Category` meldet `npm run check` ein Thema ohne Titel, und damit fehlt keines in der Liste.
+const CATEGORY_ORDER = Object.keys(CATEGORY_TITLE) as readonly Category[]
 
 export interface Meditation {
   id: string
@@ -77,7 +78,8 @@ function dayOfYear(now: Date): number {
 /**
  * Vorschlag des Tages (Spec 3.1, Spec M7 §6): zwei Themen nach Tageszeit, darin täglich die nächste
  * Meditation, über beide Themen zusammen in Katalog-Reihenfolge. Der Index hängt nur vom Kalendertag ab,
- * der Vorschlag bleibt also innerhalb einer Tageszeit derselbe. Hat die Liste zu beiden Themen nichts,
+ * der Vorschlag bleibt also innerhalb einer Tageszeit desselben Kalendertags derselbe (der Abend wechselt um
+ * Mitternacht zum nächsten Tag). Hat die Liste zu beiden Themen nichts,
  * rotiert der Vorschlag über die ganze Liste; eine leere Liste ist ein Fehler.
  */
 export function suggestionFor(now: Date, list: readonly Meditation[] = MEDITATIONS): Meditation {

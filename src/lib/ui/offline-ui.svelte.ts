@@ -22,7 +22,7 @@ export function absoluteMusicUrl(m: MusicDef, base: string): string {
 }
 
 /**
- * Alle Dateien für „Alle offline speichern“: die neun Meditationen, dann die sieben Musikstücke, je mit
+ * Alle Dateien für „Alle offline speichern“: alle Meditationen des Katalogs, dann die Musikstücke, je mit
  * absoluter, versionierter Adresse (wie Player und Engine sie abrufen) und Größe laut Katalog.
  */
 export function offlineFiles(): { url: string; bytes: number; kind: 'meditation' | 'music' }[] {

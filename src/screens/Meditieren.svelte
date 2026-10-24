@@ -205,10 +205,13 @@
     gap: 12px;
   }
 
+  /* Bei sehr großer Systemschrift brechen lange Wörter lieber um, als über die Linie oder in die Waschung zu laufen. */
   h3 {
     min-width: 0;
     color: var(--text-muted);
     font-size: 1.125rem;
+    hyphens: auto;
+    overflow-wrap: anywhere;
   }
 
   ul {
@@ -260,6 +263,8 @@
     font-size: 1.1875rem;
     font-weight: 400;
     line-height: 1.2;
+    hyphens: auto;
+    overflow-wrap: anywhere;
   }
 
   /* Länge und Häkchen leise; das Häkchen nimmt die Farbe des Textes (currentColor). */

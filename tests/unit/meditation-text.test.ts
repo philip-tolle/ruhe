@@ -24,7 +24,7 @@ import {
 const FRONTMATTER = `---
 id: test-id
 title: Testmeditation
-category: stress   # achtsamkeit | stress | fokus
+category: stress   # achtsamkeit | stress | fokus | mitgefuehl | gefuehle | alltag
 minutes: 5
 description: Ein kurzer Satz zur Übung.
 ---
@@ -300,7 +300,7 @@ const NEW_IN_M7 = [
 
 describe('parseMeditation: die Themen aus Meilenstein 7', () => {
   it.each(['mitgefuehl', 'gefuehle', 'alltag'])('liest das Thema „%s“', (category) => {
-    const { meta } = parseMeditation(FRONTMATTER.replace('category: stress   # achtsamkeit | stress | fokus', `category: ${category}`) + '\nHallo.\n')
+    const { meta } = parseMeditation(FRONTMATTER.replace(/^category: .*$/m, `category: ${category}`) + '\nHallo.\n')
     expect(meta.category).toBe(category)
   })
 })

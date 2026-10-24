@@ -58,7 +58,8 @@ describe('Daten', () => {
     }
   })
 
-  // Review Focus 3: Ein Platzhalter darf nicht in die Veröffentlichung rutschen.
+  // Review Focus 3: Ein Platzhalter darf nicht in die Veröffentlichung rutschen. Solange neue Texte auf ihre Vertonung
+  // warten, ist dieser Test bewusst rot (README „Meditationen vertonen“).
   test('no meditation is a placeholder any more', () => {
     expect(MEDITATIONS.filter((m) => m.placeholder).map((m) => m.id)).toEqual([])
     expect(JSON.parse(readFileSync('audio-work/placeholders.json', 'utf8'))).toEqual([])
@@ -191,14 +192,16 @@ describe('suggestionFor: Rotation nach Kalendertag', () => {
     expect(new Set(abend)).toEqual(new Set(['achtsamkeit-0', 'achtsamkeit-1', 'achtsamkeit-2', 'mitgefuehl-0']))
   })
 
-  test('aus dem echten Katalog: sechs Tage um 8 Uhr sechs verschiedene, am siebten wieder die erste; über die Tageszeit stabil', () => {
+  test('aus dem echten Katalog: sechs Tage um 8 Uhr sechs verschiedene, am siebten wieder die erste; innerhalb einer Tageszeit desselben Tags stabil', () => {
     const ids = Array.from({ length: 7 }, (_, d) => suggestionFor(at(2026, 10, 19 + d, 8)).id)
     expect(new Set(ids.slice(0, 6)).size).toBe(6)
     expect(ids[6]).toBe(ids[0])
-    const TIMES: Record<Tageszeit, [number, number][]> = {
+    // Der Abend reicht über Mitternacht; 0:00–4:59 gehört zum Abend des Vortags, zählt aber schon als neuer Tag.
+    const TIMES: Record<string, [number, number][]> = {
       morgen: [[5, 0], [8, 0], [10, 59]],
       tag: [[11, 0], [14, 0], [16, 59]],
-      abend: [[0, 0], [4, 59], [17, 0], [23, 59]],
+      abend: [[17, 0], [23, 59]],
+      nacht: [[0, 0], [4, 59]],
     }
     for (let d = 0; d < 7; d++) {
       for (const [zeit, times] of Object.entries(TIMES)) {

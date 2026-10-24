@@ -111,7 +111,7 @@ Die Texte stehen in `content/meditations/<id>.md`, die fertigen Dateien entstehe
 6. **Manifest schreiben:** `npm run meditations manifest` erzeugt `src/content/meditations.json` mit Dauer, Bytes und `version` je Meditation (die ersten 10 Hex-Zeichen des SHA-256 der MP3).
 7. **Veröffentlichen:** Eine neue Aufnahme hat eine neue `version`, die App ruft die Datei als `<id>.mp3?v=<version>` ab. Das Handy lädt sie dadurch frisch, statt die alte aus dem Cache zu spielen. Ein Gerät, auf dem alles gespeichert war, muss nach einer neuen Aufnahme „Alle offline speichern“ erneut antippen: Die neuen `?v=`-Fassungen sind dort noch nicht gespeichert, und nur dieser Knopf entfernt die alten Kopien.
 
-Solange eine Meditation noch nicht vertont ist, spielt eine Platzhalter-Datei (leise Töne, in der App als „Vorabversion“ gekennzeichnet): `npm run meditations placeholders` legt sie für jede Meditation ohne echte Datei an und vermerkt sie in `audio-work/placeholders.json`; `assemble` nimmt die id dort wieder heraus. Echte Dateien überschreibt der Befehl nie.
+Solange eine Meditation noch nicht vertont ist, spielt eine Platzhalter-Datei (leise Töne, in der App als „Vorabversion“ gekennzeichnet): `npm run meditations placeholders` legt sie für jede Meditation ohne echte Datei an und vermerkt sie in `audio-work/placeholders.json`; `assemble` nimmt die id dort wieder heraus. Echte Dateien überschreibt der Befehl nie. Veröffentlicht wird erst, wenn keine Meditation mehr Platzhalter ist: Der Test „no meditation is a placeholder any more“ ist bis dahin rot.
 
 ## Musik aufbereiten
 

@@ -394,7 +394,7 @@ const SETTINGS = { vibration: true, voiceBalance: 0.5, timerSound: null, guidedS
 
 // Öffnet „Heute“ zur festen Zeit. `lastUsed` wird einmal je Test gesät (ein Merker in sessionStorage lässt ein Neuladen
 // im Test das Gemerkte behalten); ohne `lastUsed` ist die App leer und „Zuletzt genutzt“ bietet „Ankommen im Atem“ an.
-// Am 22.10. ist der Vorschlag am Morgen „Guten Morgen“, am 24.10. „Energie in der Mittagspause“ (der längste Titel).
+// Am 22.10. ist der Vorschlag am Morgen „Guten Morgen“, am 19.10. „Gehmeditation“ (das längste Wort eines Titels).
 async function openHeute(page: Page, time = '08:00:00', lastUsed?: object, day?: string) {
   await page.clock.setFixedTime(at(time, day))
   if (lastUsed) {
@@ -425,8 +425,8 @@ async function expectBeside(first: Locator, second: Locator) {
   expect(middle).toBeLessThan(a.y + a.height)
 }
 
-// Kein Wort des Textes bricht mitten im Wort um: Jedes Wort liegt auf einer Zeile (ein Range-Rechteck). Gedacht für
-// Titel ohne Bindestrich; ein Bindestrich dürfte umbrechen.
+// Kein Wort des Textes bricht mitten im Wort um: Jedes Wort liegt auf einer Zeile (ein Range-Rechteck). Ein
+// Bindestrich darf umbrechen („Drei-Minuten-“ / „Atempause“): Geprüft wird jedes Stück bis einschließlich Bindestrich.
 async function expectWordsWhole(el: Locator) {
   // Erst die Schriften: Mit der Ersatzschrift lägen die Umbrüche anders als auf dem Handy.
   await el.page().evaluate(async () => {
@@ -437,11 +437,14 @@ async function expectWordsWhole(el: Locator) {
     const found: string[] = []
     let at = 0
     for (const word of text.textContent!.split(' ')) {
-      const range = document.createRange()
-      range.setStart(text, at)
-      range.setEnd(text, at + word.length)
-      if (range.getClientRects().length > 1) found.push(word)
-      at += word.length + 1
+      for (const part of word.split(/(?<=-)/)) {
+        const range = document.createRange()
+        range.setStart(text, at)
+        range.setEnd(text, at + part.length)
+        if (range.getClientRects().length > 1) found.push(part)
+        at += part.length
+      }
+      at += 1
     }
     return found
   })
@@ -736,21 +739,30 @@ test.describe('Heute', () => {
   test.describe('on a small phone with large text', () => {
     test.use({ viewport: { width: 360, height: 640 } })
 
-    test('the longest title keeps its full size at 100 % and breaks between words', async ({ page }) => {
-      // 24.10.: „Energie in der Mittagspause“ im schmalsten Fall. 1.625rem sind 26 px.
-      await openHeute(page, '08:00:00', undefined, '2026-10-24')
-      const name = vorschlag(page).locator('.name')
-      await expect(name).toHaveText('Energie in der Mittagspause')
-      expect(await name.evaluate((el) => getComputedStyle(el).fontSize)).toBe('26px')
-      await expectWordsWhole(name)
-      expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
-      expect(await pageFits(page)).toBe(true)
-      await expectNoTextInWash(vorschlag(page))
+    // Jeder Titel, der vorgeschlagen werden kann: je Tageszeit rotieren sechs Meditationen, der 19. bis 24.10. zeigt
+    // also alle 18. Das längste Wort ist „Gehmeditation“ (19.10. morgens).
+    test('every title that can be suggested breaks only between words at 100 %', async ({ page }) => {
+      test.setTimeout(120_000)
+      const seen = new Set<string>()
+      for (const time of ['08:00:00', '14:00:00', '20:00:00']) {
+        for (const day of ['19', '20', '21', '22', '23', '24']) {
+          await openHeute(page, time, undefined, `2026-10-${day}`)
+          const name = vorschlag(page).locator('.name')
+          const title = (await name.textContent())!
+          seen.add(title)
+          await expectWordsWhole(name)
+          expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth), title).toBe(true)
+          expect(await pageFits(page), title).toBe(true)
+          await expectNoTextInWash(vorschlag(page))
+        }
+      }
+      expect(seen.size).toBe(18)
     })
 
     test('at 130 %: nothing overflows, the title breaks between words, and no text lies in a wash', async ({ page }) => {
-      await openHeute(page, '08:00:00', undefined, '2026-10-24')
-      await expect(vorschlag(page).locator('.name')).toHaveText('Energie in der Mittagspause')
+      // 19.10. morgens: „Gehmeditation“, das längste Wort im schmalsten Fall.
+      await openHeute(page, '08:00:00', undefined, '2026-10-19')
+      await expect(vorschlag(page).locator('.name')).toHaveText('Gehmeditation')
       await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
       // Gespeichert: Knopf, Länge und Zeichen. Das Gemerkte ist danach dieselbe Meditation, die Zusammenfassung von
       // „Zuletzt genutzt“ also lang.

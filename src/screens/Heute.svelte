@@ -225,16 +225,17 @@
 
   /*
     Der Titel der Meditation ist der Blickfang der Karte, aber keine Überschrift: unter „h2“ der Karte. Auf schmaler
-    Karte darf er nicht über die Spalte neben dem Motiv hinauswachsen, sonst bräche der längste Titel („Energie in der
-    Mittagspause“) bei größerer Systemschrift mitten im Wort. Die Obergrenze richtet sich nach der Spalte: Breite der
-    Karte (100cqw) ohne Motiv und Abstand (Zonenbreite − Innenabstand), geteilt durch 6,4 – so breit ist „Mittagspause“
-    in em, mit etwas Luft. Auf 360 px bleibt der Titel bei 100 % bei den vollen 1.625rem (Obergrenze 26,6 px); mit
-    größerer Systemschrift wächst er nicht über die Spalte hinaus. Ohne Container-Einheiten gilt die erste Zeile.
+    Karte darf er nicht über die Spalte neben dem Motiv hinauswachsen, sonst bräche das längste Wort eines Titels
+    („Gehmeditation“) mitten im Wort. Die Obergrenze richtet sich nach der Spalte: Breite der Karte (100cqw) ohne Motiv
+    und Abstand (Zonenbreite − Innenabstand), geteilt durch 7,2 – so breit ist „Gehmeditation“ in em (6,91), mit etwas
+    Luft. Auf 360 px ist der Titel bei 100 % damit etwas kleiner als 1.625rem (Obergrenze 23,6 px), ab etwa 400 px
+    bleibt er bei der vollen Größe; mit größerer Systemschrift wächst er nicht über die Spalte hinaus. Ohne
+    Container-Einheiten gilt die erste Zeile.
   */
   .name {
     font-family: var(--font-display), Georgia, 'Times New Roman', serif;
     font-size: 1.625rem;
-    font-size: min(1.625rem, calc((100cqw - var(--wash-w) + 24px) / 6.4));
+    font-size: min(1.625rem, calc((100cqw - var(--wash-w) + 24px) / 7.2));
     line-height: 1.2;
     letter-spacing: -0.01em;
   }
