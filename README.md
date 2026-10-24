@@ -106,7 +106,7 @@ Die sieben Stücke liegen als `public/audio/music/<id>.opus`, die beiden Atemger
 
 ## Motive malen
 
-Die 35 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entstehen in einer Claude-Sitzung über den ElevenLabs-Connector; ein API-Schlüssel ist dafür nicht nötig, und es wird keiner gespeichert. Das Freistellen übernimmt `scripts/freistellen.py`, ein Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit Pillow und NumPy braucht.
+Die 36 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entstehen in einer Claude-Sitzung über den ElevenLabs-Connector; ein API-Schlüssel ist dafür nicht nötig, und es wird keiner gespeichert. Das Freistellen übernimmt `scripts/freistellen.py`, ein Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit Pillow und NumPy braucht.
 
 1. **Prompt aufstellen:** `content/motive.json` hält das Schema. `prompt` beschreibt drei Motive nebeneinander (`Icon 1: … Icon 2: … Icon 3: …`); die `…` werden mit dem `subject` der drei Motive einer Gruppe gefüllt, `<style>` wird durch den Stiltext `style` ersetzt; dazu `model` und `background`. Je Motiv stehen `id`, `subject` (was gemalt ist), `flow` und `generation` (Quelle im Connector), `crop` (Ausschnitt) und `size`. So lässt sich ein Motiv später im selben Stil nachmalen.
 2. **Erzeugen:** In der Claude-Sitzung mit dem ElevenLabs-Connector, Modell `gpt-image-2.5-sunburst`, je Bild drei Motive einer Gruppe auf flacher Navy-Fläche `#1B2350`. Eine Variante kostet etwa 190 Credits (rund 4 US-Cent); jeder Aufruf zählt, wiederhole ihn also nicht ohne Grund.

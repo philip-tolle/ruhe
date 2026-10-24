@@ -1,4 +1,4 @@
-// Katalog der 35 gemalten Motive (Spec M4 §3.2, dazu die Musik aus M5). Die Dateien liegen in public/images/motive/<id>.webp,
+// Katalog der 36 gemalten Motive (Spec M4 §3.2, dazu die Musik aus M5 und die Ruhe-Karte aus M6). Die Dateien liegen in public/images/motive/<id>.webp,
 // ihre Herkunft (Prompts, Ausschnitt, Größe) steht in content/motive.json. Motive sind Schmuck:
 // Wo sie erscheinen, bekommen sie `alt=""`; die Bedeutung trägt der Text daneben.
 import { assetUrl, backgroundById } from '../sounds/catalog'
@@ -9,7 +9,7 @@ import type { Tageszeit } from '../time/tageszeit'
 
 const IDS = [
   // Symbole der Reiter und Aktivitäten
-  'meditieren', 'atmen', 'klaenge', 'timer', 'ich',
+  'meditieren', 'atmen', 'klaenge', 'timer', 'ich', 'ruhe',
   // Vorschlag des Tages, je Tageszeit
   'vorschlag-morgen', 'vorschlag-tag', 'vorschlag-abend',
   // Themen der geführten Meditationen

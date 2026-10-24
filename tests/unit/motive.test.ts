@@ -14,9 +14,9 @@ const DIR = 'public/images/motive'
 const file = (id: string) => `${DIR}/${id}.webp`
 const sizeOf = (id: string) => readFileSync(file(id)).length
 
-test('MOTIV_IDS lists exactly the 35 motifs of content/motive.json', () => {
-  expect(MOTIV_IDS).toHaveLength(35)
-  expect(new Set(MOTIV_IDS).size).toBe(35)
+test('MOTIV_IDS lists exactly the 36 motifs of content/motive.json', () => {
+  expect(MOTIV_IDS).toHaveLength(36)
+  expect(new Set(MOTIV_IDS).size).toBe(36)
   expect([...MOTIV_IDS].sort()).toEqual(motive.motive.map((m) => m.id).sort())
 })
 
