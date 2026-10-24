@@ -471,6 +471,45 @@
         233
       ],
       "size": 168
+    },
+    {
+      "id": "thema-mitgefuehl",
+      "subject": "two soft flower petals that together form a heart",
+      "flow": "PmoNZrsLLzJbPOh6tLct",
+      "generation": "UciLfoLA0BzyOxEY7fSV",
+      "crop": [
+        60,
+        200,
+        326,
+        288
+      ],
+      "size": 192
+    },
+    {
+      "id": "thema-gefuehle",
+      "subject": "a single leaf drifting away on calm water",
+      "flow": "PmoNZrsLLzJbPOh6tLct",
+      "generation": "UciLfoLA0BzyOxEY7fSV",
+      "crop": [
+        413,
+        273,
+        455,
+        246
+      ],
+      "size": 192
+    },
+    {
+      "id": "thema-alltag",
+      "subject": "a small steaming tea bowl",
+      "flow": "PmoNZrsLLzJbPOh6tLct",
+      "generation": "UciLfoLA0BzyOxEY7fSV",
+      "crop": [
+        927,
+        106,
+        278,
+        407
+      ],
+      "size": 192
     }
   ]
 }
