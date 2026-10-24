@@ -285,15 +285,45 @@ describe('estimate', () => {
   })
 })
 
-describe('die neun Meditationstexte', () => {
+// Die neun neuen Meditationen aus Meilenstein 7 (Spec M7 §2), in der Reihenfolge der Spec-Tabelle, mit Thema und Ziel-Länge.
+const NEW_IN_M7 = [
+  ['freundlich-mit-dir', 'mitgefuehl', 8],
+  ['liebevolle-guete', 'mitgefuehl', 10],
+  ['ein-schweres-gefuehl-begleiten', 'gefuehle', 10],
+  ['wenn-die-gedanken-kreisen', 'gefuehle', 7],
+  ['gehmeditation', 'alltag', 10],
+  ['achtsam-essen', 'alltag', 5],
+  ['klaenge-hoeren', 'achtsamkeit', 7],
+  ['die-schultern-sinken-lassen', 'stress', 8],
+  ['atemzuege-zaehlen', 'fokus', 6],
+] as const
+
+describe('parseMeditation: die Themen aus Meilenstein 7', () => {
+  it.each(['mitgefuehl', 'gefuehle', 'alltag'])('liest das Thema „%s“', (category) => {
+    const { meta } = parseMeditation(FRONTMATTER.replace('category: stress   # achtsamkeit | stress | fokus', `category: ${category}`) + '\nHallo.\n')
+    expect(meta.category).toBe(category)
+  })
+})
+
+describe('die 18 Meditationstexte', () => {
   const dir = fileURLToPath(new URL('../../content/meditations/', import.meta.url))
   const files = readdirSync(dir).filter((f) => f.endsWith('.md')).sort()
   const parsed = files.map((file) => ({ file, ...parseMeditation(readFileSync(dir + file, 'utf8')) }))
 
   it('entsprechen dem Katalog (Dateiname = id) und haben die Reihenfolge aus Spec 3.2 festgelegt', () => {
-    expect(CATALOG_ORDER).toHaveLength(9)
+    expect(CATALOG_ORDER).toHaveLength(18)
     expect(parsed.map((p) => p.meta.id).sort()).toEqual([...CATALOG_ORDER].sort())
     for (const p of parsed) expect(p.file).toBe(`${p.meta.id}.md`)
+  })
+
+  it('die neuen stehen nach den bisherigen, in der Reihenfolge der Spec M7', () => {
+    expect(CATALOG_ORDER.slice(9)).toEqual(NEW_IN_M7.map(([id]) => id))
+  })
+
+  it.each(NEW_IN_M7)('%s hat Thema %s und Ziel-Länge %i Min, geschätzt höchstens 1 Min daneben', (id, category, minutes) => {
+    const p = parsed.find((x) => x.meta.id === id)!
+    expect(p.meta).toMatchObject({ category, minutes })
+    expect(Math.abs(estimate(p.segments).totalSeconds - minutes * 60)).toBeLessThanOrEqual(60)
   })
 
   it.each(files)('%s hat mindestens 40 % Stille', (file) => {

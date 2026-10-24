@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto'
  * @typedef {{ kind: 'pause', seconds: number }} PauseSegment
  * @typedef {SpeechSegment | PauseSegment} Segment
  *
- * @typedef {'achtsamkeit' | 'stress' | 'fokus'} Category
+ * @typedef {'achtsamkeit' | 'stress' | 'fokus' | 'mitgefuehl' | 'gefuehle' | 'alltag'} Category
  * @typedef {{ id: string, title: string, category: Category, minutes: number, description: string }} Meta
  *
  * @typedef {{ id: string, model: string, settings: Record<string, unknown> }} Voice
@@ -34,7 +34,7 @@ export const PARAGRAPH_PAUSE = 3
 export const MIN_SILENCE_SHARE = 0.4
 
 /** @type {readonly Category[]} */
-export const CATEGORIES = ['achtsamkeit', 'stress', 'fokus']
+export const CATEGORIES = ['achtsamkeit', 'stress', 'fokus', 'mitgefuehl', 'gefuehle', 'alltag']
 
 /** Reihenfolge des Katalogs (Spec 3.2: Thema für Thema, darin wie in der Tabelle). */
 export const CATALOG_ORDER = [
@@ -47,6 +47,16 @@ export const CATALOG_ORDER = [
   'guten-morgen',
   'fokus-vor-der-arbeit',
   'energie-in-der-mittagspause',
+  // Meilenstein 7 (Spec M7 §2): neue Themen, dann je eine mehr in den bisherigen.
+  'freundlich-mit-dir',
+  'liebevolle-guete',
+  'ein-schweres-gefuehl-begleiten',
+  'wenn-die-gedanken-kreisen',
+  'gehmeditation',
+  'achtsam-essen',
+  'klaenge-hoeren',
+  'die-schultern-sinken-lassen',
+  'atemzuege-zaehlen',
 ]
 
 const FIELDS = ['id', 'title', 'category', 'minutes', 'description']
