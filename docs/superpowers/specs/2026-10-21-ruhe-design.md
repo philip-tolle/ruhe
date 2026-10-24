@@ -137,6 +137,14 @@ Sechs Übungen, jeweils mit Dauer 1 / 3 / 5 / 10 Min. Nach Ablauf der Zeit wird 
 
 *Ergänzung vom 22.10.2026 (Meilenstein 4):* Kreis, Schein und Phasenring sind durch die Atem-Blüte ersetzt (sechs gemalte Blütenblätter, die sich mit dem Atemstand öffnen und schließen). Die Phasenfarben sind jetzt Einatmen Lavendel, Halten Pfirsich-Gold und Ausatmen Blaugrün; das Pulsieren beim Halten entfällt. Mit „Bewegung reduzieren“ steht die Blüte in mittlerer Größe still, nur die Farbe wechselt mit der Phase. Die Übungen stehen auf „Atmen“ als Kacheln mit Motiv, Rhythmus und Wirkung, und der Player zeigt die Beschreibung der Übung unter dem Titel. Näheres in `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §5 (Blüte) und §4.3 (Kacheln).
 
+*Ergänzung vom 24.10.2026 (Meilenstein 8):* Unter den sechs Kacheln steht der Abschnitt „Eigene Muster“.
+- **Anlegen:** Bis zu 6 eigene Rhythmen mit Namen. Jeder hat vier Phasen in fester Reihenfolge: Einatmen 2–15 s, Halten 0–20 s, Ausatmen 2–20 s, Halten 0–20 s, jeweils in Schritten von 0,5 s. Phasen mit 0 s entfallen.
+- **Bedienen:** Bearbeitet und gelöscht wird im Editor (Blatt), gestartet aus der Liste. Danach laufen sie wie die festen Übungen: Dauer, Atemgeräusch, Hintergrund, Statistik, Ruhe-Check-in und „Zuletzt genutzt“.
+- **Speichern:** Die Muster stehen in `ruhe.v1.breathPatterns` und im Backup.
+- **Gelöschtes Muster:** „Zuletzt genutzt“ bietet dann wieder „Ankommen im Atem“ an.
+
+Näheres in `docs/superpowers/specs/2026-10-24-ruhe-m8-eigene-atemmuster-design.md`.
+
 ### 3.4 Klänge
 
 **Acht Klänge**, es läuft immer **einer** zur Zeit:

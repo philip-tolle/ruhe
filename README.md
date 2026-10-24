@@ -67,6 +67,14 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
+## Handy-Checkliste Meilenstein 8
+
+1. Unter „Atmen“ ein eigenes Muster anlegen (z. B. 4-4-6-2), benennen und speichern: Es steht unter „Eigene Muster“.
+2. Es mit 1 Minute starten: Blüte, Text und Atemgeräusch folgen dem eigenen Rhythmus, Halten bleibt still.
+3. Das Muster bearbeiten und dann löschen: Die Rückfrage erscheint, danach ist es weg; „Heute“ zeigt bei „Zuletzt genutzt“ wieder „Ankommen im Atem“.
+4. Backup exportieren und wieder importieren: Die eigenen Muster sind da, nichts doppelt.
+5. Mit großer Systemschrift: Editor und Liste passen, alle Knöpfe sind gut zu treffen.
+
 ## Handy-Checkliste Meilenstein 7
 
 1. „Meditieren“: 6 Themen mit Motiven, die neuen Motive passen zu den alten. Benachbarte Themen haben unterschiedliche Farben.
