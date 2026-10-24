@@ -18,8 +18,8 @@ mount(App, { target: document.getElementById('app')! })
 
 // Jede beendete Sitzung wird erfasst (ab 60 s) und danach im Player als Abschluss gezeigt.
 // Einmal für die ganze Lebensdauer der App, darum nie getrennt.
-connectSessions(engine, recordSession, (r, counted) => {
-  sessionUi.done = { kind: r.kind, ref: r.ref, seconds: r.seconds, counted }
+connectSessions(engine, recordSession, (r, sessionId) => {
+  sessionUi.done = { kind: r.kind, ref: r.ref, seconds: r.seconds, counted: sessionId !== null, sessionId }
 })
 
 initPwa()

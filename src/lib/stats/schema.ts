@@ -6,6 +6,15 @@ import { INTERVAL_OPTIONS } from '../meditation/timer-plan'
 
 export type SessionKind = 'guided' | 'timer' | 'breath'
 
+/** Ruhe in fünf Stufen, von 1 „sehr unruhig“ bis 5 „ganz ruhig“ (Spec M6 §2). */
+export type CalmLevel = 1 | 2 | 3 | 4 | 5
+
+/** Ruhe-Check-in einer Sitzung: wie ruhig vorher und jetzt, beides freiwillig. */
+export interface Calm {
+  before?: CalmLevel
+  after?: CalmLevel
+}
+
 export interface Session {
   id: string
   /** ISO-Zeitpunkt des Beginns. */
@@ -15,6 +24,8 @@ export interface Session {
   ref: string
   /** Tatsächlich absolvierte Sekunden. */
   seconds: number
+  /** Ruhe-Check-in; fehlt, solange nichts festgehalten ist (nie ein leeres Objekt). */
+  calm?: Calm
 }
 
 /** Von der Engine gemeldetes Ende einer Sitzung. */
@@ -86,6 +97,19 @@ function isPositive(v: unknown): v is number {
 // ISO-Datum mit Uhrzeit; Date.parse allein ließe auch Texte wie "1" oder "Oct 21" durch.
 const ISO_START = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
 
+function isCalmLevel(v: unknown): v is CalmLevel {
+  return Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5
+}
+
+/** Nur gültige Stufen bleiben; ohne eine gültige ergibt es `undefined`. Verwirft nie die Sitzung. */
+function parseCalm(raw: unknown): Calm | undefined {
+  if (!isRecord(raw)) return undefined
+  const calm: Calm = {}
+  if (isCalmLevel(raw.before)) calm.before = raw.before
+  if (isCalmLevel(raw.after)) calm.after = raw.after
+  return calm.before === undefined && calm.after === undefined ? undefined : calm
+}
+
 function parseSession(raw: unknown): Session | null {
   if (!isRecord(raw)) return null
   const { id, start, kind, ref, seconds } = raw
@@ -94,7 +118,10 @@ function parseSession(raw: unknown): Session | null {
   if (typeof kind !== 'string' || !SESSION_KINDS.includes(kind)) return null
   if (typeof ref !== 'string') return null
   if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return null
-  return { id, start, kind: kind as SessionKind, ref, seconds }
+  const session: Session = { id, start, kind: kind as SessionKind, ref, seconds }
+  const calm = parseCalm(raw.calm)
+  if (calm) session.calm = calm
+  return session
 }
 
 /** Jedes fehlende oder ungültige Feld bekommt seinen Standardwert. */

@@ -5,10 +5,10 @@ import type { SessionResult } from '../../src/lib/stats/schema'
 test('results are recorded and shown', () => {
   let emit!: (r: SessionResult) => void
   const shown: unknown[] = []
-  connectSessions({ onSessionEnd: l => { emit = l; return () => {} } }, r => r.seconds >= 60, (r, counted) => shown.push([r.ref, counted]))
+  connectSessions({ onSessionEnd: l => { emit = l; return () => {} } }, r => (r.seconds >= 60 ? 'id-' + r.ref : null), (r, sessionId) => shown.push([r.ref, sessionId]))
   emit({ kind: 'timer', ref: 'timer', start: new Date(), seconds: 30 })
   emit({ kind: 'breath', ref: '478', start: new Date(), seconds: 76 })
-  expect(shown).toEqual([['timer', false], ['478', true]])
+  expect(shown).toEqual([['timer', null], ['478', 'id-478']])
 })
 
 test('each result is recorded before it is shown', () => {
@@ -16,7 +16,7 @@ test('each result is recorded before it is shown', () => {
   const calls: string[] = []
   connectSessions(
     { onSessionEnd: l => { emit = l; return () => {} } },
-    () => { calls.push('record'); return true },
+    () => { calls.push('record'); return 'id' },
     () => calls.push('done'),
   )
   emit({ kind: 'timer', ref: 'timer', start: new Date(), seconds: 600 })
@@ -25,7 +25,7 @@ test('each result is recorded before it is shown', () => {
 
 test('the returned function disconnects from the source', () => {
   let unsubscribed = 0
-  const stop = connectSessions({ onSessionEnd: () => () => { unsubscribed++ } }, () => true, () => {})
+  const stop = connectSessions({ onSessionEnd: () => () => { unsubscribed++ } }, () => 'id', () => {})
   stop()
   expect(unsubscribed).toBe(1)
 })

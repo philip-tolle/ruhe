@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { loadData, saveData, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
+import { loadData, saveData, withCalm, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
 import { emptyData } from '../../src/lib/stats/schema'
 const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) } }
 
@@ -50,4 +50,31 @@ test('withSession drops non-finite seconds and an invalid start instead of stori
     expect(withSession(emptyData(), { kind: 'timer', ref: 'timer', start, seconds }, 'x')).toBeNull()
   expect(() => withSession(emptyData(), { kind: 'timer', ref: 'timer', start: new Date(NaN), seconds: 600 }, 'x')).not.toThrow()
   expect(withSession(emptyData(), { kind: 'timer', ref: 'timer', start: new Date(NaN), seconds: 600 }, 'x')).toBeNull()
+})
+
+const two = () => {
+  const d = emptyData()
+  d.sessions.push({ id: 'a', start: '2026-10-21T08:00:00.000Z', kind: 'breath', ref: 'box', seconds: 64 })
+  d.sessions.push({ id: 'b', start: '2026-10-21T09:00:00.000Z', kind: 'timer', ref: 'timer', seconds: 600 })
+  return d
+}
+test('withCalm sets, changes and removes a value of one session', () => {
+  const d = two()
+  const before = structuredClone(d)
+  const one = withCalm(d, 'a', 'before', 2)!
+  expect(one.sessions[0].calm).toEqual({ before: 2 })
+  expect(one.sessions[1]).toEqual(d.sessions[1])
+  expect(d).toEqual(before)
+  const both = withCalm(one, 'a', 'after', 4)!
+  expect(both.sessions[0].calm).toEqual({ before: 2, after: 4 })
+  const changed = withCalm(both, 'a', 'after', 5)!
+  expect(changed.sessions[0].calm).toEqual({ before: 2, after: 5 })
+  const onlyAfter = withCalm(changed, 'a', 'before', null)!
+  expect(onlyAfter.sessions[0].calm).toEqual({ after: 5 })
+  const none = withCalm(onlyAfter, 'a', 'after', null)!
+  expect('calm' in none.sessions[0]).toBe(false)
+  expect(none.sessions[0]).toEqual(d.sessions[0])
+})
+test('withCalm ignores an unknown id', () => {
+  expect(withCalm(two(), 'x', 'before', 3)).toBeNull()
 })

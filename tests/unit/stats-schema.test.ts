@@ -149,3 +149,26 @@ test('breathSound defaults to true and keeps a stored false', () => {
   expect(withSettings({ breathSound: false })!.breathSound).toBe(false)
   expect(withSettings({ breathSound: 'nein' })!.breathSound).toBe(true)
 })
+
+const withSessions = (...sessions: unknown[]) => parseData({ version: 1, sessions, settings: {} })
+test('a session keeps a valid calm', () => {
+  expect(withSessions({ ...session, calm: { before: 2, after: 5 } })?.sessions[0]).toEqual({ ...session, calm: { before: 2, after: 5 } })
+  expect(withSessions({ ...session, calm: { after: 3 } })?.sessions[0]).toEqual({ ...session, calm: { after: 3 } })
+})
+test('invalid calm values are dropped, the session stays', () => {
+  for (const before of [0, 6, 2.5, '3', null, true]) {
+    const data = withSessions({ ...session, calm: { before, after: 4 } })
+    expect(data, String(before)).not.toBeNull()
+    expect(data!.sessions[0].calm).toEqual({ after: 4 })
+  }
+  expect(withSessions({ ...session, calm: { before: 9, after: 4 } })!.sessions[0].calm).toEqual({ after: 4 })
+  for (const calm of [{}, 'x', { before: 0 }, null, [3]]) {
+    const data = withSessions({ ...session, calm })
+    expect(data, JSON.stringify(calm)).not.toBeNull()
+    expect('calm' in data!.sessions[0]).toBe(false)
+    expect(data!.sessions[0]).toEqual(session)
+  }
+})
+test('unknown keys inside calm are dropped', () => {
+  expect(withSessions({ ...session, calm: { before: 1, mood: 3 } })!.sessions[0].calm).toEqual({ before: 1 })
+})

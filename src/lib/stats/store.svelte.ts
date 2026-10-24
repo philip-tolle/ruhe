@@ -2,8 +2,8 @@
 // Funktionen hier. Jede Änderung ersetzt `stats.data` durch ein neues Objekt und speichert
 // sofort; die Logik steckt in persist.ts und backup.ts.
 import { mergeBackup } from './backup'
-import { loadData, saveData, withSession, type StorageLike } from './persist'
-import type { AppData, LastUsed, SessionResult, Settings } from './schema'
+import { loadData, saveData, withCalm, withSession, type StorageLike } from './persist'
+import type { AppData, CalmLevel, LastUsed, SessionResult, Settings } from './schema'
 
 /** `window.localStorage`, oder `null`, wenn der Zugriff wirft (z. B. SecurityError) oder fehlt. */
 export function safeLocalStorage(): StorageLike | null {
@@ -24,12 +24,22 @@ function commit(data: AppData): void {
   stats.saveFailed = !saveData(storage, data)
 }
 
-/** `true`, wenn die Sitzung zählt (ab 60 s) – auch dann, wenn das Speichern scheitert. */
-export function recordSession(result: SessionResult): boolean {
-  const next = withSession(stats.data, result, crypto.randomUUID())
-  if (!next) return false
+/**
+ * Die ID der neuen Sitzung, wenn sie zählt (ab 60 s) – auch dann, wenn das Speichern scheitert
+ * (sie steht im Speicher der App); sonst `null`.
+ */
+export function recordSession(result: SessionResult): string | null {
+  const id = crypto.randomUUID()
+  const next = withSession(stats.data, result, id)
+  if (!next) return null
   commit(next)
-  return true
+  return id
+}
+
+/** Ruhe-Check-in vom Abschluss: setzt oder entfernt (`null`) einen Wert; eine unbekannte ID ändert nichts. */
+export function setCalm(sessionId: string, which: 'before' | 'after', level: CalmLevel | null): void {
+  const next = withCalm(stats.data, sessionId, which, level)
+  if (next) commit(next)
 }
 
 export function setLastUsed(last: LastUsed): void {

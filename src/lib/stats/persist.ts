@@ -1,6 +1,6 @@
 // Laden und Speichern unter einem einzigen localStorage-Schlüssel. Der Speicher wird
 // hineingereicht (testbar); jeder Zugriff steht in try/catch, Fehler gelangen nie nach oben.
-import { emptyData, parseData, type AppData, type SessionResult } from './schema'
+import { emptyData, parseData, type AppData, type Calm, type CalmLevel, type SessionResult } from './schema'
 import { MIN_SECONDS } from './summary'
 
 export const STORAGE_KEY = 'ruhe.v1'
@@ -58,4 +58,19 @@ export function withSession(data: AppData, result: SessionResult, id: string): A
   if (Number.isNaN(result.start.getTime())) return null
   const session = { id, start: result.start.toISOString(), kind: result.kind, ref: result.ref, seconds: Math.floor(result.seconds) }
   return { ...data, sessions: [...data.sessions, session] }
+}
+
+/**
+ * Setzt oder entfernt (`null`) einen Ruhe-Wert einer Sitzung in einem neuen Stand (`data` bleibt
+ * unverändert). Fehlen danach beide Werte, entfällt `calm`. Eine unbekannte ID ergibt `null`.
+ */
+export function withCalm(data: AppData, sessionId: string, which: 'before' | 'after', level: CalmLevel | null): AppData | null {
+  const index = data.sessions.findIndex(s => s.id === sessionId)
+  if (index === -1) return null
+  const { calm: old, ...session } = data.sessions[index]
+  const calm: Calm = { ...old }
+  if (level === null) delete calm[which]
+  else calm[which] = level
+  const next = calm.before === undefined && calm.after === undefined ? session : { ...session, calm }
+  return { ...data, sessions: data.sessions.map((s, i) => (i === index ? next : s)) }
 }

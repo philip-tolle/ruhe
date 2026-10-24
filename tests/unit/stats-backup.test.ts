@@ -58,3 +58,21 @@ test('merge drops sessions under 60 s from the file instead of importing them; t
   expect(r).toMatchObject({ added: 2 })
   expect('data' in r && r.data.sessions.map(x => x.id)).toEqual(['genau', 'lang'])
 })
+
+test('calm travels through export and import', () => {
+  const current = emptyData()
+  current.sessions.push({ ...sess('a', '2026-10-20T08:00:00.000Z'), calm: { before: 2, after: 4 } })
+  const merged = mergeBackup(emptyData(), serializeBackup(current))
+  if ('error' in merged) throw new Error(merged.error)
+  expect(merged.data.sessions[0].calm).toEqual({ before: 2, after: 4 })
+})
+test('import never overwrites calm of a known session', () => {
+  const current = emptyData()
+  current.sessions.push({ ...sess('a', '2026-10-20T08:00:00.000Z'), calm: { before: 1 } })
+  const file = emptyData()
+  file.sessions.push({ ...sess('a', '2026-10-20T08:00:00.000Z'), calm: { before: 5 } })
+  const merged = mergeBackup(current, serializeBackup(file))
+  if ('error' in merged) throw new Error(merged.error)
+  expect(merged.added).toBe(0)
+  expect(merged.data.sessions[0].calm).toEqual({ before: 1 })
+})

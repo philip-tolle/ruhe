@@ -14,6 +14,8 @@ export interface SessionDoneInfo {
   ref: string
   seconds: number
   counted: boolean
+  /** Die gespeicherte Sitzung (für den Ruhe-Check-in); `null`, wenn sie nicht zählt. */
+  sessionId: string | null
 }
 
 export const sessionUi: { done: SessionDoneInfo | null } = $state({ done: null })
