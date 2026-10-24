@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { doubleTap } from './taps'
 
 // Ruhe-Check-in auf dem Abschluss (Spec M6 §3). Eine Sitzung zählt erst ab 60 s; die Box-Atmung
 // mit „1 Min“ läuft vier 16-s-Zyklen, also 64 s, und endet von selbst.
@@ -108,3 +109,30 @@ test('a session under a minute shows no check-in', async ({ page }) => {
   await expect(row(page, 'Vorher')).toHaveCount(0)
   await expect(page.getByText('Ohne Antwort einfach „Fertig“.')).toHaveCount(0)
 })
+
+// Auf niedrigen Bildschirmen liegt „Fertig“ (etwa 720 px hoch) oder ein Punkt von „Jetzt“ (etwa 640 px)
+// genau dort, wo eben „Beenden“ war; der zweite Tipp eines Doppeltipps darf dort nichts auslösen.
+for (const { height, x, y, lands } of [
+  { height: 720, x: 0.5, y: 0.5, lands: '„Fertig“' },
+  { height: 640, x: 0.32, y: 0.08, lands: 'a dot of „Jetzt“' },
+]) {
+  test.describe(`on a screen ${height} px high`, () => {
+    test.use({ viewport: { width: 360, height } })
+
+    test(`a double tap on „Beenden“ after a minute does nothing on ${lands}`, async ({ page }) => {
+      test.setTimeout(120_000)
+      await openAtmen(page)
+      await page.getByRole('radio', { name: '1 Min' }).click()
+      // 4-7-8 läuft 76 s; nach gut einer Minute zählt die Sitzung schon, ist aber noch nicht zu Ende.
+      await page.getByRole('button', { name: '4-7-8 starten' }).click()
+      await expect(page.getByRole('heading', { name: 'Atmen · 4-7-8' })).toBeVisible()
+      await page.waitForTimeout(63_000)
+      await doubleTap(page, page.getByRole('button', { name: 'Beenden' }), x, y)
+      await expect(page.getByText('1 Min geatmet')).toBeVisible()
+      await expect(page.getByText('Magst du festhalten, wie ruhig du bist?')).toBeVisible()
+      await expect(checked(page, 'Vorher')).toHaveCount(0)
+      await expect(checked(page, 'Jetzt')).toHaveCount(0)
+      expect(await calm(page)).toBeUndefined()
+    })
+  })
+}

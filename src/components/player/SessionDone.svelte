@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import CalmCheckIn from './CalmCheckIn.svelte'
+  import { tapArming } from '../../lib/ui/arming.svelte'
   import type { SessionKind } from '../../lib/stats/schema'
 
   let {
@@ -39,6 +40,10 @@
 
   let heading = $state<HTMLElement>()
 
+  // Ein Doppeltipp auf „Beenden“ soll den Abschluss nicht gleich wieder schließen: „Fertig“ nimmt
+  // Tipps erst kurz nach dem Erscheinen an (wie die Knöpfe des Players nach „Starten“).
+  const arming = tapArming()
+
   // Die Laufansicht mit dem fokussierten Knopf ist weg: Der Fokus kommt auf die Überschrift.
   onMount(() => heading?.focus())
 </script>
@@ -50,7 +55,7 @@
   {#if checkIn}
     <CalmCheckIn sessionId={checkIn} />
   {/if}
-  <button type="button" class="button" onclick={() => onDone()}>Fertig</button>
+  <button type="button" class="button" onclick={() => arming.armed && onDone()}>Fertig</button>
   {#if checkIn}
     <p class="skip">Ohne Antwort einfach „Fertig“.</p>
   {/if}

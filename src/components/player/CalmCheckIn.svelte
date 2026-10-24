@@ -2,6 +2,7 @@
   import { CALM_LEVELS } from '../../lib/stats/calm'
   import type { CalmLevel } from '../../lib/stats/schema'
   import { setCalm, stats } from '../../lib/stats/store.svelte'
+  import { tapArming } from '../../lib/ui/arming.svelte'
 
   // Ruhe-Check-in auf dem Abschluss (Spec M6 §3): zwei Reihen „Vorher“ und „Jetzt“ mit je fünf Punkten.
   // Ein Tipp speichert sofort, ein anderer Punkt ändert, derselbe nimmt zurück. Die Werte stehen an
@@ -12,7 +13,12 @@
 
   const calm = $derived(stats.data.sessions.find((s) => s.id === sessionId)?.calm)
 
+  // Endet die Sitzung mit einem Doppeltipp auf „Beenden“, landet der zweite Tipp sonst auf einem Punkt,
+  // der dort gerade erscheint (siehe `tapArming`), und hielte eine Stufe fest, die niemand gewählt hat.
+  const arming = tapArming()
+
   function choose(which: Which, level: CalmLevel) {
+    if (!arming.armed) return
     setCalm(sessionId, which, calm?.[which] === level ? null : level)
   }
 

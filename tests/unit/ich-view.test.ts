@@ -298,3 +298,9 @@ test('calmTrendLine: calmer, less calm, about the same, nothing without a trend'
   expect(calmTrendLine({ recent: 2.5, previous: 3 })).toBe('Vor deinen Sitzungen warst du in den letzten 30 Tagen unruhiger als in den 30 Tagen davor.')
   expect(calmTrendLine({ recent: 3.2, previous: 3 })).toBe('Vor deinen Sitzungen warst du in den letzten 30 Tagen etwa gleich ruhig wie in den 30 Tagen davor.')
 })
+
+test('calmTrendLine: a difference of exactly 0,3 counts, despite rounding in the means', () => {
+  // 4,4,3,3 → 3,5 und 4,3,3,3,3 → 3,2: 3.5 − 3.2 ist in Gleitkomma 0.2999…
+  expect(calmTrendLine({ recent: 14 / 4, previous: 16 / 5 })).toBe('Vor deinen Sitzungen warst du in den letzten 30 Tagen ruhiger als in den 30 Tagen davor.')
+  expect(calmTrendLine({ recent: 16 / 5, previous: 14 / 4 })).toBe('Vor deinen Sitzungen warst du in den letzten 30 Tagen unruhiger als in den 30 Tagen davor.')
+})

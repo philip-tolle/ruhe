@@ -199,7 +199,8 @@ export function calmEffectLines(effect: CalmEffect | null): { main: string; spli
 /** Verlauf-Satz der Vorher-Werte; ohne Verlauf `null`. */
 export function calmTrendLine(trend: CalmTrend | null): string | null {
   if (!trend) return null
-  const diff = trend.recent - trend.previous
+  // Auf neun Stellen gerundet: Die Differenz zweier Mittelwerte trägt sonst Gleitkomma-Reste (3,5 − 3,2 = 0,2999…).
+  const diff = Math.round((trend.recent - trend.previous) * 1e9) / 1e9
   const start = `Vor deinen Sitzungen warst du in den letzten ${CALM_DAYS} Tagen`
   if (Math.abs(diff) < CALM_THRESHOLD) return `${start} etwa gleich ruhig wie in den ${CALM_DAYS} Tagen davor.`
   return `${start} ${diff > 0 ? 'ruhiger' : 'unruhiger'} als in den ${CALM_DAYS} Tagen davor.`
