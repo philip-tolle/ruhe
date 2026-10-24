@@ -743,3 +743,91 @@ test('nothing moves under reduced motion', async ({ page }) => {
   await expect(page.getByRole('switch', { name: '10 Sekunden ankommen' })).toHaveAttribute('aria-checked', 'false')
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
 })
+
+test.describe('Ruhe', () => {
+  // Eine Sitzung `daysBack` Tage vor „heute“ (21.10.2026) um 8 Uhr Berliner Sommerzeit, auf Wunsch mit Ruhe-Werten.
+  let n = 0
+  const calmSession = (daysBack: number, kind: 'timer' | 'breath', before?: number, after?: number) => {
+    const day = new Date(Date.UTC(2026, 9, 21) - daysBack * 86_400_000).toISOString().slice(0, 10)
+    const calm = { ...(before !== undefined && { before }), ...(after !== undefined && { after }) }
+    return { ...session(`c-${n++}`, `${day}T08:00:00+02:00`, kind, kind === 'breath' ? 'box' : 'timer', 300), ...(Object.keys(calm).length > 0 && { calm }) }
+  }
+  const ruhe = (page: Page) => card(page, 'Ruhe')
+  const INVITATION = 'Halte nach einer Sitzung fest, wie ruhig du vorher und jetzt bist. Hier siehst du dann, was dir deine Übungen bringen.'
+  // 3 × Atmen 2 → 4 und 3 × Timer 2 → 3: im Schnitt 1,5 Stufen ruhiger.
+  const PAIRS = [
+    calmSession(1, 'breath', 2, 4), calmSession(2, 'breath', 2, 4), calmSession(3, 'breath', 2, 4),
+    calmSession(4, 'timer', 2, 3), calmSession(5, 'timer', 2, 3), calmSession(6, 'timer', 2, 3),
+  ]
+
+  test('without check-ins the card invites, under the calendar and above Einstellungen', async ({ page }) => {
+    await open(page)
+    await expect(ruhe(page)).toContainText(INVITATION)
+    await expect(ruhe(page).getByText(/Vor deinen Sitzungen/)).toHaveCount(0)
+    await expect(ruhe(page).getByText(/^Aus \d+ Sitzungen/)).toHaveCount(0)
+    await expectMotiv(ruhe(page).locator('img'), 'ruhe', 40)
+    const [table, heading, settings] = await Promise.all([
+      page.getByRole('table').boundingBox(),
+      page.getByRole('heading', { level: 2, name: 'Ruhe', exact: true }).boundingBox(),
+      page.getByRole('heading', { level: 2, name: 'Einstellungen', exact: true }).boundingBox(),
+    ])
+    expect(table!.y).toBeLessThan(heading!.y)
+    expect(heading!.y).toBeLessThan(settings!.y)
+  })
+
+  test('effect, split and basis', async ({ page }) => {
+    await open(page, backupOf([...SESSIONS, ...PAIRS]))
+    await expect(ruhe(page)).toContainText('Nach einer Sitzung bist du im Schnitt 1,5 Stufen ruhiger.')
+    await expect(ruhe(page)).toContainText('Atmen +2,0 · Meditieren +1,0')
+    await expect(ruhe(page)).toContainText('Aus 6 Sitzungen der letzten 30 Tage')
+    await expect(ruhe(page).getByText(INVITATION)).toHaveCount(0)
+  })
+
+  test('less calm after the sessions', async ({ page }) => {
+    // 3 × 4 → 3 und 2 × 3 → 3: im Schnitt −0,6.
+    const sessions = [calmSession(1, 'breath', 4, 3), calmSession(2, 'breath', 4, 3), calmSession(3, 'timer', 4, 3), calmSession(4, 'timer', 3, 3), calmSession(5, 'timer', 3, 3)]
+    await open(page, backupOf(sessions))
+    await expect(ruhe(page)).toContainText('Nach einer Sitzung bist du im Schnitt 0,6 Stufen unruhiger.')
+    await expect(ruhe(page)).toContainText('Aus 5 Sitzungen der letzten 30 Tage')
+    await expect(ruhe(page).getByText(/^Atmen /)).toHaveCount(0)
+  })
+
+  test('about as calm as before', async ({ page }) => {
+    // 1 × 3 → 4 und 4 × 3 → 3: im Schnitt +0,2.
+    const sessions = [calmSession(1, 'breath', 3, 4), calmSession(2, 'breath', 3, 3), calmSession(3, 'timer', 3, 3), calmSession(4, 'timer', 3, 3), calmSession(5, 'timer', 3, 3)]
+    await open(page, backupOf(sessions))
+    await expect(ruhe(page)).toContainText('Nach einer Sitzung bist du im Schnitt etwa so ruhig wie vorher.')
+  })
+
+  for (const [name, recent, previous, sentence] of [
+    ['calmer', 4, 2, 'Vor deinen Sitzungen warst du in den letzten 30 Tagen ruhiger als in den 30 Tagen davor.'],
+    ['less calm', 2, 4, 'Vor deinen Sitzungen warst du in den letzten 30 Tagen unruhiger als in den 30 Tagen davor.'],
+    ['about the same', 3, 3, 'Vor deinen Sitzungen warst du in den letzten 30 Tagen etwa gleich ruhig wie in den 30 Tagen davor.'],
+  ] as const) {
+    test(`trend: ${name}, next to the invitation when there are no pairs`, async ({ page }) => {
+      const befores = [1, 3, 5].map((d) => calmSession(d, 'breath', recent)).concat([35, 38, 40].map((d) => calmSession(d, 'timer', previous)))
+      await open(page, backupOf(befores))
+      await expect(ruhe(page)).toContainText(sentence)
+      await expect(ruhe(page)).toContainText(INVITATION)
+    })
+  }
+
+  test('check-ins survive export and import', async ({ page }) => {
+    await open(page, backupOf([...SESSIONS, ...PAIRS]))
+    const effect = 'Nach einer Sitzung bist du im Schnitt 1,5 Stufen ruhiger.'
+    await expect(ruhe(page)).toContainText(effect)
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Backup exportieren' }).click(),
+    ])
+    const content = readFileSync((await download.path())!, 'utf8')
+    expect(JSON.parse(content).sessions.filter((s: { calm?: object }) => s.calm)).toHaveLength(6)
+    await page.evaluate(() => localStorage.clear())
+    await page.reload()
+    await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Ich' }).click()
+    await expect(ruhe(page)).toContainText(INVITATION)
+    await chooseFile(page, { name: 'ruhe-backup-2026-10-21.json', content })
+    await expect(ruhe(page)).toContainText(effect)
+    await expect(ruhe(page)).toContainText('Aus 6 Sitzungen der letzten 30 Tage')
+  })
+})

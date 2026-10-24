@@ -32,6 +32,7 @@
 - Keine täglichen Erinnerungs-Benachrichtigungen (bräuchte einen Push-Server).
 - Keine geführten Schlaf-Meditationen (Schlaf wird über Naturklänge + Sleep-Timer abgedeckt).
 - Keine ausführliche Statistik (Stimmungstagebuch, Diagramme).
+  *Ergänzung vom 24.10.2026 (Meilenstein 6):* Der Ruhe-Check-in (nach einer Sitzung „Vorher“ und „Jetzt“ in fünf Stufen, unter „Ich“ zwei Sätze zu Wirkung und Verlauf) ist kein Stimmungstagebuch; es gibt weiter keine Diagramme und keine Liste. Siehe `docs/superpowers/specs/2026-10-24-ruhe-m6-ruhe-check-in-design.md`.
 - Kein iOS-/Desktop-Feinschliff: Ziel ist Chrome auf Android. Andere Browser dürfen funktionieren, werden aber nicht gezielt getestet.
 
 ### Rahmenbedingungen

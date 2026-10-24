@@ -991,7 +991,7 @@ test.describe('Ich', () => {
     const figures = page.locator('dl > div')
     await expect(figures).toHaveCount(3)
     for (const figure of await figures.all()) await expectGoldBorder(figure, 0.26)
-    await expect(ichCards(page)).toHaveCount(4) // Kalender, Einstellungen, Offline, Backup
+    await expect(ichCards(page)).toHaveCount(5) // Kalender, Ruhe, Einstellungen, Offline, Backup
     for (const card of await ichCards(page).all()) await expectGoldBorder(card, 0.26)
   })
 
@@ -1006,7 +1006,7 @@ test.describe('Ich', () => {
       expect(await waschungIn(calendar(page))).toBe(farbe)
       await expect(calendar(page).locator('.waschung img')).toHaveAttribute('alt', '')
       await expect(calendar(page).locator('.waschung')).toHaveAttribute('aria-hidden', 'true')
-      for (const heading of ['Einstellungen', 'Offline', 'Backup']) expect(await waschungIn(ichCard(page, heading)), heading).toBeNull()
+      for (const heading of ['Ruhe', 'Einstellungen', 'Offline', 'Backup']) expect(await waschungIn(ichCard(page, heading)), heading).toBeNull()
     })
   }
 
@@ -1141,8 +1141,8 @@ test.describe('card headings', () => {
     await expectCardHeadings(page, 1)
   })
 
-  test('Ich: the month, „Einstellungen“, „Offline“ and „Backup“', async ({ page }) => {
+  test('Ich: the month, „Ruhe“, „Einstellungen“, „Offline“ and „Backup“', async ({ page }) => {
     await openTab(page, 'Ich')
-    await expectCardHeadings(page, 4)
+    await expectCardHeadings(page, 5)
   })
 })

@@ -67,6 +67,15 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
+## Handy-Checkliste Meilenstein 6
+
+1. Eine Atemübung von 1 Minute zu Ende atmen: Unter „Gut gemacht.“ erscheint die Karte. „Vorher“ und „Jetzt“ antippen, einen Punkt ändern, einen zurücknehmen: Alles fühlt sich ruhig und eindeutig an, das Wort neben der Reihe stimmt.
+2. Eine Sitzung unter einer Minute beenden: keine Karte.
+3. Bei großer Schrift (Android-Einstellung) passt alles, der Abschluss lässt sich scrollen.
+4. Nach drei Sitzungen mit beiden Werten zeigt „Ich“ die Wirkung, mit Grundlage. Mit Atmen und Meditieren je dreimal kommt die Aufteilung dazu.
+5. Backup exportieren und wieder importieren: Die Sätze unter „Ich“ bleiben gleich.
+6. Das Motiv „Ruhe“ sieht in allen drei Tageszeiten gut aus.
+
 ## Handy-Checkliste Meilenstein 5
 
 1. „Klänge“: Jedes Musikstück startet weich. „Stilles Klavier“ 6 Minuten laufen lassen, **mit gesperrtem Bildschirm**: An der Naht nach 5 Minuten ist kein Bruch zu hören.

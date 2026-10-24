@@ -6,10 +6,20 @@
   import SoundSelect from '../components/SoundSelect.svelte'
   import Switch from '../components/Switch.svelte'
   import { offline, refreshSaved } from '../lib/offline/status.svelte'
+  import { calmEffect, calmTrend } from '../lib/stats/calm'
   import { backupFileName, serializeBackup } from '../lib/stats/backup'
   import { importBackup, stats, updateSettings } from '../lib/stats/store.svelte'
   import { streak, totalMinutes } from '../lib/stats/summary'
-  import { importMessage, offlineSummary, savedTotals, savingLabel, streakLabel, sumBytes } from '../lib/ui/ich-view'
+  import {
+    calmEffectLines,
+    calmTrendLine,
+    importMessage,
+    offlineSummary,
+    savedTotals,
+    savingLabel,
+    streakLabel,
+    sumBytes,
+  } from '../lib/ui/ich-view'
   import { clearSaveMessage, offlineFiles, saveAllOffline, saveAllUi } from '../lib/ui/offline-ui.svelte'
 
   const sessions = $derived(stats.data.sessions)
@@ -20,6 +30,10 @@
     { label: 'Minuten gesamt', value: String(totalMinutes(sessions)) },
     { label: 'Sitzungen', value: String(sessions.length) },
   ])
+
+  // Ruhe-Karte (Spec M6 §4): Wirkung (oder Einladung) und Verlauf, unabhängig voneinander.
+  const calm = $derived(calmEffectLines(calmEffect(sessions, new Date())))
+  const trend = $derived(calmTrendLine(calmTrend(sessions, new Date())))
 
   // Die Balance folgt dem Regler beim Ziehen; gespeichert wird beim Loslassen (wie im Player).
   let dragging = $state<number | null>(null)
@@ -107,6 +121,25 @@
   </dl>
 
   <Calendar {sessions} />
+
+  <div class="card">
+    <div class="card-head">
+      <Motiv id="ruhe" size={40} />
+      <h2>Ruhe</h2>
+    </div>
+    <div class="calm">
+      <p>{calm.main}</p>
+      {#if calm.split}
+        <p class="quiet">{calm.split}</p>
+      {/if}
+      {#if calm.basis}
+        <p class="quiet">{calm.basis}</p>
+      {/if}
+      {#if trend}
+        <p>{trend}</p>
+      {/if}
+    </div>
+  </div>
 
   <!-- Über jeder Zeile steht eine feine Goldlinie, wie bei den Aktivitäten auf Heute. -->
   <div class="card">
@@ -237,6 +270,30 @@
 
   .card {
     align-items: stretch;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Wirkung, Aufteilung, Grundlage und Verlauf: ruhige Sätze, die Nebenzeilen klein und gedämpft. */
+  .calm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .calm p {
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  .calm .quiet {
+    margin-top: -4px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
   }
 
   /* Einstellungszeilen: Schalter und Felder, durch Goldlinien getrennt (über jeder Zeile, auch der ersten). */
