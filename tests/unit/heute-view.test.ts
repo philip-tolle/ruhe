@@ -3,6 +3,8 @@ import { durationLabel, FALLBACK_ID, meditationById } from '../../src/lib/conten
 import { lastUsedCard, lastUsedStart, lastUsedSummary, streakLine } from '../../src/lib/ui/heute-view'
 import type { ProgramSpec } from '../../src/lib/audio/program'
 import type { LastUsed } from '../../src/lib/stats/schema'
+import { breathPlan } from '../../src/lib/breath/patterns'
+import { customToPattern, type CustomBreathPattern } from '../../src/lib/breath/custom'
 
 test('streak line: days in a row, singular for one, an invitation for none', () => {
   expect(streakLine(0)).toBe('Heute ist ein guter Tag zum Anfangen.')
@@ -142,4 +144,28 @@ test('restarting a breathing exercise plays the background chosen for exercises,
   const timerStart = lastUsedStart(timer({ sound: 'regen' }), { sound: true, background: 'meer' })
   if (timerStart.kind !== 'program') throw new Error('erwartet: Programm')
   expect(timerStart.spec.background).toBe('regen')
+})
+
+const abendruhe: CustomBreathPattern = { id: 'eigen-0123abcd', name: 'Abendruhe', inhale: 4, holdIn: 2, exhale: 6, holdOut: 0 }
+const ownLast: LastUsed = { kind: 'breath', pattern: abendruhe.id, minutes: 3 }
+
+test('ein eigenes Muster in „Zuletzt genutzt“: Name und Minuten, Start mit dem Muster', () => {
+  expect(lastUsedSummary(ownLast, [abendruhe])).toBe('Abendruhe · 3 Min')
+  expect(lastUsedCard(ownLast, [abendruhe])).toEqual({ last: ownLast, summary: 'Abendruhe · 3 Min', action: 'Erneut starten' })
+  const start = lastUsedStart(ownLast, { sound: true, background: null }, [abendruhe])
+  expect(start.kind).toBe('program')
+  const spec = (start as { spec: ProgramSpec }).spec
+  expect([spec.kind, spec.ref, spec.title, spec.length]).toEqual(['breath', abendruhe.id, 'Atmen · Abendruhe', breathPlan(customToPattern(abendruhe), 3).length])
+})
+
+// Review Focus 1: Ein gelöschtes eigenes Muster darf „Heute“ nicht stören.
+test('ein gelöschtes eigenes Muster: die Karte bietet „Ankommen im Atem“ an, der Start auch', () => {
+  const ankommen = meditationById(FALLBACK_ID)!
+  expect(lastUsedCard(ownLast, [])).toEqual({
+    last: { kind: 'guided', id: FALLBACK_ID },
+    summary: `${ankommen.title} · ${durationLabel(ankommen)}`,
+    action: 'Jetzt starten',
+  })
+  expect(lastUsedStart(ownLast, { sound: true, background: null }, [])).toEqual({ kind: 'guided', meditation: ankommen })
+  expect(lastUsedSummary(ownLast, [])).toBe(`${ankommen.title} · ${durationLabel(ankommen)}`)
 })

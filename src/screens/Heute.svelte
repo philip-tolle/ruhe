@@ -30,10 +30,11 @@
 
   const days = $derived(streak(stats.data.sessions, new Date()))
   // Ohne Gemerktes (oder mit einer unbekannten Meditation) steht hier „Ankommen im Atem“.
-  const card = $derived(lastUsedCard(stats.data.lastUsed))
+  const ownPatterns = $derived(stats.data.breathPatterns ?? [])
+  const card = $derived(lastUsedCard(stats.data.lastUsed, ownPatterns))
   // Atemübungen klingen hier so, wie sie unter „Atmen“ eingestellt sind.
   const breathOptions = $derived({ sound: stats.data.settings.breathSound, background: stats.data.settings.breathBackground })
-  const start = $derived(lastUsedStart(card.last, breathOptions))
+  const start = $derived(lastUsedStart(card.last, breathOptions, ownPatterns))
 
   const urlOf = (m: Meditation) => absoluteAudioUrl(m, location.href)
 

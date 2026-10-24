@@ -1,6 +1,7 @@
 // Reiter „Heute“: Serien-Zeile und „Zuletzt genutzt“. Reine Funktionen, ohne Speicher- und DOM-Zugriff.
 import { breathProgram, timerProgram, type BreathOptions, type ProgramSpec } from '../audio/program'
-import { patternById } from '../breath/patterns'
+import { resolvePattern, type CustomBreathPattern } from '../breath/custom'
+import type { BreathPattern } from '../breath/patterns'
 import { durationLabel, FALLBACK_ID, meditationById, type Meditation } from '../content/catalog'
 import { clampMinutes } from '../meditation/timer-plan'
 import type { LastUsed } from '../stats/schema'
@@ -26,37 +27,59 @@ function guidedMeditation(id: string): Meditation {
   return m
 }
 
-/** „Timer · 20 Min“, „4-7-8 · 1 Min“ bzw. „Ankommen im Atem · 5 Min“. */
-export function lastUsedSummary(last: LastUsed): string {
+/** Das Muster einer gemerkten Atemübung; ein gelöschtes eigenes Muster ergibt `null`. */
+function breathPatternOf(last: Extract<LastUsed, { kind: 'breath' }>, custom: readonly CustomBreathPattern[]): BreathPattern | null {
+  return resolvePattern(last.pattern, custom)
+}
+
+function guidedSummary(m: Meditation): string {
+  return `${m.title} · ${durationLabel(m)}`
+}
+
+/**
+ * „Timer · 20 Min“, „4-7-8 · 1 Min“, „Abendruhe · 3 Min“ bzw. „Ankommen im Atem · 5 Min“. `custom` sind die
+ * eigenen Atemmuster; ein gelöschtes zeigt wie eine unbekannte Meditation den Ersatz.
+ */
+export function lastUsedSummary(last: LastUsed, custom: readonly CustomBreathPattern[] = []): string {
   if (last.kind === 'timer') return `Timer · ${timerMinutes(last)} Min`
-  if (last.kind === 'guided') {
-    const m = guidedMeditation(last.id)
-    return `${m.title} · ${durationLabel(m)}`
-  }
-  return `${patternById(last.pattern).title} · ${last.minutes} Min`
+  if (last.kind === 'guided') return guidedSummary(guidedMeditation(last.id))
+  const pattern = breathPatternOf(last, custom)
+  return pattern ? `${pattern.title} · ${last.minutes} Min` : guidedSummary(guidedMeditation(FALLBACK_ID))
 }
 
 /**
  * Was „Erneut starten“ startet: genau die gemerkte Sitzung; eine Atemübung so, wie Atemübungen
  * gerade eingestellt sind (Atemgeräusch, Hintergrund).
  */
-export function lastUsedStart(last: LastUsed, breath: BreathOptions): LastUsedStart {
+export function lastUsedStart(last: LastUsed, breath: BreathOptions, custom: readonly CustomBreathPattern[] = []): LastUsedStart {
   if (last.kind === 'guided') return { kind: 'guided', meditation: guidedMeditation(last.id) }
   if (last.kind === 'timer') {
     const spec = timerProgram({ minutes: timerMinutes(last), intervalMin: last.intervalMin, sound: last.sound, lead: last.lead })
     return { kind: 'program', spec }
   }
-  return { kind: 'program', spec: breathProgram(last.pattern, last.minutes, breath) }
+  const pattern = breathPatternOf(last, custom)
+  if (!pattern) return { kind: 'guided', meditation: guidedMeditation(FALLBACK_ID) }
+  return { kind: 'program', spec: breathProgram(pattern, last.minutes, breath) }
+}
+
+/** Gibt es das Gemerkte noch (Meditation im Katalog, Atemmuster fest oder unter den eigenen)? */
+function stillThere(last: LastUsed, custom: readonly CustomBreathPattern[]): boolean {
+  if (last.kind === 'guided') return meditationById(last.id) !== null
+  if (last.kind === 'breath') return breathPatternOf(last, custom) !== null
+  return true
 }
 
 /**
  * Die Karte „Zuletzt genutzt“. Ohne Gemerktes (oder mit einer Meditation, die der Katalog nicht
- * kennt) bietet sie „Ankommen im Atem“ an; da es nichts zu wiederholen gibt, heißt der Knopf dann
- * „Jetzt starten“.
+ * kennt, bzw. einem gelöschten eigenen Atemmuster) bietet sie „Ankommen im Atem“ an; da es nichts zu
+ * wiederholen gibt, heißt der Knopf dann „Jetzt starten“.
  */
-export function lastUsedCard(last: LastUsed | undefined): { last: LastUsed; summary: string; action: string } {
-  if (last && !(last.kind === 'guided' && meditationById(last.id) === null)) {
-    return { last, summary: lastUsedSummary(last), action: 'Erneut starten' }
+export function lastUsedCard(
+  last: LastUsed | undefined,
+  custom: readonly CustomBreathPattern[] = [],
+): { last: LastUsed; summary: string; action: string } {
+  if (last && stillThere(last, custom)) {
+    return { last, summary: lastUsedSummary(last, custom), action: 'Erneut starten' }
   }
   const fallback: LastUsed = { kind: 'guided', id: FALLBACK_ID }
   return { last: fallback, summary: lastUsedSummary(fallback), action: 'Jetzt starten' }

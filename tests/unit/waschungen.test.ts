@@ -98,6 +98,13 @@ test('zuletztWaschung takes the colour of the topic, the exercise or the time of
   expect(zuletztWaschung(timer, 'abend')).toBe('lavendel')
 })
 
+test('zuletztWaschung: ein eigenes Atemmuster trägt die Farbe der Tageszeit', () => {
+  const own: LastUsed = { kind: 'breath', pattern: 'eigen-0123abcd', minutes: 3 }
+  expect(zuletztWaschung(own, 'morgen')).toBe('pfirsich')
+  expect(zuletztWaschung(own, 'tag')).toBe('blaugruen')
+  expect(zuletztWaschung(own, 'abend')).toBe('lavendel')
+})
+
 test('zuletztWaschung falls back to the colour of the time of day for an unknown meditation', () => {
   const unbekannt: LastUsed = { kind: 'guided', id: 'gibt-es-nicht' }
   expect(zuletztWaschung(unbekannt, 'morgen')).toBe('pfirsich')

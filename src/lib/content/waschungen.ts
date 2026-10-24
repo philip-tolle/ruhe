@@ -2,7 +2,7 @@
 // ihre Herkunft (Prompt, Freistellen, Größe) steht in content/waschungen.json. Eine Waschung ist Schmuck in der
 // textfreien Ecke einer Karte (Baustein Waschung.svelte); die Bedeutung trägt der Text der Karte.
 import { assetUrl } from '../sounds/catalog'
-import type { BreathPatternId } from '../breath/patterns'
+import { isBuiltinPatternId, type BreathPatternId } from '../breath/patterns'
 import type { LastUsed } from '../stats/schema'
 import type { Tageszeit } from '../time/tageszeit'
 import { meditationById } from './catalog'
@@ -59,14 +59,15 @@ export function atemWaschung(id: BreathPatternId): WaschFarbe {
   return ATEMUEBUNG[id]
 }
 
-// „Zuletzt genutzt“: Eine geführte Meditation trägt die Farbe ihres Themas, eine Atemübung die ihrer Übung,
-// der Timer die der Tageszeit. Ist die gespeicherte Meditation nicht mehr im Katalog, gilt ebenfalls die Tageszeit.
+// „Zuletzt genutzt“: Eine geführte Meditation trägt die Farbe ihres Themas, eine feste Atemübung die ihrer Übung,
+// der Timer und ein eigenes Atemmuster die der Tageszeit. Ist die gespeicherte Meditation nicht mehr im Katalog,
+// gilt ebenfalls die Tageszeit.
 export function zuletztWaschung(last: LastUsed, now: Tageszeit): WaschFarbe {
   if (last.kind === 'guided') {
     const meditation = meditationById(last.id)
     return meditation ? themaWaschung(meditation.category) : tageszeitWaschung(now)
   }
-  if (last.kind === 'breath') return atemWaschung(last.pattern)
+  if (last.kind === 'breath') return isBuiltinPatternId(last.pattern) ? atemWaschung(last.pattern) : tageszeitWaschung(now)
   return tageszeitWaschung(now)
 }
 

@@ -3,7 +3,8 @@
   import BreathFlower from './BreathFlower.svelte'
   import PlayerShell from './PlayerShell.svelte'
   import { audio } from '../../lib/audio/engine-store.svelte'
-  import { breathAt, patternById, type BreathMoment, type BreathPatternId, type PhaseKind } from '../../lib/breath/patterns'
+  import { resolvePattern } from '../../lib/breath/custom'
+  import { breathAt, type BreathMoment, type PhaseKind } from '../../lib/breath/patterns'
   import { circleScale, easedLevel, petalOffset, phaseChanged, vibrationPattern } from '../../lib/breath/view'
   import { stats } from '../../lib/stats/store.svelte'
   import { doneOf, runningProgram } from '../../lib/ui/player-state'
@@ -16,11 +17,13 @@
   const running = $derived(run !== null)
 
   // Die Anzeige liest Phase, Countdown, Größe und Spreizung der Blüte pro Bild aus der Audio-Uhr: Auch
-  // nach dem Entsperren stimmt sie sofort wieder. `ref` ist die ID des Atemmusters (siehe `breathProgram`).
+  // nach dem Entsperren stimmt sie sofort wieder. `ref` ist die Kennung des Atemmusters (siehe `breathProgram`),
+  // fest oder eigen. Ein Muster, das es nicht (mehr) gibt, zeigt keine Blüte statt zu werfen.
   const clock = programClock(() => running)
-  const moment = $derived(run ? breathAt(run.ref as BreathPatternId, clock.elapsed, run.length) : null)
+  const pattern = $derived(run ? resolvePattern(run.ref, stats.data.breathPatterns ?? []) : null)
+  const moment = $derived(run && pattern ? breathAt(pattern, clock.elapsed, run.length) : null)
   const level = $derived(moment ? easedLevel(moment) : 0)
-  const description = $derived(run ? patternById(run.ref as BreathPatternId).description : undefined)
+  const description = $derived(pattern?.description)
   // Die Blüte ruht, solange die Audio-Uhr steht: in der Pause und bis zum ersten Tippen.
   const paused = $derived(audio.snap.state !== 'playing' || audio.snap.needsTap)
 
