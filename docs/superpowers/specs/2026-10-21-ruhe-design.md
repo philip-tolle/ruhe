@@ -77,6 +77,8 @@ Unten eine feste Leiste mit fünf Reitern. Die Android-Zurück-Geste schließt z
 
 *Ergänzung vom 22.10.2026 (Meilenstein 4):* Die Karten „3 Min durchatmen“ und „Zur Ruhe kommen“ entfallen. An ihre Stelle tritt eine Karte „Aktivitäten“ mit drei Zeilen: „Meditieren“ („Geführt oder mit Timer“) wechselt zum Reiter Meditieren, „Atemübung“ („3 Min kohärent atmen“) startet wie bisher Kohärentes Atmen für 3 Minuten und merkt es als zuletzt genutzt, „Klänge“ („Zur Ruhe kommen“) wechselt zum Reiter Klänge. Die Reihenfolge ist nun: Begrüßung und Serie, Vorschlag des Tages (mit dem gemalten Motiv der Tageszeit), Zuletzt genutzt, Aktivitäten. Näheres in `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §4.1.
 
+*Ergänzung vom 24.10.2026 (Meilenstein 7):* Der Vorschlag des Tages kommt je Tageszeit aus zwei Themen: morgens *Fokus & Energie* und *Achtsam im Alltag*, tagsüber *Stress & Ruhe* und *Gefühle & Loslassen*, abends *Einsteiger & Achtsamkeit* und *Mitgefühl & Freundlichkeit*. Rotiert wird nach Kalendertag über die Meditationen beider Themen zusammen, in Katalog-Reihenfolge. Siehe §3.2 und `docs/superpowers/specs/2026-10-24-ruhe-m7-meditationen-design.md` §6.
+
 ### 3.2 Meditieren
 
 - Oben eine Karte **Meditations-Timer** (öffnet die Timer-Einstellungen).
@@ -106,6 +108,8 @@ Unten eine feste Leiste mit fünf Reitern. Die Android-Zurück-Geste schließt z
 - Die zuletzt gewählten Einstellungen werden gemerkt.
 
 *Ergänzung vom 21.10.2026 (Meilenstein 3):* Ist die Datei einer geführten Meditation noch ein Platzhalter (leise Töne statt Sprache), steht neben ihr in der Liste der Chip „Vorabversion“. Das Manifest führt dafür das Feld `placeholder`.
+
+*Ergänzung vom 24.10.2026 (Meilenstein 7):* Der Katalog umfasst jetzt 18 Meditationen in 6 Themen. Neu sind die Themen *Mitgefühl & Freundlichkeit* (Freundlich mit dir 8 Min, Liebevolle Güte 10 Min), *Gefühle & Loslassen* (Ein schweres Gefühl begleiten 10 Min, Wenn die Gedanken kreisen 7 Min) und *Achtsam im Alltag* (Gehmeditation 10 Min, Achtsam essen 5 Min). Die bisherigen Themen bekommen je eine Meditation dazu: Klänge hören (7 Min), Die Schultern sinken lassen (8 Min) und Atemzüge zählen (6 Min). Die Themen stehen in dieser Reihenfolge untereinander, jedes mit eigenem Motiv; benachbarte Themen haben unterschiedliche Farbflächen. Näheres in `docs/superpowers/specs/2026-10-24-ruhe-m7-meditationen-design.md`.
 
 ### 3.3 Atmen
 

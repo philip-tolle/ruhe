@@ -67,6 +67,14 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
+## Handy-Checkliste Meilenstein 7
+
+1. „Meditieren“: 6 Themen mit Motiven, die neuen Motive passen zu den alten. Benachbarte Themen haben unterschiedliche Farben.
+2. Je eine neue Meditation aus jedem neuen Thema anhören: Stimme, Tempo, Pausen und Lautstärke wie bei den bisherigen, die Klangschale am Anfang und Ende.
+3. „Gehmeditation“ unterwegs mit gesperrtem Bildschirm: Sie läuft durch, Pause und Weiter gehen über den Sperrbildschirm.
+4. „Alle offline speichern“, dann Flugmodus: Alle 18 Meditationen spielen.
+5. Morgens, mittags und abends zeigt „Heute“ einen Vorschlag aus den passenden Themen.
+
 ## Handy-Checkliste Meilenstein 6
 
 1. Eine Atemübung von 1 Minute zu Ende atmen: Unter „Gut gemacht.“ erscheint die Karte. „Vorher“ und „Jetzt“ antippen, einen Punkt ändern, einen zurücknehmen: Alles fühlt sich ruhig und eindeutig an, das Wort neben der Reihe stimmt.
