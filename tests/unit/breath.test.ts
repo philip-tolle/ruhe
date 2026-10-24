@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest'
 import { BREATH_PATTERNS, BREATH_MINUTES, breathPlan, breathAt, patternById, PHASE_LABEL } from '../../src/lib/breath/patterns'
+import { customToPattern } from '../../src/lib/breath/custom'
 
 test('patterns', () => {
   expect(BREATH_PATTERNS.map(p => p.title)).toEqual(['4-7-8', 'Box-Atmung', 'Kohärentes Atmen', 'Langes Ausatmen', 'Physiologischer Seufzer', 'Wechselatmung'])
@@ -142,4 +143,15 @@ test('done: last phase, level 0, nothing left', () => {
 test('before the start and invalid times begin the first phase', () => {
   expect(breathAt('seufzer', -0.5, 60)).toEqual({ kind: 'ein', label: 'Einatmen', level: 0, startLevel: 0, endLevel: 0.8, phaseElapsed: 0, phaseLength: 3, secondsLeft: 3, done: false })
   expect(breathAt('seufzer', NaN, 60)).toMatchObject({ kind: 'ein', phaseElapsed: 0, done: false })
+})
+
+test('breathPlan und breathAt mit einem Muster-Objekt (eigenes Muster 4-2-6-0)', () => {
+  const p = customToPattern({ id: 'eigen-0123abcd', name: 'Abendruhe', inhale: 4, holdIn: 2, exhale: 6, holdOut: 0 })
+  const plan = breathPlan(p, 1)
+  expect([plan.cycle, plan.cycles, plan.length]).toEqual([12, 5, 60])
+  expect(plan.cues.slice(0, 4)).toEqual([{ at: 0, kind: 'ein' }, { at: 4, kind: 'halten' }, { at: 6, kind: 'aus' }, { at: 12, kind: 'ein' }])
+  expect(breathAt(p, 5, 60)).toMatchObject({ kind: 'halten', label: 'Halten', level: 1 })
+  expect(breathAt(p, 9, 60)).toMatchObject({ kind: 'aus', level: 0.5 })
+  expect(breathPlan(patternById('box'), 3)).toEqual(breathPlan('box', 3))
+  expect(breathAt(patternById('478'), 5, 76)).toEqual(breathAt('478', 5, 76))
 })

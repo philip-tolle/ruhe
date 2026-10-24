@@ -2,7 +2,7 @@
 // nur, was wann erklingt (Sekunden ab Programmstart); die Engine legt den Start auf der Audio-Uhr
 // fest, lässt `schedule` alles auf einmal einplanen und meldet am Ende das Sitzungsergebnis.
 // So hängt nichts Hörbares an JS-Timern, die Android im Hintergrund drosselt.
-import { breathPlan, patternById, type BreathPatternId } from '../breath/patterns'
+import { breathPlan, patternOf, type BreathPattern, type BreathPatternId } from '../breath/patterns'
 import { timerPlan, type TimerSettings } from '../meditation/timer-plan'
 import type { BackgroundId } from '../sounds/catalog'
 import { scheduleBreath, type BreathBuffers } from './breath-sound'
@@ -15,7 +15,7 @@ export interface ProgramAssets {
 
 export interface ProgramSpec {
   kind: 'timer' | 'breath'
-  ref: string // 'timer' bzw. BreathPatternId
+  ref: string // 'timer' bzw. Kennung des Atemmusters (fest oder eigen)
   title: string // Media-Session-Titel
   // Sekunden ab Programmstart: Vorlauf, gezählte Dauer danach, Ende nach dem Ausklingen.
   lead: number
@@ -91,12 +91,13 @@ export const BREATH_BACKGROUND_VOLUME = 0.35
 // Länge reicht bis zum nächsten Phasenbeginn); Halten bleibt still. Ohne Vorlauf, auf Wunsch mit
 // Hintergrund. Ist das Atemgeräusch abgeschaltet (`sound`) oder lädt es nicht, läuft die Übung
 // still. Nach dem letzten Zyklus bleibt 1 s, bevor das Programm endet.
-export function breathProgram(id: BreathPatternId, minutes: number, opts: BreathOptions): ProgramSpec {
-  const plan = breathPlan(id, minutes)
+export function breathProgram(of: BreathPattern | BreathPatternId, minutes: number, opts: BreathOptions): ProgramSpec {
+  const pattern = patternOf(of)
+  const plan = breathPlan(pattern, minutes)
   return {
     kind: 'breath',
-    ref: id,
-    title: `Atmen · ${patternById(id).title}`,
+    ref: pattern.id,
+    title: `Atmen · ${pattern.title}`,
     lead: 0,
     length: plan.length,
     finish: plan.length + 1,

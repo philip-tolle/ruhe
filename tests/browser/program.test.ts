@@ -3,6 +3,7 @@ import { AudioEngine } from '../../src/lib/audio/engine'
 import { createOutput, type Output } from '../../src/lib/audio/output'
 import { BREATH_BACKGROUND_VOLUME, breathProgram, timerProgram, type ProgramSpec } from '../../src/lib/audio/program'
 import { scheduleBreath, type BreathBuffers } from '../../src/lib/audio/breath-sound'
+import { customToPattern } from '../../src/lib/breath/custom'
 import { assetUrl } from '../../src/lib/sounds/catalog'
 import type { SessionResult } from '../../src/lib/stats/schema'
 
@@ -534,4 +535,10 @@ test('a breath exercise with a background plays it under the breath, and at the 
   expect(e.snapshot()).toMatchObject({ state: 'playing', program: { title: 'Atmen · Box-Atmung' }, volumes: { regen: 0.35 } })
   await e.startProgram(breathProgram('box', 1, { sound: false, background: 'wald' }))
   expect(e.snapshot().volumes).toEqual({ wald: 0.7 })
+})
+
+test('breathProgram with an own pattern: its id as ref, its name in the title, whole cycles', () => {
+  const pattern = customToPattern({ id: 'eigen-0123abcd', name: 'Abendruhe', inhale: 4, holdIn: 2, exhale: 6, holdOut: 0 })
+  const p = breathProgram(pattern, 1, { sound: true, background: null })
+  expect([p.kind, p.ref, p.title, p.length, p.finish]).toEqual(['breath', 'eigen-0123abcd', 'Atmen · Abendruhe', 60, 61])
 })

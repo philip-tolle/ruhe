@@ -15,7 +15,8 @@ export interface BreathPhase {
 }
 
 export interface BreathPattern {
-  id: BreathPatternId
+  /** Feste Übung (`BreathPatternId`) oder eigenes Muster (`eigen-…`, siehe custom.ts). */
+  id: string
   title: string
   description: string
   /** Wirkung in einem Wort bis zwei Wörtern, für die Kachel (Spec §4.3). */
@@ -24,7 +25,10 @@ export interface BreathPattern {
   phases: readonly BreathPhase[]
 }
 
-export const BREATH_PATTERNS: readonly BreathPattern[] = [
+/** Eine der sechs festen Übungen. */
+export type BuiltinBreathPattern = BreathPattern & { id: BreathPatternId }
+
+export const BREATH_PATTERNS: readonly BuiltinBreathPattern[] = [
   {
     id: '478',
     title: '4-7-8',
@@ -83,10 +87,19 @@ export const BREATH_MINUTES: readonly number[] = [1, 3, 5, 10]
 
 export const PHASE_LABEL: Record<PhaseKind, string> = { ein: 'Einatmen', halten: 'Halten', aus: 'Ausatmen' }
 
-export function patternById(id: BreathPatternId): BreathPattern {
+export function patternById(id: BreathPatternId): BuiltinBreathPattern {
   const pattern = BREATH_PATTERNS.find(p => p.id === id)
   if (!pattern) throw new Error(`Unbekanntes Atemmuster: ${id}`)
   return pattern
+}
+
+export function isBuiltinPatternId(id: string): id is BreathPatternId {
+  return BREATH_PATTERNS.some(p => p.id === id)
+}
+
+/** Plan und Anzeige nehmen ein Muster oder die Kennung einer festen Übung. */
+export function patternOf(pattern: BreathPattern | BreathPatternId): BreathPattern {
+  return typeof pattern === 'string' ? patternById(pattern) : pattern
 }
 
 /** Dauer eines Zyklus in Sekunden. */
@@ -113,8 +126,8 @@ export interface BreathPlan {
 }
 
 /** Plan für eine Dauer in Minuten. Der laufende Zyklus wird zu Ende geführt. */
-export function breathPlan(id: BreathPatternId, minutes: number): BreathPlan {
-  const pattern = patternById(id)
+export function breathPlan(of: BreathPattern | BreathPatternId, minutes: number): BreathPlan {
+  const pattern = patternOf(of)
   const cycle = cycleSeconds(pattern)
   const cycles = Math.ceil((minutes * 60) / cycle)
   const cues: BreathPlan['cues'] = []
@@ -148,8 +161,8 @@ export interface BreathMoment {
  * Zustand zum Zeitpunkt `elapsed` einer Übung der Dauer `length`.
  * Vor dem Start gilt der Beginn der ersten Phase; ab `length` ist die Übung fertig.
  */
-export function breathAt(id: BreathPatternId, elapsed: number, length: number): BreathMoment {
-  const pattern = patternById(id)
+export function breathAt(of: BreathPattern | BreathPatternId, elapsed: number, length: number): BreathMoment {
+  const pattern = patternOf(of)
   const { phases } = pattern
   const cycle = cycleSeconds(pattern)
   const done = elapsed >= length
