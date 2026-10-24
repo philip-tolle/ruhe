@@ -115,10 +115,10 @@
       "description": "Wenn es gerade schwer ist: eine Hand aufs Herz und ein paar freundliche Worte an dich selbst.",
       "minutes": 8,
       "file": "audio/meditations/freundlich-mit-dir.mp3",
-      "duration": 480.1,
-      "bytes": 960307,
-      "version": "a9dd294b36",
-      "placeholder": true
+      "duration": 475.4,
+      "bytes": 3803238,
+      "version": "9923e12b85",
+      "placeholder": false
     },
     {
       "id": "liebevolle-guete",
@@ -127,10 +127,10 @@
       "description": "Gute Wünsche, die von dir zu Menschen wandern, die dir nah sind, und von dort immer weiter.",
       "minutes": 10,
       "file": "audio/meditations/liebevolle-guete.mp3",
-      "duration": 600.1,
-      "bytes": 1200320,
-      "version": "6a0bc64090",
-      "placeholder": true
+      "duration": 600.3,
+      "bytes": 4802579,
+      "version": "76fe4d3290",
+      "placeholder": false
     },
     {
       "id": "ein-schweres-gefuehl-begleiten",
@@ -139,10 +139,10 @@
       "description": "Ein Gefühl erkennen, da sein lassen und freundlich begleiten, bis es sich von selbst verändert.",
       "minutes": 10,
       "file": "audio/meditations/ein-schweres-gefuehl-begleiten.mp3",
-      "duration": 600.1,
-      "bytes": 1200320,
-      "version": "6a0bc64090",
-      "placeholder": true
+      "duration": 596.8,
+      "bytes": 4774784,
+      "version": "6d98136bda",
+      "placeholder": false
     },
     {
       "id": "wenn-die-gedanken-kreisen",
@@ -151,10 +151,10 @@
       "description": "Aus dem Grübeln aussteigen: Gedanken benennen, beiseitelegen und zurück in den Körper finden.",
       "minutes": 7,
       "file": "audio/meditations/wenn-die-gedanken-kreisen.mp3",
-      "duration": 420.1,
-      "bytes": 840352,
-      "version": "584e1db0b7",
-      "placeholder": true
+      "duration": 434.3,
+      "bytes": 3474304,
+      "version": "e0cbd46239",
+      "placeholder": false
     },
     {
       "id": "gehmeditation",
@@ -163,10 +163,10 @@
       "description": "Langsam gehen, drinnen oder draußen, mit offenen Augen: Jeder Schritt ist ein Ankommen.",
       "minutes": 10,
       "file": "audio/meditations/gehmeditation.mp3",
-      "duration": 600.1,
-      "bytes": 1200320,
-      "version": "6a0bc64090",
-      "placeholder": true
+      "duration": 608,
+      "bytes": 4864019,
+      "version": "abac25dbb0",
+      "placeholder": false
     },
     {
       "id": "achtsam-essen",
@@ -175,10 +175,10 @@
       "description": "Ein paar Bissen mit allen Sinnen, wie zum ersten Mal.",
       "minutes": 5,
       "file": "audio/meditations/achtsam-essen.mp3",
-      "duration": 300.1,
-      "bytes": 600339,
-      "version": "b258c3f2f7",
-      "placeholder": true
+      "duration": 302.4,
+      "bytes": 2419375,
+      "version": "b7b9033130",
+      "placeholder": false
     },
     {
       "id": "klaenge-hoeren",
@@ -187,10 +187,10 @@
       "description": "Geräusche nah und fern kommen und gehen lassen, ohne sie zu bewerten.",
       "minutes": 7,
       "file": "audio/meditations/klaenge-hoeren.mp3",
-      "duration": 420.1,
-      "bytes": 840352,
-      "version": "584e1db0b7",
-      "placeholder": true
+      "duration": 419.7,
+      "bytes": 3357903,
+      "version": "47b6d2b929",
+      "placeholder": false
     },
     {
       "id": "die-schultern-sinken-lassen",
@@ -199,10 +199,10 @@
       "description": "Anspannen und loslassen, Schritt für Schritt, bis der Körper weich wird.",
       "minutes": 8,
       "file": "audio/meditations/die-schultern-sinken-lassen.mp3",
-      "duration": 480.1,
-      "bytes": 960307,
-      "version": "a9dd294b36",
-      "placeholder": true
+      "duration": 495.5,
+      "bytes": 3963943,
+      "version": "cd7b5217c5",
+      "placeholder": false
     },
     {
       "id": "atemzuege-zaehlen",
@@ -211,10 +211,10 @@
       "description": "Bis zehn zählen und dann von vorn: eine einfache Übung, die den Geist sammelt.",
       "minutes": 6,
       "file": "audio/meditations/atemzuege-zaehlen.mp3",
-      "duration": 360.1,
-      "bytes": 720346,
-      "version": "ead6cb967b",
-      "placeholder": true
+      "duration": 362,
+      "bytes": 2896267,
+      "version": "155a6dc73e",
+      "placeholder": false
     }
   ]
 }
