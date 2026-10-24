@@ -1,5 +1,6 @@
 // Laden und Speichern unter einem einzigen localStorage-Schlüssel. Der Speicher wird
 // hineingereicht (testbar); jeder Zugriff steht in try/catch, Fehler gelangen nie nach oben.
+import type { CustomBreathPattern } from '../breath/custom'
 import { emptyData, parseData, type AppData, type Calm, type CalmLevel, type SessionResult } from './schema'
 import { MIN_SECONDS } from './summary'
 
@@ -73,4 +74,19 @@ export function withCalm(data: AppData, sessionId: string, which: 'before' | 'af
   else calm[which] = level
   const next = calm.before === undefined && calm.after === undefined ? session : { ...session, calm }
   return { ...data, sessions: data.sessions.map((s, i) => (i === index ? next : s)) }
+}
+
+/** Speichert ein eigenes Atemmuster in einem neuen Stand: ersetzt es nach Kennung oder hängt es an. */
+export function withBreathPattern(data: AppData, pattern: CustomBreathPattern): AppData {
+  const list = data.breathPatterns ?? []
+  const breathPatterns = list.some(p => p.id === pattern.id) ? list.map(p => (p.id === pattern.id ? pattern : p)) : [...list, pattern]
+  return { ...data, breathPatterns }
+}
+
+/** Entfernt ein eigenes Atemmuster; ohne Muster entfällt das Feld. Sitzungen und `lastUsed` bleiben. */
+export function withoutBreathPattern(data: AppData, id: string): AppData {
+  if (!data.breathPatterns?.some(p => p.id === id)) return data
+  const { breathPatterns, ...rest } = data
+  const left = breathPatterns.filter(p => p.id !== id)
+  return left.length > 0 ? { ...rest, breathPatterns: left } : rest
 }

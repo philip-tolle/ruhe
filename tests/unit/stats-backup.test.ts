@@ -76,3 +76,31 @@ test('import never overwrites calm of a known session', () => {
   expect(merged.added).toBe(0)
   expect(merged.data.sessions[0].calm).toEqual({ before: 1 })
 })
+
+const own = (id: string, name = 'Abendruhe') => ({ id, name, inhale: 4, holdIn: 2, exhale: 6, holdOut: 0 })
+
+test('serializeBackup enthält eigene Atemmuster, ohne Muster fehlt das Feld', () => {
+  const data: AppData = { ...emptyData(), breathPatterns: [own('eigen-0000000a')] }
+  expect(JSON.parse(serializeBackup(data)).breathPatterns).toEqual([own('eigen-0000000a')])
+  expect(JSON.parse(serializeBackup(emptyData()))).not.toHaveProperty('breathPatterns')
+})
+
+// Review Focus 3: Ein Import verdoppelt nichts und überschreibt kein Muster des Geräts.
+test('Import fügt nur unbekannte Muster hinzu', () => {
+  const a = own('eigen-0000000a')
+  const aChanged = own('eigen-0000000a', 'Anders')
+  const b = own('eigen-0000000b', 'Morgen')
+  const file = serializeBackup({ ...emptyData(), breathPatterns: [aChanged, b] })
+  const mine: AppData = { ...emptyData(), breathPatterns: [a] }
+  const once = mergeBackup(mine, file)
+  expect('data' in once && once.data.breathPatterns).toEqual([a, b])
+  const twice = 'data' in once ? mergeBackup(once.data, file) : once
+  expect('data' in twice && twice.data.breathPatterns).toEqual([a, b])
+  const fresh = mergeBackup(emptyData(), file)
+  expect('data' in fresh && fresh.data.breathPatterns).toEqual([aChanged, b])
+  // Datei ohne Muster: die des Geräts bleiben; ohne Muster auf beiden Seiten fehlt das Feld.
+  const old = mergeBackup(mine, serializeBackup(emptyData()))
+  expect('data' in old && old.data.breathPatterns).toEqual([a])
+  const none = mergeBackup(emptyData(), serializeBackup(emptyData()))
+  expect('data' in none && none.data).not.toHaveProperty('breathPatterns')
+})

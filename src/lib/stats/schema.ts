@@ -1,7 +1,8 @@
 // Datenschema der gespeicherten Daten (localStorage['ruhe.v1']) mit strenger Prüfung.
 // Reine Funktionen ohne Speicherzugriff; das Laden und Sichern übernimmt die Persistenz.
 import { isBackgroundId, type BackgroundId } from '../sounds/catalog'
-import { BREATH_MINUTES, BREATH_PATTERNS, type BreathPatternId } from '../breath/patterns'
+import { BREATH_MINUTES, isBuiltinPatternId } from '../breath/patterns'
+import { CUSTOM_PATTERN_ID, MAX_LOADED_PATTERNS, parseCustomPattern, type CustomBreathPattern } from '../breath/custom'
 import { INTERVAL_OPTIONS } from '../meditation/timer-plan'
 
 export type SessionKind = 'guided' | 'timer' | 'breath'
@@ -56,7 +57,8 @@ export interface Settings {
 
 export type LastUsed =
   | { kind: 'timer'; minutes: number; intervalMin: number | null; sound: BackgroundId | null; lead: boolean }
-  | { kind: 'breath'; pattern: BreathPatternId; minutes: number }
+  /** `pattern`: feste Übung oder eigenes Muster (`eigen-…`); ob es das eigene noch gibt, prüft die Anzeige. */
+  | { kind: 'breath'; pattern: string; minutes: number }
   | { kind: 'guided'; id: string }
 
 export interface AppData {
@@ -64,6 +66,8 @@ export interface AppData {
   sessions: Session[]
   settings: Settings
   lastUsed?: LastUsed
+  /** Eigene Atemmuster (Spec M8 §7); fehlt, solange es keine gibt. */
+  breathPatterns?: CustomBreathPattern[]
 }
 
 function defaultSettings(): Settings {
@@ -78,14 +82,13 @@ export function emptyData(): AppData {
 }
 
 const SESSION_KINDS: readonly string[] = ['guided', 'timer', 'breath']
-const PATTERN_IDS: readonly string[] = BREATH_PATTERNS.map(p => p.id)
 const MAX_TIMER_MINUTES = 120
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
-function isPatternId(v: unknown): v is BreathPatternId {
-  return typeof v === 'string' && PATTERN_IDS.includes(v)
+function isPatternId(v: unknown): v is string {
+  return typeof v === 'string' && (isBuiltinPatternId(v) || CUSTOM_PATTERN_ID.test(v))
 }
 function isInterval(v: unknown): v is number | null {
   return INTERVAL_OPTIONS.includes(v as number | null)
@@ -168,9 +171,22 @@ function parseLastUsed(raw: unknown): LastUsed | null {
   return null
 }
 
+/** Gültige eigene Muster in ihrer Reihenfolge; ungültige und doppelte Kennungen entfallen einzeln. */
+function parseBreathPatterns(raw: unknown): CustomBreathPattern[] {
+  if (!Array.isArray(raw)) return []
+  const patterns: CustomBreathPattern[] = []
+  for (const item of raw) {
+    const pattern = parseCustomPattern(item)
+    if (pattern && !patterns.some(p => p.id === pattern.id)) patterns.push(pattern)
+    if (patterns.length === MAX_LOADED_PATTERNS) break
+  }
+  return patterns
+}
+
 /**
  * Strenge Strukturprüfung. Eine ungültige Sitzung macht alles ungültig (`null`);
- * fehlende oder ungültige Einstellungen werden aufgefüllt, ein ungültiges `lastUsed` entfällt.
+ * fehlende oder ungültige Einstellungen werden aufgefüllt, ein ungültiges `lastUsed` und ungültige eigene
+ * Atemmuster entfallen.
  */
 export function parseData(raw: unknown): AppData | null {
   if (!isRecord(raw) || raw.version !== 1) return null
@@ -184,5 +200,7 @@ export function parseData(raw: unknown): AppData | null {
   const data: AppData = { version: 1, sessions, settings: parseSettings(raw.settings) }
   const lastUsed = parseLastUsed(raw.lastUsed)
   if (lastUsed) data.lastUsed = lastUsed
+  const breathPatterns = parseBreathPatterns(raw.breathPatterns)
+  if (breathPatterns.length > 0) data.breathPatterns = breathPatterns
   return data
 }

@@ -10,15 +10,17 @@ export function backupFileName(now: Date): string {
   return `ruhe-backup-${dayKey(now)}.json`
 }
 
-/** Sitzungen und Einstellungen; `lastUsed` gehört nicht ins Backup. */
+/** Sitzungen, Einstellungen und eigene Atemmuster (falls vorhanden); `lastUsed` gehört nicht ins Backup. */
 export function serializeBackup(data: AppData): string {
-  return JSON.stringify({ version: data.version, sessions: data.sessions, settings: data.settings }, null, 2)
+  const { version, sessions, settings, breathPatterns } = data
+  return JSON.stringify(breathPatterns ? { version, sessions, settings, breathPatterns } : { version, sessions, settings }, null, 2)
 }
 
 /**
  * Führt den Inhalt einer Backup-Datei mit dem aktuellen Stand zusammen: neue Sitzungen kommen
  * dazu (vorhandene IDs entfallen, ebenso Sitzungen unter 60 s, die nie gezählt hätten),
- * Einstellungen stammen aus der Datei, `lastUsed` bleibt. Bei ungültiger Datei kommt nur ein
+ * Einstellungen stammen aus der Datei, `lastUsed` bleibt. Eigene Atemmuster kommen dazu, wenn ihre
+ * Kennung neu ist; ein Muster des Geräts bleibt, wie es ist. Bei ungültiger Datei kommt nur ein
  * Fehlertext zurück; `current` wird nie verändert.
  */
 export function mergeBackup(current: AppData, text: string): { data: AppData; added: number } | { error: string } {
@@ -40,5 +42,8 @@ export function mergeBackup(current: AppData, text: string): { data: AppData; ad
   const sessions = [...current.sessions, ...added].sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
   const data: AppData = { version: 1, sessions, settings: incoming.settings }
   if (current.lastUsed) data.lastUsed = current.lastUsed
+  const own = current.breathPatterns ?? []
+  const breathPatterns = [...own, ...(incoming.breathPatterns ?? []).filter(p => !own.some(o => o.id === p.id))]
+  if (breathPatterns.length > 0) data.breathPatterns = breathPatterns
   return { data, added: added.length }
 }

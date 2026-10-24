@@ -2,7 +2,8 @@
 // Funktionen hier. Jede Änderung ersetzt `stats.data` durch ein neues Objekt und speichert
 // sofort; die Logik steckt in persist.ts und backup.ts.
 import { mergeBackup } from './backup'
-import { loadData, saveData, withCalm, withSession, type StorageLike } from './persist'
+import type { CustomBreathPattern } from '../breath/custom'
+import { loadData, saveData, withBreathPattern, withCalm, withoutBreathPattern, withSession, type StorageLike } from './persist'
 import type { AppData, CalmLevel, LastUsed, SessionResult, Settings } from './schema'
 
 /** `window.localStorage`, oder `null`, wenn der Zugriff wirft (z. B. SecurityError) oder fehlt. */
@@ -44,6 +45,16 @@ export function setCalm(sessionId: string, which: 'before' | 'after', level: Cal
 
 export function setLastUsed(last: LastUsed): void {
   commit({ ...stats.data, lastUsed: last })
+}
+
+/** Eigenes Atemmuster anlegen oder ändern (gleiche Kennung). */
+export function saveBreathPattern(pattern: CustomBreathPattern): void {
+  commit(withBreathPattern(stats.data, pattern))
+}
+
+/** Eigenes Atemmuster löschen; Sitzungen und „Zuletzt genutzt“ bleiben. */
+export function deleteBreathPattern(id: string): void {
+  commit(withoutBreathPattern(stats.data, id))
 }
 
 /** Flaches Zusammenführen; `timer` wird als Ganzes ersetzt. */

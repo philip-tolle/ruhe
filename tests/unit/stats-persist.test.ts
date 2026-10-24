@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { loadData, saveData, withCalm, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
+import { loadData, saveData, withBreathPattern, withCalm, withoutBreathPattern, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
 import { emptyData } from '../../src/lib/stats/schema'
 const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) } }
 
@@ -77,4 +77,25 @@ test('withCalm sets, changes and removes a value of one session', () => {
 })
 test('withCalm ignores an unknown id', () => {
   expect(withCalm(two(), 'x', 'before', 3)).toBeNull()
+})
+
+const own = (id: string, name = 'Abendruhe') => ({ id, name, inhale: 4, holdIn: 2, exhale: 6, holdOut: 0 })
+
+test('withBreathPattern hängt an oder ersetzt nach Kennung, ohne den alten Stand zu ändern', () => {
+  const start = emptyData()
+  const one = withBreathPattern(start, own('eigen-0000000a'))
+  expect(one.breathPatterns).toEqual([own('eigen-0000000a')])
+  expect(start).not.toHaveProperty('breathPatterns')
+  const two = withBreathPattern(one, own('eigen-0000000b', 'Morgen'))
+  const renamed = withBreathPattern(two, own('eigen-0000000a', 'Neu'))
+  expect(renamed.breathPatterns).toEqual([own('eigen-0000000a', 'Neu'), own('eigen-0000000b', 'Morgen')])
+  expect(two.breathPatterns).toEqual([own('eigen-0000000a'), own('eigen-0000000b', 'Morgen')])
+})
+
+test('withoutBreathPattern entfernt ein Muster; ist es das letzte, entfällt das Feld; unbekannt ändert nichts', () => {
+  const two = withBreathPattern(withBreathPattern(emptyData(), own('eigen-0000000a')), own('eigen-0000000b'))
+  expect(withoutBreathPattern(two, 'eigen-0000000a').breathPatterns).toEqual([own('eigen-0000000b')])
+  expect(withoutBreathPattern(withoutBreathPattern(two, 'eigen-0000000a'), 'eigen-0000000b')).not.toHaveProperty('breathPatterns')
+  expect(withoutBreathPattern(two, 'eigen-ffffffff')).toEqual(two)
+  expect(two.breathPatterns).toHaveLength(2)
 })

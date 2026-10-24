@@ -172,3 +172,37 @@ test('invalid calm values are dropped, the session stays', () => {
 test('unknown keys inside calm are dropped', () => {
   expect(withSessions({ ...session, calm: { before: 1, mood: 3 } })!.sessions[0].calm).toEqual({ before: 1 })
 })
+
+const own = (id: string, name = 'Abendruhe') => ({ id, name, inhale: 4, holdIn: 2, exhale: 6, holdOut: 0 })
+const withPatterns = (breathPatterns: unknown) => parseData({ version: 1, sessions: [session], settings: { vibration: false }, breathPatterns })
+
+test('parseData liest eigene Atemmuster in ihrer Reihenfolge; ohne Feld oder leer fehlt es', () => {
+  expect(withPatterns([own('eigen-0000000b'), own('eigen-0000000a', 'Morgen')])?.breathPatterns).toEqual([own('eigen-0000000b'), own('eigen-0000000a', 'Morgen')])
+  expect(parseData({ version: 1, sessions: [], settings: {} })).not.toHaveProperty('breathPatterns')
+  expect(withPatterns([])).not.toHaveProperty('breathPatterns')
+  expect(withPatterns('kein Array')).not.toHaveProperty('breathPatterns')
+})
+
+// Review Focus 2: Ein kaputtes Muster kostet nie die Sitzungen oder Einstellungen.
+test('ein kaputtes oder doppeltes Muster entfällt einzeln, Sitzungen und Einstellungen bleiben', () => {
+  const data = withPatterns([own('eigen-0000000a'), { ...own('eigen-0000000b'), inhale: 'vier' }, own('eigen-0000000a', 'Doppelt'), null])
+  expect(data?.breathPatterns).toEqual([own('eigen-0000000a')])
+  expect(data?.sessions).toEqual([session])
+  expect(data?.settings).toEqual({ ...DEFAULT_SETTINGS, vibration: false })
+  // Nur kaputte: das Feld fehlt, der Rest bleibt.
+  const broken = withPatterns([{ ...own('eigen-0000000b'), name: 7 }])
+  expect(broken).not.toBeNull()
+  expect(broken).not.toHaveProperty('breathPatterns')
+  expect(broken?.sessions).toEqual([session])
+})
+
+test('höchstens 50 eigene Muster werden gelesen', () => {
+  const many = Array.from({ length: 60 }, (_, i) => own(`eigen-${i.toString(16).padStart(8, '0')}`))
+  expect(withPatterns(many)?.breathPatterns).toEqual(many.slice(0, 50))
+})
+
+test('lastUsed mit eigener Kennung bleibt, eine falsche Form entfällt', () => {
+  expect(withLastUsed({ kind: 'breath', pattern: 'eigen-0123abcd', minutes: 3 })?.lastUsed).toEqual({ kind: 'breath', pattern: 'eigen-0123abcd', minutes: 3 })
+  expect(withLastUsed({ kind: 'breath', pattern: 'eigen-xyz', minutes: 3 })).not.toHaveProperty('lastUsed')
+  expect(withLastUsed({ kind: 'breath', pattern: 'unbekannt', minutes: 3 })).not.toHaveProperty('lastUsed')
+})
