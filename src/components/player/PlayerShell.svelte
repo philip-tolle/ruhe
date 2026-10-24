@@ -149,10 +149,12 @@
     }
   }
 
+  /* Lange Namen eigener Atemmuster brechen notfalls im Wort um, statt über den Rand zu laufen. */
   .title {
     padding: 0 8px;
     font-size: 1.375rem;
     text-align: center;
+    overflow-wrap: anywhere;
   }
 
   /* Rückt an den Titel heran: Der Abstand der Spalte (--shell-gap) schrumpft hier auf 8px. */

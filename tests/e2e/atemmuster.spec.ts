@@ -185,6 +185,41 @@ test.describe('on a small phone at 130 %', () => {
     }
   }
 
+  // Ein einziges langes Wort (29 Zeichen, erlaubt sind 30) bricht notfalls im Wort um, statt überzulaufen (Spec §8).
+  test('a name of one long word stays inside the player, „Heute“ and the delete question', async ({ page }) => {
+    const long = own('eigen-0000000c', 'Atemrhythmusentspannungsübung')
+    // Weder läuft der Text aus seinem Element noch das Element über den rechten Rand seines Behälters.
+    const inside = async (locator: ReturnType<Page['locator']>, container: ReturnType<Page['locator']>) => {
+      const [box, outer] = [(await locator.boundingBox())!, (await container.boundingBox())!]
+      return box.x + box.width <= outer.x + outer.width + 1 && (await locator.evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+    }
+    const larger = () => page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+    await seed(page, { breathPatterns: [long], lastUsed: { kind: 'breath', pattern: long.id, minutes: 1 } })
+
+    await page.goto('./')
+    await larger()
+    const card = page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Zuletzt genutzt', exact: true }) })
+    const summary = card.locator('.hint')
+    await expect(summary).toHaveText('Atemrhythmusentspannungsübung · 1 Min')
+    expect(await inside(summary, card), 'Zusammenfassung auf „Heute“').toBe(true)
+
+    await page.getByRole('button', { name: 'Erneut starten' }).click()
+    const player = page.getByRole('dialog', { name: 'Atemübung' })
+    const title = player.getByRole('heading', { level: 2 })
+    await expect(title).toHaveText('Atmen · Atemrhythmusentspannungsübung')
+    expect(await inside(title, player), 'Titel im Player').toBe(true)
+
+    await page.reload()
+    await nav(page, 'Atmen')
+    await larger()
+    await section(page).getByRole('button', { name: `${long.name} bearbeiten` }).click()
+    await tap(page, 'Löschen')
+    const confirm = page.getByRole('alertdialog', { name: 'Muster löschen?' })
+    await expect(confirm).toBeVisible()
+    expect(await inside(confirm.locator('.text'), confirm), 'Satz der Rückfrage').toBe(true)
+    expect(await fitsSideways(page)).toBe(true)
+  })
+
   test('list and editor keep their buttons at least 48 px and nothing scrolls sideways', async ({ page }) => {
     await seed(page, { breathPatterns: [ABENDRUHE, own('eigen-0000000a', 'Ruhiger Abend nach langem Tag', { inhale: 4.5, holdIn: 12.5, exhale: 10.5, holdOut: 12.5 })] })
     await openAtmen(page)

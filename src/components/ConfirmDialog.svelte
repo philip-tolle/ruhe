@@ -102,14 +102,17 @@
     outline: none;
   }
 
+  /* Titel und Satz nennen auch lange Namen eigener Atemmuster: notfalls Umbruch im Wort statt Überlauf. */
   h2 {
     text-align: center;
+    overflow-wrap: anywhere;
   }
 
   .text {
     margin-top: -12px;
     color: var(--text-muted);
     text-align: center;
+    overflow-wrap: anywhere;
   }
 
   /* Die Knöpfe teilen sich die Zeile und rutschen untereinander, wenn die Beschriftung nicht passt. */

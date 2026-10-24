@@ -58,9 +58,9 @@ export function stepSeconds(field: PhaseField, value: number, direction: 1 | -1)
   return Math.min(max, Math.max(min, value + direction * PHASE_STEP))
 }
 
-/** Sekunden mit Komma, ohne überflüssige Nullen: „4 s“, „5,5 s“. */
+/** Sekunden mit Komma, ohne überflüssige Nullen: „4 s“, „5,5 s“. Zahl und Einheit trennt ein geschütztes Leerzeichen. */
 export function secondsLabel(seconds: number): string {
-  return `${String(seconds).replace('.', ',')} s`
+  return `${String(seconds).replace('.', ',')}\u00a0s`
 }
 
 export function customTitle(p: CustomBreathPattern): string {

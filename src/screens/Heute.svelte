@@ -150,8 +150,10 @@
 </section>
 
 <style>
+  /* Ein eigener Name kann ein einziges langes Wort sein: Er bricht notfalls im Wort um, statt aus der Karte zu laufen. */
   .hint {
     color: var(--text-muted);
+    overflow-wrap: anywhere;
   }
 
   /* Eine laufende Serie soll ins Auge fallen; ohne Serie bleibt es eine leise Einladung. */

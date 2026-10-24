@@ -28,11 +28,11 @@ describe('customToPattern', () => {
   test('vier Phasen, 0-s-Phasen entfallen', () => {
     const p = customToPattern(custom())
     expect(p.phases).toEqual([{ kind: 'ein', seconds: 4 }, { kind: 'halten', seconds: 2 }, { kind: 'aus', seconds: 6 }])
-    expect(p.description).toBe('Einatmen 4 s · Halten 2 s · Ausatmen 6 s')
-    expect(customToPattern(custom({ inhale: 4.5, holdIn: 0, exhale: 5.5 })).description).toBe('Einatmen 4,5 s · Ausatmen 5,5 s')
+    expect(p.description).toBe('Einatmen 4\u00a0s · Halten 2\u00a0s · Ausatmen 6\u00a0s')
+    expect(customToPattern(custom({ inhale: 4.5, holdIn: 0, exhale: 5.5 })).description).toBe('Einatmen 4,5\u00a0s · Ausatmen 5,5\u00a0s')
     const box = customToPattern(custom({ inhale: 4, holdIn: 4, exhale: 4, holdOut: 4 }))
     expect(box.phases.map((phase) => phase.kind)).toEqual(['ein', 'halten', 'aus', 'halten'])
-    expect(box.description).toBe('Einatmen 4 s · Halten 4 s · Ausatmen 4 s · Halten 4 s')
+    expect(box.description).toBe('Einatmen 4\u00a0s · Halten 4\u00a0s · Ausatmen 4\u00a0s · Halten 4\u00a0s')
   })
 
   test('Titel: getrimmter Name oder „Eigenes Muster“, Kennung bleibt', () => {
@@ -84,14 +84,15 @@ describe('parseCustomPattern', () => {
 })
 
 test('cyclePreview: Dauer eines Atemzugs und Atemzüge pro Minute', () => {
-  expect(cyclePreview(custom())).toBe('Ein Atemzug dauert 12 s, etwa 5 pro Minute.')
-  expect(cyclePreview(custom({ inhale: 4, holdIn: 7, exhale: 8 }))).toBe('Ein Atemzug dauert 19 s, etwa 3,2 pro Minute.')
-  expect(cyclePreview(custom({ inhale: 5.5, holdIn: 0, exhale: 5.5 }))).toBe('Ein Atemzug dauert 11 s, etwa 5,5 pro Minute.')
-  expect(cyclePreview(custom({ inhale: 5, holdIn: 1.5, exhale: 6 }))).toBe('Ein Atemzug dauert 12,5 s, etwa 4,8 pro Minute.')
+  expect(cyclePreview(custom())).toBe('Ein Atemzug dauert 12\u00a0s, etwa 5 pro Minute.')
+  expect(cyclePreview(custom({ inhale: 4, holdIn: 7, exhale: 8 }))).toBe('Ein Atemzug dauert 19\u00a0s, etwa 3,2 pro Minute.')
+  expect(cyclePreview(custom({ inhale: 5.5, holdIn: 0, exhale: 5.5 }))).toBe('Ein Atemzug dauert 11\u00a0s, etwa 5,5 pro Minute.')
+  expect(cyclePreview(custom({ inhale: 5, holdIn: 1.5, exhale: 6 }))).toBe('Ein Atemzug dauert 12,5\u00a0s, etwa 4,8 pro Minute.')
 })
 
-test('secondsLabel mit Komma', () => {
-  expect([secondsLabel(4), secondsLabel(5.5), secondsLabel(0)]).toEqual(['4 s', '5,5 s', '0 s'])
+// Zahl und Einheit hängen mit einem geschützten Leerzeichen zusammen: „6 s“ bricht nie zwischen „6“ und „s“ um.
+test('secondsLabel mit Komma und geschütztem Leerzeichen', () => {
+  expect([secondsLabel(4), secondsLabel(5.5), secondsLabel(0)]).toEqual(['4\u00a0s', '5,5\u00a0s', '0\u00a0s'])
 })
 
 test('newCustomPatternId: Form eigen- und 8 Hex-Zeichen, jedes Mal neu', () => {
