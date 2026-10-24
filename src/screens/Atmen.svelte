@@ -3,8 +3,10 @@
   import Motiv from '../components/Motiv.svelte'
   import SoundSelect from '../components/SoundSelect.svelte'
   import Waschung from '../components/Waschung.svelte'
+  import PatternEditor from '../components/breath/PatternEditor.svelte'
   import { breathProgram } from '../lib/audio/program'
-  import { BREATH_MINUTES, BREATH_PATTERNS, type BreathPatternId } from '../lib/breath/patterns'
+  import { customToPattern, MAX_CUSTOM_PATTERNS, type CustomBreathPattern } from '../lib/breath/custom'
+  import { BREATH_MINUTES, BREATH_PATTERNS, type BreathPattern } from '../lib/breath/patterns'
   import { rhythmLabel, tileTitle } from '../lib/breath/view'
   import { breathMotiv } from '../lib/content/motive'
   import { atemWaschung, waschLage } from '../lib/content/waschungen'
@@ -15,10 +17,14 @@
 
   let minutes = $state(3)
   const settings = $derived(stats.data.settings)
+  const own = $derived((stats.data.breathPatterns ?? []).map((custom) => ({ custom, pattern: customToPattern(custom) })))
+
+  // Der Editor: `null` geschlossen, `{ pattern: null }` für ein neues Muster.
+  let editing = $state<{ pattern: CustomBreathPattern | null } | null>(null)
 
   // Im Tipp selbst, damit der Audio-Start als Nutzergeste gilt.
-  function start(pattern: BreathPatternId) {
-    setLastUsed({ kind: 'breath', pattern, minutes })
+  function start(pattern: BreathPattern) {
+    setLastUsed({ kind: 'breath', pattern: pattern.id, minutes })
     startSession(breathProgram(pattern, minutes, { sound: settings.breathSound, background: settings.breathBackground }))
   }
 </script>
@@ -55,7 +61,7 @@
           class="card tile"
           aria-label="{pattern.title} starten"
           aria-describedby="beschreibung-{pattern.id}"
-          onclick={() => start(pattern.id)}
+          onclick={() => start(pattern)}
         >
           <Waschung farbe={atemWaschung(pattern.id)} lage={waschLage(i)} />
           <Motiv id={breathMotiv(pattern.id)} size={80} />
@@ -69,7 +75,55 @@
       </li>
     {/each}
   </ul>
+
+  <!-- Eigene Muster (Spec M8 §3): je Muster eine Zeile. Die Zeile ist der Startknopf, ihre Beschreibung steht darin und
+       wird zum Knopf vorgelesen; der Stift daneben öffnet den Editor. -->
+  <section class="own" aria-labelledby="own-title">
+    <div>
+      <h2 id="own-title">Eigene Muster</h2>
+      <span class="rule" aria-hidden="true"></span>
+    </div>
+
+    <div class="card own-card">
+      {#if own.length === 0}
+        <p class="hint">Stell dir deinen eigenen Rhythmus zusammen.</p>
+      {:else}
+        <ul class="rows" role="list">
+          {#each own as { custom, pattern } (custom.id)}
+            <li>
+              <button
+                type="button"
+                class="row"
+                aria-label="{pattern.title} starten"
+                aria-describedby="eigen-{custom.id}"
+                onclick={() => start(pattern)}
+              >
+                <span class="row-title">{pattern.title}</span>
+                <span class="row-subtitle" id="eigen-{custom.id}">{pattern.description}</span>
+              </button>
+              <button type="button" class="edit" aria-label="{pattern.title} bearbeiten" onclick={() => (editing = { pattern: custom })}>
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20">
+                  <path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" />
+                </svg>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+
+      {#if own.length < MAX_CUSTOM_PATTERNS}
+        <button type="button" class="button-line" onclick={() => (editing = { pattern: null })}>Neues Muster</button>
+      {:else}
+        <p class="hint">Höchstens {MAX_CUSTOM_PATTERNS} eigene Muster.</p>
+      {/if}
+    </div>
+  </section>
 </section>
+
+<!-- Außerhalb von .screen, dessen Einblend-Animation sonst den Bezugsrahmen für `fixed` stellte. -->
+{#if editing}
+  <PatternEditor pattern={editing.pattern} onClose={() => (editing = null)} />
+{/if}
 
 <style>
   .field {
@@ -159,6 +213,96 @@
     font-weight: 600;
     line-height: 1.35;
     overflow-wrap: anywhere;
+  }
+
+  .own {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .own-card {
+    gap: 16px;
+  }
+
+  .hint {
+    color: var(--text-muted);
+  }
+
+  /* Zeilen ohne eigene Fläche, über jeder eine feine Goldlinie (wie die Aktivitäten auf „Heute“). */
+  .rows {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rows li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid rgb(233 196 142 / 0.28);
+  }
+
+  .rows li:first-child {
+    border-top: 0;
+  }
+
+  .row {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    min-height: 72px;
+    margin-left: -8px;
+    padding: 10px 8px;
+    border: 0;
+    border-radius: 18px;
+    background: none;
+    color: var(--text);
+    text-align: left;
+    justify-content: center;
+  }
+
+  .row:active {
+    background: var(--surface);
+  }
+
+  .row-title {
+    font-family: var(--font-display), Georgia, 'Times New Roman', serif;
+    font-size: 1.125rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+
+  .row-subtitle {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+  }
+
+  .edit {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 1px solid var(--surface-border);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .edit svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    stroke-linecap: round;
   }
 
   @media (prefers-reduced-motion: no-preference) {

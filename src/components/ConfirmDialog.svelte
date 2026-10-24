@@ -4,12 +4,15 @@
 
   let {
     title,
+    text,
     confirmLabel,
     cancelLabel,
     onConfirm,
     onCancel,
   }: {
     title: string
+    /** Erklärender Satz unter dem Titel (optional). */
+    text?: string
     confirmLabel: string
     cancelLabel: string
     onConfirm: () => void
@@ -17,6 +20,7 @@
   } = $props()
 
   const titleId = $props.id()
+  const textId = `${titleId}-text`
   let cancelButton = $state<HTMLButtonElement>()
 
   // Der Dialog ist eine Ebene: Die Zurück-Geste gilt als Abbrechen. Beim Entfernen gibt die
@@ -40,8 +44,19 @@
      Über Sheet und Reiterleiste: Dialog 30. Ein Tippen neben den Dialog tut bewusst nichts. -->
 <div class="layer">
   <div class="backdrop" aria-hidden="true"></div>
-  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby={titleId} tabindex="-1" onkeydown={onKeydown}>
+  <div
+    class="dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby={titleId}
+    aria-describedby={text ? textId : undefined}
+    tabindex="-1"
+    onkeydown={onKeydown}
+  >
     <h2 id={titleId}>{title}</h2>
+    {#if text}
+      <p id={textId} class="text">{text}</p>
+    {/if}
     <div class="actions">
       <button type="button" class="button secondary" bind:this={cancelButton} onclick={() => onCancel()}>
         {cancelLabel}
@@ -88,6 +103,12 @@
   }
 
   h2 {
+    text-align: center;
+  }
+
+  .text {
+    margin-top: -12px;
+    color: var(--text-muted);
     text-align: center;
   }
 
