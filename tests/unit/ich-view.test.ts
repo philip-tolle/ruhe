@@ -1,6 +1,10 @@
 import { describe, test, expect } from 'vitest'
 import {
   calendarWeeks,
+  calmEffectLines,
+  calmSigned,
+  calmStufen,
+  calmTrendLine,
   dayLabel,
   importMessage,
   megabytes,
@@ -247,4 +251,50 @@ describe('save progress', () => {
     const p = saveProgress(1000)
     expect(p.received(1500)).toBe(100)
   })
+})
+
+test('calmStufen: one decimal with a comma, exactly one step reads „eine Stufe“, always the amount', () => {
+  expect(calmStufen(1.4)).toBe('1,4 Stufen')
+  expect(calmStufen(0.5)).toBe('0,5 Stufen')
+  expect(calmStufen(1)).toBe('eine Stufe')
+  expect(calmStufen(0.96)).toBe('eine Stufe')
+  expect(calmStufen(-0.6)).toBe('0,6 Stufen')
+  expect(calmStufen(2.04)).toBe('2,0 Stufen')
+})
+
+test('calmSigned: plus, a real minus sign and ±0', () => {
+  expect(calmSigned(1.6)).toBe('+1,6')
+  expect(calmSigned(-0.4)).toBe('\u22120,4')
+  expect(calmSigned(0.04)).toBe('±0')
+  expect(calmSigned(-0.04)).toBe('±0')
+})
+
+test('calmEffectLines: invitation, calmer, less calm, about the same, split and basis', () => {
+  expect(calmEffectLines(null)).toEqual({
+    main: 'Halte nach einer Sitzung fest, wie ruhig du vorher und jetzt bist. Hier siehst du dann, was dir deine Übungen bringen.',
+    split: null,
+    basis: null,
+  })
+  expect(calmEffectLines({ mean: 1.4, count: 12, breath: null, meditation: 1.1 })).toEqual({
+    main: 'Nach einer Sitzung bist du im Schnitt 1,4 Stufen ruhiger.',
+    split: null,
+    basis: 'Aus 12 Sitzungen der letzten 30 Tage',
+  })
+  expect(calmEffectLines({ mean: -0.6, count: 3, breath: null, meditation: null }).main).toBe('Nach einer Sitzung bist du im Schnitt 0,6 Stufen unruhiger.')
+  for (const mean of [0.2, -0.29]) {
+    expect(calmEffectLines({ mean, count: 3, breath: null, meditation: null }).main).toBe('Nach einer Sitzung bist du im Schnitt etwa so ruhig wie vorher.')
+  }
+  expect(calmEffectLines({ mean: 3 / 10, count: 10, breath: null, meditation: null }).main).toBe('Nach einer Sitzung bist du im Schnitt 0,3 Stufen ruhiger.')
+  expect(calmEffectLines({ mean: 1, count: 6, breath: 1.6, meditation: 1.1 })).toEqual({
+    main: 'Nach einer Sitzung bist du im Schnitt eine Stufe ruhiger.',
+    split: 'Atmen +1,6 · Meditieren +1,1',
+    basis: 'Aus 6 Sitzungen der letzten 30 Tage',
+  })
+})
+
+test('calmTrendLine: calmer, less calm, about the same, nothing without a trend', () => {
+  expect(calmTrendLine(null)).toBeNull()
+  expect(calmTrendLine({ recent: 3.4, previous: 3 })).toBe('Vor deinen Sitzungen warst du in den letzten 30 Tagen ruhiger als in den 30 Tagen davor.')
+  expect(calmTrendLine({ recent: 2.5, previous: 3 })).toBe('Vor deinen Sitzungen warst du in den letzten 30 Tagen unruhiger als in den 30 Tagen davor.')
+  expect(calmTrendLine({ recent: 3.2, previous: 3 })).toBe('Vor deinen Sitzungen warst du in den letzten 30 Tagen etwa gleich ruhig wie in den 30 Tagen davor.')
 })

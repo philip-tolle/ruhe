@@ -1,5 +1,6 @@
 // Reiter „Ich“: Texte und Kalenderraster. Reine Funktionen, ohne Speicher- und DOM-Zugriff.
 // Die Monatsnamen stehen fest hier, damit die Anzeige nicht von den Sprachdaten des Geräts abhängt.
+import { CALM_DAYS, CALM_THRESHOLD, type CalmEffect, type CalmTrend } from '../stats/calm'
 
 export const MONTH_NAMES: readonly string[] = [
   'Januar',
@@ -156,4 +157,50 @@ export function saveProgress(totalBytes: number): {
       return update()
     },
   }
+}
+
+// Ruhe-Karte (Spec M6 §4): eine Nachkommastelle mit Komma; die Einordnung prüft den ungerundeten Wert.
+const decimal = (n: number) => Math.abs(n).toFixed(1).replace('.', ',')
+
+/** Betrag in Stufen: „1,4 Stufen“, gerundet genau 1,0 als „eine Stufe“. */
+export function calmStufen(n: number): string {
+  const amount = decimal(n)
+  return amount === '1,0' ? 'eine Stufe' : `${amount} Stufen`
+}
+
+/** Mit Vorzeichen für die Aufteilung: „+1,6“, „−0,4“ (echtes Minus), gerundet 0,0 als „±0“. */
+export function calmSigned(n: number): string {
+  const amount = decimal(n)
+  if (amount === '0,0') return '±0'
+  return `${n > 0 ? '+' : '\u2212'}${amount}`
+}
+
+/** Wirkungs-Satz mit Aufteilung und Grundlage; ohne Wirkung die Einladung. */
+export function calmEffectLines(effect: CalmEffect | null): { main: string; split: string | null; basis: string | null } {
+  if (!effect) {
+    return {
+      main: 'Halte nach einer Sitzung fest, wie ruhig du vorher und jetzt bist. Hier siehst du dann, was dir deine Übungen bringen.',
+      split: null,
+      basis: null,
+    }
+  }
+  const { mean, count, breath, meditation } = effect
+  const main =
+    Math.abs(mean) < CALM_THRESHOLD
+      ? 'Nach einer Sitzung bist du im Schnitt etwa so ruhig wie vorher.'
+      : `Nach einer Sitzung bist du im Schnitt ${calmStufen(mean)} ${mean > 0 ? 'ruhiger' : 'unruhiger'}.`
+  return {
+    main,
+    split: breath !== null && meditation !== null ? `Atmen ${calmSigned(breath)} · Meditieren ${calmSigned(meditation)}` : null,
+    basis: `Aus ${count} Sitzungen der letzten ${CALM_DAYS} Tage`,
+  }
+}
+
+/** Verlauf-Satz der Vorher-Werte; ohne Verlauf `null`. */
+export function calmTrendLine(trend: CalmTrend | null): string | null {
+  if (!trend) return null
+  const diff = trend.recent - trend.previous
+  const start = `Vor deinen Sitzungen warst du in den letzten ${CALM_DAYS} Tagen`
+  if (Math.abs(diff) < CALM_THRESHOLD) return `${start} etwa gleich ruhig wie in den ${CALM_DAYS} Tagen davor.`
+  return `${start} ${diff > 0 ? 'ruhiger' : 'unruhiger'} als in den ${CALM_DAYS} Tagen davor.`
 }
