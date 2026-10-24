@@ -58,6 +58,12 @@ describe('Daten', () => {
     }
   })
 
+  // Review Focus 3: Ein Platzhalter darf nicht in die Veröffentlichung rutschen.
+  test('no meditation is a placeholder any more', () => {
+    expect(MEDITATIONS.filter((m) => m.placeholder).map((m) => m.id)).toEqual([])
+    expect(JSON.parse(readFileSync('audio-work/placeholders.json', 'utf8'))).toEqual([])
+  })
+
   test('Ersatz-id „Ankommen im Atem“ ist im Katalog', () => {
     expect(FALLBACK_ID).toBe('ankommen-im-atem')
     expect(meditationById(FALLBACK_ID)?.title).toBe('Ankommen im Atem')
