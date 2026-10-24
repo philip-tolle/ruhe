@@ -55,7 +55,7 @@
   {#if checkIn}
     <CalmCheckIn sessionId={checkIn} />
   {/if}
-  <button type="button" class="button" onclick={() => arming.armed && onDone()}>Fertig</button>
+  <button type="button" class="button" disabled={!arming.armed} onclick={() => onDone()}>Fertig</button>
   {#if checkIn}
     <p class="skip">Ohne Antwort einfach „Fertig“.</p>
   {/if}

@@ -18,7 +18,6 @@
   const arming = tapArming()
 
   function choose(which: Which, level: CalmLevel) {
-    if (!arming.armed) return
     setCalm(sessionId, which, calm?.[which] === level ? null : level)
   }
 
@@ -66,6 +65,7 @@
           aria-checked={checked}
           aria-label={word}
           tabindex={checked || (value === undefined && index === 0) ? 0 : -1}
+          disabled={!arming.armed}
           class="dot"
           class:checked
           style:--dot={color}
