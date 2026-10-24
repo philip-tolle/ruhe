@@ -5,16 +5,19 @@ import data from '../../content/meditations.json'
 import { assetUrl } from '../sounds/catalog'
 import { tageszeit, type Tageszeit } from '../time/tageszeit'
 
-export type Category = 'achtsamkeit' | 'stress' | 'fokus'
+export type Category = 'achtsamkeit' | 'stress' | 'fokus' | 'mitgefuehl' | 'gefuehle' | 'alltag'
 
 export const CATEGORY_TITLE: Record<Category, string> = {
   achtsamkeit: 'Einsteiger & Achtsamkeit',
   stress: 'Stress & Ruhe',
   fokus: 'Fokus & Energie',
+  mitgefuehl: 'Mitgefühl & Freundlichkeit',
+  gefuehle: 'Gefühle & Loslassen',
+  alltag: 'Achtsam im Alltag',
 }
 
-// Reihenfolge der Themen in der Liste (Spec 3.2).
-const CATEGORY_ORDER: readonly Category[] = ['achtsamkeit', 'stress', 'fokus']
+// Reihenfolge der Themen in der Liste (Spec 3.2, Spec M7 §4): die bisherigen, danach die neuen.
+const CATEGORY_ORDER: readonly Category[] = ['achtsamkeit', 'stress', 'fokus', 'mitgefuehl', 'gefuehle', 'alltag']
 
 export interface Meditation {
   id: string
@@ -52,11 +55,15 @@ export function byCategory(): { category: Category; title: string; items: Medita
   }))
 }
 
-// Thema je Tageszeit; die Grenzen (5/11/17 Uhr) kommen aus `tageszeit()`. So passen Thema und Motiv des
-// Vorschlags immer zur Stimmung.
-const CATEGORY_AT: Record<Tageszeit, Category> = { morgen: 'fokus', tag: 'stress', abend: 'achtsamkeit' }
+// Zwei Themen je Tageszeit (Spec M7 §6); die Grenzen (5/11/17 Uhr) kommen aus `tageszeit()`. So passen
+// Thema und Motiv des Vorschlags immer zur Stimmung.
+const CATEGORY_AT: Record<Tageszeit, readonly [Category, Category]> = {
+  morgen: ['fokus', 'alltag'],
+  tag: ['stress', 'gefuehle'],
+  abend: ['achtsamkeit', 'mitgefuehl'],
+}
 
-function categoryAt(now: Date): Category {
+function categoriesAt(now: Date): readonly Category[] {
   return CATEGORY_AT[tageszeit(now)]
 }
 
@@ -68,13 +75,14 @@ function dayOfYear(now: Date): number {
 }
 
 /**
- * Vorschlag des Tages (Spec 3.1): ein Thema nach Tageszeit, darin täglich die nächste Meditation.
- * Der Index hängt nur vom Kalendertag ab, der Vorschlag bleibt also den ganzen Tag derselbe.
- * Hat die Liste zum Thema nichts, rotiert der Vorschlag über die ganze Liste; eine leere Liste
- * ist ein Fehler.
+ * Vorschlag des Tages (Spec 3.1, Spec M7 §6): zwei Themen nach Tageszeit, darin täglich die nächste
+ * Meditation, über beide Themen zusammen in Katalog-Reihenfolge. Der Index hängt nur vom Kalendertag ab,
+ * der Vorschlag bleibt also innerhalb einer Tageszeit derselbe. Hat die Liste zu beiden Themen nichts,
+ * rotiert der Vorschlag über die ganze Liste; eine leere Liste ist ein Fehler.
  */
 export function suggestionFor(now: Date, list: readonly Meditation[] = MEDITATIONS): Meditation {
-  const inCategory = list.filter((m) => m.category === categoryAt(now))
+  const categories = categoriesAt(now)
+  const inCategory = list.filter((m) => categories.includes(m.category))
   const pool = inCategory.length > 0 ? inCategory : list
   if (pool.length === 0) throw new Error('Keine Meditationen für den Vorschlag des Tages')
   return pool[dayOfYear(now) % pool.length]

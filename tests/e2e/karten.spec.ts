@@ -117,9 +117,12 @@ const MANIFEST: ManifestEntry[] = JSON.parse(readFileSync('src/content/meditatio
 const lengthOf = (title: string) => `${Math.max(1, Math.round(MANIFEST.find((m) => m.title === title)!.duration / 60))} Min`
 
 const THEMES = [
-  { title: 'Einsteiger & Achtsamkeit', farbe: 'lavendel' },
-  { title: 'Stress & Ruhe', farbe: 'blaugruen' },
-  { title: 'Fokus & Energie', farbe: 'pfirsich' },
+  { title: 'Einsteiger & Achtsamkeit', farbe: 'lavendel', count: 4 },
+  { title: 'Stress & Ruhe', farbe: 'blaugruen', count: 4 },
+  { title: 'Fokus & Energie', farbe: 'pfirsich', count: 4 },
+  { title: 'Mitgefühl & Freundlichkeit', farbe: 'lavendel', count: 2 },
+  { title: 'Gefühle & Loslassen', farbe: 'blaugruen', count: 2 },
+  { title: 'Achtsam im Alltag', farbe: 'pfirsich', count: 2 },
 ]
 
 async function openMeditieren(page: Page, time = '08:00:00') {
@@ -225,16 +228,19 @@ test.describe('Meditieren', () => {
 
   test('every entry has the wash of its theme in turn, a Fraunces title, a gold border and its length', async ({ page }) => {
     await openMeditieren(page)
-    await expect(entries(page)).toHaveCount(9)
+    await expect(entries(page)).toHaveCount(18)
+    // Die Themen stehen in dieser Reihenfolge untereinander; benachbarte tragen nie dieselbe Farbe.
+    await expect(guided(page).getByRole('heading', { level: 3 })).toHaveText(THEMES.map((theme) => theme.title))
+    for (let t = 1; t < THEMES.length; t++) expect(THEMES[t].farbe).not.toBe(THEMES[t - 1].farbe)
     for (const theme of THEMES) {
       const group = guided(page).getByRole('region', { name: theme.title })
       const items = group.getByRole('button')
-      await expect(items).toHaveCount(3)
-      for (let i = 0; i < 3; i++) {
+      await expect(items).toHaveCount(theme.count)
+      for (let i = 0; i < theme.count; i++) {
         const item = items.nth(i)
         expect(await waschungIn(item)).toBe(theme.farbe)
-        // Lage reihum 0, 1, 2; die Waschung ist das erste Kind des Eintrags.
-        await expect(item.locator(':scope > .waschung')).toHaveClass(new RegExp(`\\blage-${i}\\b`))
+        // Lage reihum 0, 1, 2, 0; die Waschung ist das erste Kind des Eintrags.
+        await expect(item.locator(':scope > .waschung')).toHaveClass(new RegExp(`\\blage-${i % 3}\\b`))
         await expect(item.locator('.waschung img')).toHaveAttribute('alt', '')
         await expect(item.locator('.waschung')).toHaveAttribute('aria-hidden', 'true')
         await expectGoldBorder(item, 0.22)
@@ -304,17 +310,18 @@ test.describe('Meditieren', () => {
 
     test('the cards keep their size and a tap still starts', async ({ page }) => {
       await openMeditieren(page)
-      // Erst zählen: `every` auf einer leeren Liste ist wahr, die Basislinie bewiese sonst nichts.
-      await expect(page.locator('.waschung img')).toHaveCount(10)
+      // Erst zählen (Timer-Karte und 18 Einträge): `every` auf einer leeren Liste ist wahr, die Basislinie
+      // bewiese sonst nichts.
+      await expect(page.locator('.waschung img')).toHaveCount(19)
       await expect.poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth > 0))).toBe(true)
       const heights = () => page.locator('.card, .entry').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
       const withImages = await heights()
-      expect(withImages).toHaveLength(10)
+      expect(withImages).toHaveLength(19)
 
       await page.route('**/images/waschungen/**', (route) => route.fulfill({ status: 404 }))
       await openMeditieren(page)
       // Die Bilder sind wirklich ausgefallen (sonst prüfte der Test nichts).
-      await expect(page.locator('.waschung img')).toHaveCount(10)
+      await expect(page.locator('.waschung img')).toHaveCount(19)
       await expect
         .poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth === 0)))
         .toBe(true)

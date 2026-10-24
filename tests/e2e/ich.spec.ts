@@ -68,13 +68,13 @@ const offlineStatus = (page: Page) => card(page, 'Offline').getByRole('status')
 const saveAll = (page: Page) => page.getByRole('button', { name: 'Alle offline speichern' })
 const progress = (page: Page) => page.getByRole('progressbar')
 const summary = (page: Page) => card(page, 'Offline').getByText(/Musikstücken offline gespeichert/)
-// Alles, was „Alle offline speichern“ lädt: neun Meditationen und sieben Musikstücke, Größe laut Katalog.
+// Alles, was „Alle offline speichern“ lädt: 18 Meditationen und sieben Musikstücke, Größe laut Katalog.
 const MEDITATION_BYTES: number[] = JSON.parse(readFileSync('src/content/meditations.json', 'utf8')).meditations.map((m: { bytes: number }) => m.bytes)
 const MUSIC_BYTES: number[] = JSON.parse(readFileSync('content/sounds.json', 'utf8')).music.map((m: { bytes: number }) => m.bytes)
 const TOTAL_BYTES = [...MEDITATION_BYTES, ...MUSIC_BYTES].reduce((sum, b) => sum + b, 0)
 const TOTAL_MB = `${(TOTAL_BYTES / 1_000_000).toFixed(1).replace('.', ',')} MB`
 const SUMMARY = (meditations: number, music: number) =>
-  new RegExp(`^${meditations} von 9 Meditationen und ${music} von 7 Musikstücken offline gespeichert \\((0|\\d+,\\d) MB von ${TOTAL_MB}\\)$`)
+  new RegExp(`^${meditations} von 18 Meditationen und ${music} von 7 Musikstücken offline gespeichert \\((0|\\d+,\\d) MB von ${TOTAL_MB}\\)$`)
 const DONE = 'Alle Meditationen und die Musik sind offline verfügbar.'
 const balanceSlider = (page: Page) => page.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
 const nav = (page: Page, name: string) =>
@@ -343,7 +343,7 @@ test('the offline card sits above the backup and starts empty', async ({ page })
   const backupBox = (await page.getByRole('heading', { level: 2, name: 'Backup' }).boundingBox())!
   expect(offlineBox.y).toBeLessThan(backupBox.y)
 
-  await expect(summary(page)).toHaveText(`0 von 9 Meditationen und 0 von 7 Musikstücken offline gespeichert (0 MB von ${TOTAL_MB})`)
+  await expect(summary(page)).toHaveText(`0 von 18 Meditationen und 0 von 7 Musikstücken offline gespeichert (0 MB von ${TOTAL_MB})`)
   await expect(saveAll(page)).toBeEnabled()
   await expect(progress(page)).toHaveCount(0)
   await expect(offlineStatus(page)).toHaveText('')
@@ -401,10 +401,10 @@ test.describe('saving all meditations and the music', () => {
     await expect(summary(page)).toHaveText(SUMMARY(0, 0))
 
     await saveAll(page).click()
-    await expect(page.getByText('Speichere 3 von 16 …')).toBeVisible()
+    await expect(page.getByText('Speichere 3 von 25 …')).toBeVisible()
     const bar = progress(page)
     await expect(bar).toBeVisible()
-    await expect(bar).toHaveAccessibleName('Speichere 3 von 16 …')
+    await expect(bar).toHaveAccessibleName('Speichere 3 von 25 …')
     await expect(bar).toHaveAttribute('aria-valuemin', '0')
     await expect(bar).toHaveAttribute('aria-valuemax', '100')
     const now = Number(await bar.getAttribute('aria-valuenow'))
@@ -416,29 +416,29 @@ test.describe('saving all meditations and the music', () => {
     // Der Stand gehört der App, nicht dem Reiter: Wer wegwechselt und zurückkommt, sieht ihn weiter.
     await nav(page, 'Meditieren')
     await nav(page, 'Ich')
-    await expect(page.getByText('Speichere 3 von 16 …')).toBeVisible()
+    await expect(page.getByText('Speichere 3 von 25 …')).toBeVisible()
     await expect(saveAll(page)).toBeDisabled()
 
     release()
     await expect(offlineStatus(page)).toHaveText(DONE)
-    await expect(summary(page)).toHaveText(SUMMARY(9, 7))
+    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
     await expect(progress(page)).toHaveCount(0)
     await expect(saveAll(page)).toBeDisabled() // es gibt nichts mehr zu speichern
-    expect(requests).toHaveLength(9)
+    expect(requests).toHaveLength(18)
     expect(await page.evaluate(() => (window as unknown as { __persist: number }).__persist)).toBe(1)
-    expect(await cachedAddresses(page)).toHaveLength(9)
+    expect(await cachedAddresses(page)).toHaveLength(18)
     expect(await cachedAddresses(page, 'ruhe-musik')).toHaveLength(7)
 
     // „Meditieren“ zeigt überall das Zeichen „offline gespeichert“, ohne dass eine Datei nochmals geladen wird.
     await nav(page, 'Meditieren')
-    await expect(page.getByRole('img', { name: 'offline gespeichert' })).toHaveCount(9)
+    await expect(page.getByRole('img', { name: 'offline gespeichert' })).toHaveCount(18)
     await expect(page.getByText('Nicht offline verfügbar')).toHaveCount(0)
-    expect(requests).toHaveLength(9)
+    expect(requests).toHaveLength(18)
 
     // Auch nach dem Neuladen kommt der Stand aus dem Cache; die Meldung ist weg.
     await page.reload()
     await nav(page, 'Ich')
-    await expect(summary(page)).toHaveText(SUMMARY(9, 7))
+    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
     await expect(offlineStatus(page)).toHaveText('')
     await expect(saveAll(page)).toBeDisabled()
   })
@@ -475,8 +475,8 @@ test.describe('saving all meditations and the music', () => {
     await expect(offlineStatus(page)).toHaveText('') // die alte Meldung ist weg
     await saveAll(page).click()
     await expect(offlineStatus(page)).toHaveText(DONE)
-    await expect(summary(page)).toHaveText(SUMMARY(9, 7))
-    expect(requests).toHaveLength(3 + 7)
+    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    expect(requests).toHaveLength(3 + 16)
   })
 
   test('a result that arrives while the user is on another tab is shown on return, once', async ({ page }) => {
@@ -501,7 +501,7 @@ test.describe('saving all meditations and the music', () => {
     await open(page)
 
     await saveAll(page).click()
-    await expect(page.getByText('Speichere 3 von 16 …')).toBeVisible() // der Lauf steht an der festgehaltenen Datei
+    await expect(page.getByText('Speichere 3 von 25 …')).toBeVisible() // der Lauf steht an der festgehaltenen Datei
     await nav(page, 'Meditieren')
     release()
     // Nach dem Merker bleiben nur Folgen von Promises (kein Timer, keine Ein-/Ausgabe): Bis das nächste
@@ -522,7 +522,7 @@ test.describe('saving all meditations and the music', () => {
     const meditations: { file: string; version: string; bytes: number }[] = JSON.parse(
       readFileSync('src/content/meditations.json', 'utf8'),
     ).meditations
-    // Gezählt wird gegen alle 16 Dateien; bis zur letzten Meditation fehlen ihre Bytes und die der Musik.
+    // Gezählt wird gegen alle 25 Dateien; bis zur letzten Meditation fehlen ihre Bytes und die der Musik.
     const meditationTotal = meditations.reduce((sum, m) => sum + m.bytes, 0)
     const last = meditations.at(-1)!
     const expected = Math.round(((meditationTotal - last.bytes) / TOTAL_BYTES) * 100)
@@ -531,8 +531,8 @@ test.describe('saving all meditations and the music', () => {
     const gate = new Promise<void>((resolve) => (release = resolve))
     let requests = 0
     await page.route('**/audio/meditations/**', async (route) => {
-      // Es werden nur acht Dateien geladen (die erste liegt schon im Cache); die letzte hält der Test fest.
-      if (++requests === 8) await gate
+      // Es werden nur 17 Dateien geladen (die erste liegt schon im Cache); die letzte hält der Test fest.
+      if (++requests === 17) await gate
       await route.continue()
     })
     await open(page)
@@ -549,13 +549,13 @@ test.describe('saving all meditations and the music', () => {
     )
 
     await saveAll(page).click()
-    await expect(page.getByText('Speichere 9 von 16 …')).toBeVisible()
+    await expect(page.getByText('Speichere 18 von 25 …')).toBeVisible()
     // Die erste Datei war schon da und zählt mit ihrer Größe laut Katalog; die letzte hat noch kein Byte geliefert.
     await expect(progress(page)).toHaveAttribute('aria-valuenow', String(expected))
     release()
     await expect(offlineStatus(page)).toHaveText(DONE)
-    expect(requests).toBe(8)
-    await expect(summary(page)).toHaveText(SUMMARY(9, 7))
+    expect(requests).toBe(17)
+    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
   })
 
   test('a file that fails does not stop the others and is counted', async ({ page }) => {
@@ -568,20 +568,54 @@ test.describe('saving all meditations and the music', () => {
     await open(page)
 
     await saveAll(page).click()
-    await expect(offlineStatus(page)).toHaveText('15 von 16 gespeichert, 1 fehlgeschlagen.')
-    await expect(summary(page)).toHaveText(SUMMARY(8, 7))
+    await expect(offlineStatus(page)).toHaveText('24 von 25 gespeichert, 1 fehlgeschlagen.')
+    await expect(summary(page)).toHaveText(SUMMARY(17, 7))
     await expect(saveAll(page)).toBeEnabled()
-    expect(requests).toHaveLength(9)
+    expect(requests).toHaveLength(18)
 
     await nav(page, 'Meditieren')
-    await expect(page.getByRole('img', { name: 'offline gespeichert' })).toHaveCount(8)
+    await expect(page.getByRole('img', { name: 'offline gespeichert' })).toHaveCount(17)
 
     // Ein neuer Versuch lädt nur die fehlende Datei.
     await nav(page, 'Ich')
     await saveAll(page).click()
     await expect(offlineStatus(page)).toHaveText(DONE)
-    await expect(summary(page)).toHaveText(SUMMARY(9, 7))
-    expect(requests).toHaveLength(10)
+    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    expect(requests).toHaveLength(19)
+  })
+
+  // Review Focus 2: Ein Gerät hat vor Meilenstein 7 alle damaligen Meditationen gespeichert.
+  test('a device that saved the 9 earlier meditations shows 9 of 18 and saving fetches only the 9 new', async ({ page }) => {
+    const meditations: { id: string; file: string; version: string; placeholder: boolean }[] = JSON.parse(
+      readFileSync('src/content/meditations.json', 'utf8'),
+    ).meditations
+    const earlier = meditations.slice(0, 9)
+    const added = meditations.slice(9).map((m) => m.id)
+    const requests: string[] = []
+    await page.route('**/audio/meditations/**', (route) => {
+      requests.push(new URL(route.request().url()).pathname)
+      return route.continue()
+    })
+    await open(page)
+    await page.evaluate(async (entries) => {
+      const cache = await caches.open('ruhe-meditations')
+      for (const { file, version } of entries) {
+        await cache.put(
+          new URL(`${file}?v=${version}`, location.href),
+          new Response(new Uint8Array(1000), { headers: { 'Content-Type': 'audio/mpeg' } }),
+        )
+      }
+    }, earlier.map(({ file, version }) => ({ file, version })))
+    await page.reload()
+    await nav(page, 'Ich')
+    await expect(summary(page)).toHaveText(SUMMARY(9, 0))
+    await expect(saveAll(page)).toBeEnabled()
+
+    await saveAll(page).click()
+    await expect(offlineStatus(page)).toHaveText(DONE)
+    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    expect(requests.map((path) => path.split('/').at(-1)!.replace('.mp3', '')).sort()).toEqual([...added].sort())
+    expect(await cachedAddresses(page)).toHaveLength(18)
   })
 
   test('the entries of an old recording are removed first', async ({ page }) => {
@@ -598,7 +632,7 @@ test.describe('saving all meditations and the music', () => {
     await expect(offlineStatus(page)).toHaveText(DONE)
 
     const cached = await cachedAddresses(page)
-    expect(cached).toHaveLength(9)
+    expect(cached).toHaveLength(18)
     expect(cached.filter((address) => address.includes('0000000000'))).toEqual([])
     expect(cached.every((address) => /\.mp3\?v=[0-9a-f]{10}$/.test(address))).toBe(true)
   })

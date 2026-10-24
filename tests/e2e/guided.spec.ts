@@ -50,10 +50,14 @@ const accent = (page: Page) =>
     return color
   })
 
+// Die sechs Themen in Katalog-Reihenfolge; die neuen Meditationen der bisherigen Themen stehen jeweils am Ende.
 const GROUPS = {
-  'Einsteiger & Achtsamkeit': ['Ankommen im Atem', 'Gedanken wie Wolken', 'Bodyscan im Sitzen'],
-  'Stress & Ruhe': ['Drei-Minuten-Atempause', 'Nach einem vollen Tag', 'Vor einem wichtigen Termin'],
-  'Fokus & Energie': ['Guten Morgen', 'Fokus vor der Arbeit', 'Energie in der Mittagspause'],
+  'Einsteiger & Achtsamkeit': ['Ankommen im Atem', 'Gedanken wie Wolken', 'Bodyscan im Sitzen', 'Klänge hören'],
+  'Stress & Ruhe': ['Drei-Minuten-Atempause', 'Nach einem vollen Tag', 'Vor einem wichtigen Termin', 'Die Schultern sinken lassen'],
+  'Fokus & Energie': ['Guten Morgen', 'Fokus vor der Arbeit', 'Energie in der Mittagspause', 'Atemzüge zählen'],
+  'Mitgefühl & Freundlichkeit': ['Freundlich mit dir', 'Liebevolle Güte'],
+  'Gefühle & Loslassen': ['Ein schweres Gefühl begleiten', 'Wenn die Gedanken kreisen'],
+  'Achtsam im Alltag': ['Gehmeditation', 'Achtsam essen'],
 }
 
 test('the guided meditations are listed by theme with their length', async ({ page }) => {
@@ -61,12 +65,12 @@ test('the guided meditations are listed by theme with their length', async ({ pa
   const list = page.getByRole('region', { name: 'Geführte Meditationen' })
   await expect(list.getByRole('heading', { level: 2 })).toHaveText('Geführte Meditationen')
   await expect(list.getByRole('heading', { level: 3 })).toHaveText(Object.keys(GROUPS))
-  await expect(list.getByRole('button')).toHaveCount(9)
+  await expect(list.getByRole('button')).toHaveCount(18)
 
   for (const [theme, titles] of Object.entries(GROUPS)) {
     const group = list.getByRole('region', { name: theme })
     const entries = group.getByRole('button')
-    await expect(entries).toHaveCount(3)
+    await expect(entries).toHaveCount(titles.length)
     for (const [index, title] of titles.entries()) {
       await expect(entries.nth(index)).toHaveAccessibleName(new RegExp(`^${escape(title)}, \\d+ Minuten?$`))
       await expect(entries.nth(index)).toContainText(title)
@@ -92,7 +96,14 @@ test('the timer card and every theme show their painting', async ({ page }) => {
   await expectMotiv(timerCard.locator('img.motiv'), 'timer', 56)
 
   const list = page.getByRole('region', { name: 'Geführte Meditationen' })
-  const motive = { 'Einsteiger & Achtsamkeit': 'thema-achtsamkeit', 'Stress & Ruhe': 'thema-stress', 'Fokus & Energie': 'thema-fokus' }
+  const motive = {
+    'Einsteiger & Achtsamkeit': 'thema-achtsamkeit',
+    'Stress & Ruhe': 'thema-stress',
+    'Fokus & Energie': 'thema-fokus',
+    'Mitgefühl & Freundlichkeit': 'thema-mitgefuehl',
+    'Gefühle & Loslassen': 'thema-gefuehle',
+    'Achtsam im Alltag': 'thema-alltag',
+  }
   for (const [theme, motiv] of Object.entries(motive)) {
     const group = list.getByRole('region', { name: theme })
     // Ein Motiv je Thema, im Kopf der Gruppe links der Überschrift; die Einträge bleiben schlanke Zeilen.
@@ -104,6 +115,19 @@ test('the timer card and every theme show their painting', async ({ page }) => {
     expect(box.x + box.width).toBeLessThanOrEqual(heading.x)
     await expect(group.getByRole('button').locator('img.motiv')).toHaveCount(0)
   }
+})
+
+test('a meditation of a new theme starts the player and plays', async ({ page }) => {
+  await openMeditieren(page)
+  await entry(page, 'Gehmeditation').click()
+
+  const player = page.getByRole('dialog', { name: 'Geführte Meditation' })
+  await expect(player.getByRole('heading', { name: 'Gehmeditation' })).toBeVisible()
+  expect((await stored(page)).lastUsed).toEqual({ kind: 'guided', id: 'gehmeditation' })
+  // Die Restzeit läuft, die Datei spielt also.
+  await expect(player.getByRole('button', { name: '15 Sekunden vor' })).toBeEnabled()
+  const first = await remaining(page)
+  await expect.poll(() => remaining(page)).toBeLessThan(first)
 })
 
 test('start, seek, pause, ask before ending and end with the done screen', async ({ page }) => {
@@ -345,7 +369,7 @@ test('a played meditation is saved; offline only saved ones can start', async ({
 
   await context.setOffline(true)
   const hints = page.getByText('Nicht offline verfügbar', { exact: true })
-  await expect(hints).toHaveCount(8)
+  await expect(hints).toHaveCount(17)
   await expect(entry(page, 'Guten Morgen')).toBeDisabled()
   await expect(entry(page, 'Guten Morgen')).toContainText('Nicht offline verfügbar')
   await expect(saved).toBeEnabled()
@@ -385,9 +409,9 @@ test('offline at launch, an entry is not held back before the cache has been rea
   await expect(page.getByText('Nicht offline verfügbar', { exact: true })).toHaveCount(0)
   await expect(savedMark(page)).toHaveCount(0)
 
-  // Gelesen: Die gespeicherte bleibt startbar, die übrigen acht sind gesperrt.
+  // Gelesen: Die gespeicherte bleibt startbar, die übrigen 17 sind gesperrt.
   await page.evaluate(() => (window as unknown as { __releaseCache: () => void }).__releaseCache())
-  await expect(page.getByText('Nicht offline verfügbar', { exact: true })).toHaveCount(8)
+  await expect(page.getByText('Nicht offline verfügbar', { exact: true })).toHaveCount(17)
   await expect(entry(page, 'Guten Morgen')).toBeDisabled()
   await expect(page.getByRole('button', { name: /^Drei-Minuten-Atempause, \d+ Minuten, offline verfügbar$/ })).toBeEnabled()
   await expect(savedMark(page)).toHaveCount(1)

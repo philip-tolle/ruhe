@@ -35,7 +35,9 @@ test('helpers name the motif of every sound, breath pattern, topic and time of d
     'atem-478', 'atem-box', 'atem-kohaerent', 'atem-langes-ausatmen', 'atem-seufzer', 'atem-wechselatmung',
   ])
   const categories = Object.keys(CATEGORY_TITLE) as Category[]
-  expect(categories.map(themaMotiv)).toEqual(['thema-achtsamkeit', 'thema-stress', 'thema-fokus'])
+  expect(categories.map(themaMotiv)).toEqual([
+    'thema-achtsamkeit', 'thema-stress', 'thema-fokus', 'thema-mitgefuehl', 'thema-gefuehle', 'thema-alltag',
+  ])
   const zeiten = Object.keys(GREETING) as Tageszeit[]
   expect(zeiten.map(vorschlagMotiv)).toEqual(['vorschlag-morgen', 'vorschlag-tag', 'vorschlag-abend'])
   const music = MUSIC.map((m) => m.id)

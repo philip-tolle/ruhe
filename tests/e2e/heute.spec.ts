@@ -13,7 +13,9 @@ const MORNING = new Date('2026-10-21T08:00:00+02:00')
 // leiten Titel und Beschreibungen aus dem Katalog ab und verlassen sich nie auf genaue Längen.
 type Entry = { id: string; title: string; category: string; description: string }
 const CATALOG: Entry[] = JSON.parse(readFileSync('src/content/meditations.json', 'utf8')).meditations
-const FOKUS = CATALOG.filter((m) => m.category === 'fokus')
+// Die zwei Themen des Vorschlags je Tageszeit (Spec M7 §6).
+const PAIR = { morgen: ['fokus', 'alltag'], tag: ['stress', 'gefuehle'], abend: ['achtsamkeit', 'mitgefuehl'] } as const
+const inPair = (mood: keyof typeof PAIR) => CATALOG.filter((m) => (PAIR[mood] as readonly string[]).includes(m.category))
 const ANKOMMEN = CATALOG.find((m) => m.id === 'ankommen-im-atem')!
 
 const session = (id: string, start: string) => ({ id, start, kind: 'timer', ref: 'timer', seconds: 600 })
@@ -187,6 +189,25 @@ for (const [time, mood, greeting] of [
   })
 }
 
+// Am 19. und am 21. Oktober kommt je Tageszeit eines der beiden Themen dran (Rotation in Katalog-Reihenfolge).
+for (const [time, mood, greeting] of [
+  ['08:00', 'morgen', 'Guten Morgen'],
+  ['14:00', 'tag', 'Guten Tag'],
+  ['20:00', 'abend', 'Guten Abend'],
+] as const) {
+  test(`the suggestion of the ${mood} (${time}) comes from its two themes`, async ({ page }) => {
+    const categories = new Set<string>()
+    for (const day of ['19', '21']) {
+      await open(page, null, new Date(`2026-10-${day}T${time}:00+02:00`), greeting)
+      const text = await suggestionCard(page).innerText()
+      const meditation = inPair(mood).find((m) => text.includes(m.title))
+      expect(meditation, `${day}.10.: kein Titel aus ${PAIR[mood].join(' oder ')} in: ${text}`).toBeDefined()
+      categories.add(meditation!.category)
+    }
+    expect([...categories].sort()).toEqual([...PAIR[mood]].sort())
+  })
+}
+
 test('„Atemübung“ in the activities starts coherent breathing and becomes the last used', async ({ page }) => {
   await open(page, null)
   await atemuebungRow(page).click()
@@ -305,14 +326,14 @@ test('the row „Klänge“ still leads to the sounds', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Klänge')
 })
 
-test('the suggestion of the morning comes from „Fokus & Energie“ and starts the guided player', async ({ page }) => {
+test('the suggestion of the morning comes from „Fokus & Energie“ or „Achtsam im Alltag“ and starts the guided player', async ({ page }) => {
   await open(page, null, MORNING, 'Guten Morgen')
   const card = suggestionCard(page)
 
-  // Der Vorschlag ist einer der drei Fokus-Titel; welcher, hängt vom Kalendertag ab.
+  // Der Vorschlag ist einer der sechs Titel aus Fokus und Alltag; welcher, hängt vom Kalendertag ab.
   const text = await card.innerText()
-  const meditation = FOKUS.find((m) => text.includes(m.title))
-  expect(meditation, `kein Fokus-Titel in: ${text}`).toBeDefined()
+  const meditation = inPair('morgen').find((m) => text.includes(m.title))
+  expect(meditation, `kein Titel aus Fokus oder Alltag in: ${text}`).toBeDefined()
   await expect(card.getByText(meditation!.description, { exact: true })).toBeVisible()
   await expect(card.getByText(/^\d+ Min$/)).toBeVisible()
   // Der Titel ist keine Überschrift: Unter der Begrüßung (h1) bleibt die Karte bei ihrer Überschrift (h2).
@@ -356,6 +377,19 @@ test('a stored guided meditation is shown with its title and „Erneut starten�
   await endGuided(page)
   expect((await stored(page)).lastUsed).toEqual(lastUsed)
   await expect(last.getByText(/^Nach einem vollen Tag · \d+ Min$/)).toBeVisible()
+})
+
+// Review Focus 5: eine der neuen Meditationen ist die zuletzt genutzte.
+test('a stored new meditation („Gehmeditation“) is shown with its title and „Erneut starten“ opens it', async ({ page }) => {
+  const lastUsed = { kind: 'guided', id: 'gehmeditation' }
+  await open(page, dataOf(THREE_DAYS, lastUsed))
+  const last = lastUsedCard(page)
+  await expect(last.getByText('Gehmeditation · 10 Min', { exact: true })).toBeVisible()
+
+  await last.getByRole('button', { name: 'Erneut starten' }).click()
+  await expect(guidedPlayer(page).getByRole('heading', { name: 'Gehmeditation', exact: true })).toBeVisible()
+  await endGuided(page)
+  expect((await stored(page)).lastUsed).toEqual(lastUsed)
 })
 
 test('a stored meditation the catalog does not know falls back to „Ankommen im Atem“', async ({ page }) => {

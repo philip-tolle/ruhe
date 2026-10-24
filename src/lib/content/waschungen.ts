@@ -27,6 +27,9 @@ const THEMA: Record<Category, WaschFarbe> = {
   achtsamkeit: 'lavendel',
   stress: 'blaugruen',
   fokus: 'pfirsich',
+  mitgefuehl: 'lavendel',
+  gefuehle: 'blaugruen',
+  alltag: 'pfirsich',
 }
 
 const TAGESZEIT: Record<Tageszeit, WaschFarbe> = {

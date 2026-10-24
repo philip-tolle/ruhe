@@ -15,7 +15,13 @@ import {
 } from '../../src/lib/content/catalog'
 import { tageszeit, type Tageszeit } from '../../src/lib/time/tageszeit'
 
-const CATEGORIES: Category[] = ['achtsamkeit', 'stress', 'fokus']
+const CATEGORIES: Category[] = ['achtsamkeit', 'stress', 'fokus', 'mitgefuehl', 'gefuehle', 'alltag']
+// Themen des Vorschlags je Tageszeit (Spec M7 §6).
+const PAIR: Record<Tageszeit, readonly [Category, Category]> = {
+  morgen: ['fokus', 'alltag'],
+  tag: ['stress', 'gefuehle'],
+  abend: ['achtsamkeit', 'mitgefuehl'],
+}
 
 const meditation = (id: string, category: Category, overrides: Partial<Meditation> = {}): Meditation => ({
   id,
@@ -36,10 +42,11 @@ const many = (category: Category, count: number) => Array.from({ length: count }
 const at = (year: number, month: number, day: number, hour = 12, minute = 0) => new Date(year, month - 1, day, hour, minute)
 
 describe('Daten', () => {
-  test('neun Meditationen, je drei pro Thema, jede mit gültigem Thema', () => {
-    expect(MEDITATIONS).toHaveLength(9)
-    for (const category of CATEGORIES) expect(MEDITATIONS.filter((m) => m.category === category)).toHaveLength(3)
-    expect(new Set(MEDITATIONS.map((m) => m.id)).size).toBe(9)
+  test('18 Meditationen: je vier in den bisherigen, je zwei in den neuen Themen, jede mit gültigem Thema', () => {
+    expect(MEDITATIONS).toHaveLength(18)
+    const count = (category: Category) => MEDITATIONS.filter((m) => m.category === category).length
+    expect(CATEGORIES.map(count)).toEqual([4, 4, 4, 2, 2, 2])
+    expect(new Set(MEDITATIONS.map((m) => m.id)).size).toBe(18)
   })
 
   test('Datei, Version und Größe stimmen mit der MP3 unter public/ überein (Manifest nicht veraltet)', () => {
@@ -64,16 +71,22 @@ describe('Daten', () => {
 })
 
 describe('byCategory', () => {
-  test('Themen in der Reihenfolge Achtsamkeit, Stress, Fokus mit ihren Titeln', () => {
+  test('sechs Themen in der Reihenfolge Achtsamkeit, Stress, Fokus, Mitgefühl, Gefühle, Alltag mit ihren Titeln', () => {
     expect(CATEGORY_TITLE).toEqual({
       achtsamkeit: 'Einsteiger & Achtsamkeit',
       stress: 'Stress & Ruhe',
       fokus: 'Fokus & Energie',
+      mitgefuehl: 'Mitgefühl & Freundlichkeit',
+      gefuehle: 'Gefühle & Loslassen',
+      alltag: 'Achtsam im Alltag',
     })
     expect(byCategory().map((g) => [g.category, g.title])).toEqual([
       ['achtsamkeit', 'Einsteiger & Achtsamkeit'],
       ['stress', 'Stress & Ruhe'],
       ['fokus', 'Fokus & Energie'],
+      ['mitgefuehl', 'Mitgefühl & Freundlichkeit'],
+      ['gefuehle', 'Gefühle & Loslassen'],
+      ['alltag', 'Achtsam im Alltag'],
     ])
   })
 
@@ -88,26 +101,38 @@ describe('byCategory', () => {
   })
 })
 
-describe('suggestionFor: Thema nach Tageszeit', () => {
+describe('suggestionFor: Themenpaar nach Tageszeit', () => {
   const categoryAt = (hour: number, minute: number) => suggestionFor(at(2026, 10, 21, hour, minute)).category
+  // An sechs Tagen hintereinander kommt jede Meditation des Paars einmal dran.
+  const categoriesOverWeek = (hour: number) =>
+    new Set(Array.from({ length: 6 }, (_, d) => suggestionFor(at(2026, 10, 19 + d, hour)).category))
 
-  test('5 bis 11 Uhr: Fokus & Energie', () => {
-    expect(categoryAt(5, 0)).toBe('fokus')
-    expect(categoryAt(8, 30)).toBe('fokus')
-    expect(categoryAt(10, 59)).toBe('fokus')
+  test('5 bis 11 Uhr: Fokus & Energie oder Achtsam im Alltag', () => {
+    for (const [hour, minute] of [[5, 0], [8, 30], [10, 59]]) expect(PAIR.morgen).toContain(categoryAt(hour, minute))
+    expect(categoriesOverWeek(8)).toEqual(new Set(['fokus', 'alltag']))
   })
 
-  test('11 bis 17 Uhr: Stress & Ruhe', () => {
-    expect(categoryAt(11, 0)).toBe('stress')
-    expect(categoryAt(14, 0)).toBe('stress')
-    expect(categoryAt(16, 59)).toBe('stress')
+  test('11 bis 17 Uhr: Stress & Ruhe oder Gefühle & Loslassen', () => {
+    for (const [hour, minute] of [[11, 0], [14, 0], [16, 59]]) expect(PAIR.tag).toContain(categoryAt(hour, minute))
+    expect(categoriesOverWeek(14)).toEqual(new Set(['stress', 'gefuehle']))
   })
 
-  test('ab 17 Uhr bis vor 5 Uhr: Einsteiger & Achtsamkeit', () => {
-    expect(categoryAt(17, 0)).toBe('achtsamkeit')
-    expect(categoryAt(23, 59)).toBe('achtsamkeit')
-    expect(categoryAt(0, 0)).toBe('achtsamkeit')
-    expect(categoryAt(4, 59)).toBe('achtsamkeit')
+  test('ab 17 Uhr bis vor 5 Uhr: Einsteiger & Achtsamkeit oder Mitgefühl & Freundlichkeit', () => {
+    for (const [hour, minute] of [[17, 0], [23, 59], [0, 0], [4, 59]]) expect(PAIR.abend).toContain(categoryAt(hour, minute))
+    expect(categoriesOverWeek(20)).toEqual(new Set(['achtsamkeit', 'mitgefuehl']))
+  })
+
+  // Review Focus 1: an jeder Grenze springt der Vorschlag ins nächste Paar, an jedem Tag der Woche.
+  test('Grenzen 4:59/5:00, 10:59/11:00, 16:59/17:00 trennen die Paare', () => {
+    const BOUNDS: [number, number, Tageszeit][] = [
+      [4, 59, 'abend'], [5, 0, 'morgen'], [10, 59, 'morgen'], [11, 0, 'tag'], [16, 59, 'tag'], [17, 0, 'abend'],
+    ]
+    for (let d = 0; d < 6; d++) {
+      for (const [hour, minute, zeit] of BOUNDS) {
+        const category = suggestionFor(at(2026, 10, 19 + d, hour, minute)).category
+        expect(PAIR[zeit], `Tag ${d}, ${hour}:${minute}`).toContain(category)
+      }
+    }
   })
 
   test('liefert eine Meditation aus dem Katalog', () => {
@@ -115,19 +140,23 @@ describe('suggestionFor: Thema nach Tageszeit', () => {
   })
 
   // Thema und Stimmung (Motiv des Vorschlags) dürfen nie auseinanderlaufen: zu jeder Stunde, am Anfang und am Ende.
-  test('zu jeder Stunde gehört das Thema zur Tageszeit: Morgen Fokus, Tag Stress, Abend Achtsamkeit', () => {
-    const THEMA: Record<Tageszeit, Category> = { morgen: 'fokus', tag: 'stress', abend: 'achtsamkeit' }
+  test('zu jeder Stunde gehört das Thema zum Paar der Tageszeit', () => {
     for (let hour = 0; hour < 24; hour++) {
       for (const minute of [0, 59]) {
-        expect(categoryAt(hour, minute), `${hour}:${minute}`).toBe(THEMA[tageszeit(at(2026, 10, 21, hour, minute))])
+        const when = at(2026, 10, 21, hour, minute)
+        expect(PAIR[tageszeit(when)], `${hour}:${minute}`).toContain(suggestionFor(when).category)
       }
     }
   })
 })
 
 describe('suggestionFor: Rotation nach Kalendertag', () => {
-  // Unterschiedlich viele pro Thema, damit „mod Anzahl“ je Thema sichtbar wird.
-  const list = [...many('achtsamkeit', 4), ...many('stress', 3), ...many('fokus', 2)]
+  // Unterschiedlich viele je Paar, damit „mod Anzahl“ je Paar sichtbar wird; die neuen Themen stehen wie im
+  // Katalog hinter den bisherigen.
+  const list = [
+    ...many('achtsamkeit', 3), ...many('stress', 2), ...many('fokus', 1),
+    ...many('mitgefuehl', 1), ...many('gefuehle', 1), ...many('alltag', 1),
+  ]
   const idAt = (year: number, month: number, day: number, hour: number, minute = 0) =>
     suggestionFor(at(year, month, day, hour, minute), list).id
 
@@ -137,25 +166,40 @@ describe('suggestionFor: Rotation nach Kalendertag', () => {
     expect(idAt(2026, 10, 21, 17, 0)).toBe(idAt(2026, 10, 21, 23, 59))
   })
 
-  test('am nächsten Tag die nächste Meditation, nach der letzten wieder die erste', () => {
-    const days = [10, 11, 12, 13, 14, 15]
-    const ids = days.map((d) => idAt(2026, 6, d, 12))
-    expect(ids.every((id) => id.startsWith('stress-'))).toBe(true)
-    const index = ids.map((id) => Number(id.split('-')[1]))
-    for (let i = 1; i < index.length; i++) expect(index[i]).toBe((index[i - 1] + 1) % 3)
-    expect(new Set(index)).toEqual(new Set([0, 1, 2]))
+  test('am nächsten Tag die nächste Meditation, nach der letzten wieder die erste, über beide Themen in Katalog-Reihenfolge', () => {
+    const pool = ['stress-0', 'stress-1', 'gefuehle-0']
+    const ids = [10, 11, 12, 13, 14, 15].map((d) => idAt(2026, 6, d, 12))
+    const first = pool.indexOf(ids[0])
+    expect(first).toBeGreaterThanOrEqual(0)
+    expect(ids).toEqual(ids.map((_, i) => pool[(first + i) % 3]))
   })
 
-  test('jedes Thema rotiert über seine eigene Anzahl', () => {
-    const indexOver = (hour: number, count: number) =>
-      Array.from({ length: count * 2 }, (_, d) => Number(idAt(2026, 3, 1 + d, hour).split('-')[1]))
-    const fokus = indexOver(8, 2)
-    expect(fokus.every((i) => i === 0 || i === 1)).toBe(true)
-    expect(fokus[2]).toBe(fokus[0])
-    expect(fokus[1]).not.toBe(fokus[0])
-    const achtsamkeit = indexOver(20, 4)
-    expect(achtsamkeit.slice(4)).toEqual(achtsamkeit.slice(0, 4))
-    expect(new Set(achtsamkeit).size).toBe(4)
+  test('jedes Paar rotiert über seine eigene Anzahl', () => {
+    const over = (hour: number, count: number) => Array.from({ length: count * 2 }, (_, d) => idAt(2026, 3, 1 + d, hour))
+    const morgen = over(8, 2)
+    expect(new Set(morgen)).toEqual(new Set(['fokus-0', 'alltag-0']))
+    expect(morgen[2]).toBe(morgen[0])
+    expect(morgen[1]).not.toBe(morgen[0])
+    const abend = over(20, 4)
+    expect(abend.slice(4)).toEqual(abend.slice(0, 4))
+    expect(new Set(abend)).toEqual(new Set(['achtsamkeit-0', 'achtsamkeit-1', 'achtsamkeit-2', 'mitgefuehl-0']))
+  })
+
+  test('aus dem echten Katalog: sechs Tage um 8 Uhr sechs verschiedene, am siebten wieder die erste; über die Tageszeit stabil', () => {
+    const ids = Array.from({ length: 7 }, (_, d) => suggestionFor(at(2026, 10, 19 + d, 8)).id)
+    expect(new Set(ids.slice(0, 6)).size).toBe(6)
+    expect(ids[6]).toBe(ids[0])
+    const TIMES: Record<Tageszeit, [number, number][]> = {
+      morgen: [[5, 0], [8, 0], [10, 59]],
+      tag: [[11, 0], [14, 0], [16, 59]],
+      abend: [[0, 0], [4, 59], [17, 0], [23, 59]],
+    }
+    for (let d = 0; d < 7; d++) {
+      for (const [zeit, times] of Object.entries(TIMES)) {
+        const day = times.map(([hour, minute]) => suggestionFor(at(2026, 10, 19 + d, hour, minute)).id)
+        expect(new Set(day).size, `Tag ${d}, ${zeit}`).toBe(1)
+      }
+    }
   })
 
   test('der Tag des Jahres zählt ab 0 (1. Januar), auch im Schaltjahr', () => {
@@ -168,9 +212,12 @@ describe('suggestionFor: Rotation nach Kalendertag', () => {
     expect(pick(2028, 12, 31)).toBe('stress-1') // Tag 365 im Schaltjahr
   })
 
-  test('das Thema ohne Eintrag fällt auf die ganze Liste zurück; eine leere Liste ist ein Fehler', () => {
+  test('ein Paar ohne Eintrag fällt auf die ganze Liste zurück; eine leere Liste ist ein Fehler', () => {
     const onlyStress = many('stress', 3)
-    expect(suggestionFor(at(2026, 1, 2, 8), onlyStress).id).toBe('stress-1') // Morgen, aber kein Fokus
+    expect(suggestionFor(at(2026, 1, 2, 8), onlyStress).id).toBe('stress-1') // Morgen, aber weder Fokus noch Alltag
+    const onlyAlltag = many('alltag', 2)
+    expect(suggestionFor(at(2026, 1, 2, 8), onlyAlltag).id).toBe('alltag-1') // ein Thema des Paars genügt
+    expect(suggestionFor(at(2026, 1, 2, 20), [...onlyStress, ...onlyAlltag]).id).toBe('stress-1') // Abend: Rückfall
     expect(() => suggestionFor(at(2026, 1, 2, 8), [])).toThrow()
   })
 })

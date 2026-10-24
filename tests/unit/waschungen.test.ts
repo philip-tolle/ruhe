@@ -5,7 +5,7 @@ import {
   WASCH_FARBEN, waschUrl, themaWaschung, tageszeitWaschung, atemWaschung, zuletztWaschung, waschLage,
 } from '../../src/lib/content/waschungen'
 import type { Category } from '../../src/lib/content/catalog'
-import { CATEGORY_TITLE } from '../../src/lib/content/catalog'
+import { byCategory, CATEGORY_TITLE } from '../../src/lib/content/catalog'
 import { assetUrl } from '../../src/lib/sounds/catalog'
 import { BREATH_PATTERNS } from '../../src/lib/breath/patterns'
 import { GREETING } from '../../src/lib/time/tageszeit'
@@ -54,6 +54,9 @@ test('colour assignment: topics, times of day and breathing exercises', () => {
   expect(themaWaschung('achtsamkeit')).toBe('lavendel')
   expect(themaWaschung('stress')).toBe('blaugruen')
   expect(themaWaschung('fokus')).toBe('pfirsich')
+  expect(themaWaschung('mitgefuehl')).toBe('lavendel')
+  expect(themaWaschung('gefuehle')).toBe('blaugruen')
+  expect(themaWaschung('alltag')).toBe('pfirsich')
   expect(tageszeitWaschung('morgen')).toBe('pfirsich')
   expect(tageszeitWaschung('tag')).toBe('blaugruen')
   expect(tageszeitWaschung('abend')).toBe('lavendel')
@@ -73,13 +76,21 @@ test('every topic, time of day and breathing exercise has a colour from the cata
     ...zeiten.map(tageszeitWaschung),
     ...BREATH_PATTERNS.map((p) => atemWaschung(p.id)),
   ]
-  expect(alle).toHaveLength(3 + 3 + 6)
+  expect(alle).toHaveLength(6 + 3 + 6)
   for (const farbe of alle) expect(WASCH_FARBEN).toContain(farbe)
+})
+
+// Review Focus 4: In der Liste „Meditieren“ stehen die Themen untereinander; zwei benachbarte tragen nie dieselbe Farbe.
+test('neighbouring themes never share a wash', () => {
+  const farben = byCategory().map((g) => themaWaschung(g.category))
+  expect(farben).toHaveLength(6)
+  for (let i = 1; i < farben.length; i++) expect(farben[i], `${i - 1} und ${i}`).not.toBe(farben[i - 1])
 })
 
 test('zuletztWaschung takes the colour of the topic, the exercise or the time of day', () => {
   const guided: LastUsed = { kind: 'guided', id: 'gedanken-wie-wolken' }
   expect(zuletztWaschung(guided, 'abend')).toBe('lavendel')
+  expect(zuletztWaschung({ kind: 'guided', id: 'gehmeditation' }, 'abend')).toBe('pfirsich')
   const breath: LastUsed = { kind: 'breath', pattern: 'box', minutes: 3 }
   expect(zuletztWaschung(breath, 'abend')).toBe('pfirsich')
   const timer: LastUsed = { kind: 'timer', minutes: 10, intervalMin: null, sound: null, lead: false }
