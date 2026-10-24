@@ -99,7 +99,7 @@
 
     {@render footer?.()}
   {:else if done}
-    <SessionDone kind={done.kind} seconds={done.seconds} counted={done.counted} onDone={clearDone} />
+    <SessionDone kind={done.kind} seconds={done.seconds} counted={done.counted} sessionId={done.sessionId} onDone={clearDone} />
   {/if}
 </div>
 

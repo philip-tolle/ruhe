@@ -1,13 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import CalmCheckIn from './CalmCheckIn.svelte'
   import type { SessionKind } from '../../lib/stats/schema'
 
   let {
     kind,
     seconds,
     counted,
+    sessionId,
     onDone,
-  }: { kind: SessionKind; seconds: number; counted: boolean; onDone: () => void } = $props()
+  }: { kind: SessionKind; seconds: number; counted: boolean; sessionId: string | null; onDone: () => void } = $props()
+
+  // Der Ruhe-Check-in hängt an der gespeicherten Sitzung; unter einer Minute gibt es keine.
+  const checkIn = $derived(counted ? sessionId : null)
 
   interface Texts {
     heading: string
@@ -42,7 +47,13 @@
   <div class="glow" aria-hidden="true"></div>
   <h2 tabindex="-1" bind:this={heading}>{texts.heading}</h2>
   <p class="detail" class:counted>{detail}</p>
+  {#if checkIn}
+    <CalmCheckIn sessionId={checkIn} />
+  {/if}
   <button type="button" class="button" onclick={() => onDone()}>Fertig</button>
+  {#if checkIn}
+    <p class="skip">Ohne Antwort einfach „Fertig“.</p>
+  {/if}
 </div>
 
 <style>
@@ -96,6 +107,13 @@
   .button {
     min-width: 12rem;
     margin-top: 16px;
+  }
+
+  /* Rückt an „Fertig“ heran: leise, nur ein Hinweis, dass die Karte freiwillig ist. */
+  .skip {
+    margin-top: -10px;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
   }
 
   @media (prefers-reduced-motion: no-preference) {
