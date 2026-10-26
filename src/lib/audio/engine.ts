@@ -43,7 +43,7 @@ const STOP_AFTER = 0.9 // s, danach enden die Quellen der Stimme
 const VOLUME_GLIDE = 0.05 // s, gegen Knacken beim Ziehen des Lautstärkereglers
 
 type Loader = (ctx: BaseAudioContext, url: string) => Promise<AudioBuffer>
-type MusicFactory = (ctx: AudioContext, url: string) => MusicVoice
+type MusicFactory = (ctx: AudioContext, url: string, opts?: { crossfade?: number }) => MusicVoice
 
 // Eine Stimme mit eigenem Gain im Mischpult.
 interface Channel {
@@ -375,7 +375,7 @@ export class AudioEngine {
     // Countdown bleibt, keine Marke hält den Output an). Abgelöste Ladevorgänge verfallen über ihre Nummer.
     this.stop(previous)
     this.emit()
-    const music = sound.kind === 'music' ? this.music(out.ctx, musicUrl(sound)) : null
+    const music = sound.kind === 'music' ? this.music(out.ctx, musicUrl(sound), { crossfade: sound.crossfade }) : null
     const loading: Promise<AudioBuffer | void> = music ? music.ready : this.load(out.ctx, assetUrl(sound.file))
     const [started, loaded] = await Promise.allSettled([starting, loading])
     // Wurde der Klang inzwischen gestoppt (oder danach neu angestoßen), gilt dieser Ladevorgang nicht mehr.

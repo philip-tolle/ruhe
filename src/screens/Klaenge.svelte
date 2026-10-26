@@ -3,7 +3,7 @@
   import { engine } from '../lib/audio/engine'
   import { audio, togglePause } from '../lib/audio/engine-store.svelte'
   import { refreshSaved } from '../lib/offline/status.svelte'
-  import { backgroundById, MUSIC, SOUNDS } from '../lib/sounds/catalog'
+  import { backgroundById, MUSIC, musicIn, SOUNDS } from '../lib/sounds/catalog'
   import { absoluteMusicUrl } from '../lib/ui/offline-ui.svelte'
   import { formatRemaining } from '../lib/time/format'
   import SleepTimerPicker from '../components/SleepTimerPicker.svelte'
@@ -11,9 +11,10 @@
 
   const snap = $derived(audio.snap)
 
-  // Zuerst die Musik, dann die Natur; jede Kachel kennt die Art ihres Klangs.
+  // Zuerst die Musik, dann Lofi, dann die Natur; jede Kachel kennt die Art ihres Klangs.
   const sections = [
-    { id: 'musik', title: 'Musik', items: MUSIC.map((m) => backgroundById(m.id)) },
+    { id: 'musik', title: 'Musik', items: musicIn('musik').map((m) => backgroundById(m.id)) },
+    { id: 'lofi', title: 'Lofi', items: musicIn('lofi').map((m) => backgroundById(m.id)) },
     { id: 'natur', title: 'Natur', items: SOUNDS.map((s) => backgroundById(s.id)) },
   ]
 

@@ -9,8 +9,8 @@ test('switch sounds, sleep timer and mini player', async ({ page }) => {
   const tiles = page.locator('button[aria-pressed]')
   await expect(tiles).toHaveText(ALL_TILES.map((t) => t.title))
 
-  await page.getByRole('button', { name: 'Regen' }).click()
-  await expect(page.getByRole('button', { name: 'Regen' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Regen', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Regen', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('slider', { name: 'Lautstärke Regen' })).toBeVisible()
   await expect(page.getByText('Läuft endlos')).toBeVisible()
 
@@ -24,7 +24,7 @@ test('switch sounds, sleep timer and mini player', async ({ page }) => {
   // Antippen wechselt: Es läuft immer nur ein Klang, der Sleep-Timer läuft weiter.
   await page.getByRole('button', { name: 'Wald mit Vögeln' }).click()
   await expect(page.getByRole('button', { name: 'Wald mit Vögeln' })).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
-  await expect(page.getByRole('button', { name: 'Regen' })).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('button', { name: 'Regen', exact: true })).toHaveAttribute('aria-pressed', 'false')
   await expect(page.locator('button[aria-pressed="true"]')).toHaveCount(1)
   await expect(page.getByRole('slider')).toHaveCount(1)
   await expect(page.getByRole('slider', { name: 'Lautstärke Wald mit Vögeln' })).toBeVisible()
@@ -49,7 +49,7 @@ test('switch sounds, sleep timer and mini player', async ({ page }) => {
 test('status text does not claim "Läuft endlos" while paused', async ({ page }) => {
   await page.goto('./')
   await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Klänge' }).click()
-  await page.getByRole('button', { name: 'Regen' }).click()
+  await page.getByRole('button', { name: 'Regen', exact: true }).click()
   await expect(page.getByText('Läuft endlos')).toBeVisible()
 
   await page.getByRole('button', { name: 'Pause' }).click()
@@ -90,11 +90,29 @@ const MUSIC_TILES = [
   { title: 'Salz und Sternenlicht', motiv: 'musik-salz-und-sternenlicht' },
   { title: 'Unter der Oberfläche', motiv: 'musik-unter-der-oberflaeche' },
 ] as const
-const ALL_TILES = [...MUSIC_TILES, ...SOUND_TILES]
+// Die vier Lofi-Stücke stehen zwischen Musik und Natur, in einem eigenen Abschnitt.
+const LOFI_TILES = [
+  { title: 'Kaffee & Notizen', motiv: 'musik-kaffee-und-notizen' },
+  { title: 'Regenfenster', motiv: 'musik-regenfenster' },
+  { title: 'Abendlicht', motiv: 'musik-abendlicht' },
+  { title: 'Alte Kassette', motiv: 'musik-alte-kassette' },
+] as const
+const SECTIONS = [MUSIC_TILES, LOFI_TILES, SOUND_TILES] as const
+const ALL_TILES = SECTIONS.flat()
 
-// Die Nachbarkachel in derselben Zeile: je Abschnitt zwei je Zeile, die siebte Musikkachel steht allein.
-const partner = (i: number) =>
-  i < MUSIC_TILES.length ? ((i ^ 1) < MUSIC_TILES.length ? i ^ 1 : i) : MUSIC_TILES.length + ((i - MUSIC_TILES.length) ^ 1)
+// Die Nachbarkachel in derselben Zeile: je Abschnitt zwei je Zeile; bleibt in einem Abschnitt eine übrig (die siebte
+// Musikkachel), steht sie allein.
+function partner(i: number): number {
+  let start = 0
+  for (const section of SECTIONS) {
+    if (i < start + section.length) {
+      const other = start + ((i - start) ^ 1)
+      return other < start + section.length ? other : i
+    }
+    start += section.length
+  }
+  throw new Error(`keine Kachel ${i}`)
+}
 
 const soundTile = (page: Page, title: string) => page.getByRole('button', { name: title, exact: true })
 const soundTiles = (page: Page) => page.locator('button[aria-pressed]')
@@ -111,7 +129,7 @@ const tileBoxes = (page: Page) =>
 
 test('each tile shows its motif as decoration, centred at the top, and tapping the motif plays the sound', async ({ page }) => {
   await openKlaenge(page)
-  await expect(soundTiles(page)).toHaveCount(15)
+  await expect(soundTiles(page)).toHaveCount(19)
   for (const t of ALL_TILES) {
     const button = soundTile(page, t.title)
     await expect(button.locator('img')).toHaveCount(1)
@@ -161,7 +179,7 @@ test.describe('the title stays readable over the picture, in every mood', () => 
       await page.clock.setFixedTime(new Date(`2026-10-22T${time}+02:00`))
       await openKlaenge(page)
       await expect(page.locator('html')).toHaveAttribute('data-tageszeit', mood)
-      await expect(soundTiles(page)).toHaveCount(15)
+      await expect(soundTiles(page)).toHaveCount(19)
 
       const tile = page.locator('.tile').first()
       const scrimCss = await resolveColor(tile, 'var(--tile-scrim)')
@@ -183,7 +201,7 @@ test.describe('the title stays readable over the picture, in every mood', () => 
           }
         }),
       )
-      expect(titles).toHaveLength(15)
+      expect(titles).toHaveLength(19)
       for (const title of titles) {
         // Der gemalte Verlauf hinter dem Titel hat die Farbe des Tokens, das hier geprüft wird.
         expect(title.image).toMatch(/^linear-gradient\(/)
@@ -201,7 +219,7 @@ test.describe('the title stays readable over the picture, in every mood', () => 
 
 test('an active tile keeps its height, shows the accent, and keeps its title clear of the slider', async ({ page }) => {
   await openKlaenge(page)
-  await expect(soundTiles(page)).toHaveCount(15)
+  await expect(soundTiles(page)).toHaveCount(19)
   const before = await tileBoxes(page)
 
   await soundTile(page, 'Meeresrauschen').click()
@@ -251,27 +269,27 @@ test.describe('when the motifs do not load', () => {
 
   test('the tiles keep their size and names, and tapping still toggles', async ({ page }) => {
     await openKlaenge(page)
-    await expect(soundTiles(page)).toHaveCount(15)
+    await expect(soundTiles(page)).toHaveCount(19)
     for (const t of ALL_TILES) await expectMotiv(soundTile(page, t.title).locator('img'), t.motiv, MOTIF_SIZE)
     const withImages = await tileBoxes(page)
 
     await page.route('**/images/motive/**', (route) => route.fulfill({ status: 404 }))
     await openKlaenge(page)
-    await expect(soundTiles(page)).toHaveCount(15)
+    await expect(soundTiles(page)).toHaveCount(19)
     // Die Bilder sind wirklich ausgefallen (sonst prüfte der Test nichts), die Flächen bleiben.
     await expect
       .poll(() =>
         page.locator('img.motiv').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth === 0)),
       )
       .toBe(true)
-    expect(await page.locator('img.motiv').count()).toBe(15)
+    expect(await page.locator('img.motiv').count()).toBe(19)
     for (const img of await page.locator('img.motiv').all()) {
       expect(await img.evaluate((el: HTMLImageElement) => [el.offsetWidth, el.offsetHeight])).toEqual([MOTIF_SIZE, MOTIF_SIZE])
     }
 
     // Alle gleich groß, je Zeile gleiche Höhe, nicht anders als mit Bildern.
     const without = await tileBoxes(page)
-    expect(without).toHaveLength(15)
+    expect(without).toHaveLength(19)
     for (const [i, box] of without.entries()) {
       expect(box.width).toBeCloseTo(withImages[i].width, 0)
       expect(box.height).toBeCloseTo(withImages[i].height, 0)
@@ -337,7 +355,7 @@ test.describe('on a narrow screen with large system text', () => {
 
   test('nothing overflows its tile or the page, at normal size and at 130 %, idle and active', async ({ page }) => {
     await openKlaenge(page)
-    await expect(soundTiles(page)).toHaveCount(15)
+    await expect(soundTiles(page)).toHaveCount(19)
     const normal = await tileBoxes(page)
     expect(normal[0].width).toBeCloseTo(normal[1].width, 0)
     await expectFits(page)
@@ -346,7 +364,7 @@ test.describe('on a narrow screen with large system text', () => {
     await expectFits(page)
     // Zwei je Zeile, gleich breit, je Zeile gleich hoch und innerhalb des Bildschirms.
     const large = await tileBoxes(page)
-    expect(large).toHaveLength(15)
+    expect(large).toHaveLength(19)
     for (const [i, box] of large.entries()) {
       expect(box.width).toBeCloseTo(large[0].width, 0)
       expect(box.height).toBeCloseTo(large[partner(i)].height, 0)
@@ -362,14 +380,25 @@ test.describe('on a narrow screen with large system text', () => {
   })
 })
 
-test('music comes first, then nature', async ({ page }) => {
+test('music comes first, then lofi, then nature', async ({ page }) => {
   await openKlaenge(page)
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Musik', 'Natur', 'Sleep-Timer'])
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Musik', 'Lofi', 'Natur', 'Sleep-Timer'])
   const music = page.getByRole('region', { name: 'Musik' })
+  const lofi = page.getByRole('region', { name: 'Lofi' })
   const nature = page.getByRole('region', { name: 'Natur' })
   await expect(music.locator('button[aria-pressed]')).toHaveText(MUSIC_TILES.map((t) => t.title))
+  await expect(lofi.locator('button[aria-pressed]')).toHaveText(LOFI_TILES.map((t) => t.title))
   await expect(nature.locator('button[aria-pressed]')).toHaveText(SOUND_TILES.map((t) => t.title))
-  for (const t of MUSIC_TILES) await expectMotiv(soundTile(page, t.title).locator('img'), t.motiv, MOTIF_SIZE)
+  for (const t of [...MUSIC_TILES, ...LOFI_TILES]) await expectMotiv(soundTile(page, t.title).locator('img'), t.motiv, MOTIF_SIZE)
+})
+
+test('a lofi piece plays and shows in the mini player', async ({ page }) => {
+  await openKlaenge(page)
+  await soundTile(page, 'Kaffee & Notizen').click()
+  await expect(soundTile(page, 'Kaffee & Notizen')).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
+  await expect(page.getByRole('slider', { name: 'Lautstärke Kaffee & Notizen' })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Heute' }).click()
+  await expect(page.getByRole('region', { name: 'Wiedergabe' }).getByRole('button', { name: 'Kaffee & Notizen', exact: true })).toBeVisible()
 })
 
 test('a music piece plays, switches with nature and shows in the mini player', async ({ page }) => {
@@ -398,6 +427,7 @@ test('offline, unsaved music is disabled and says so', async ({ page, context })
   await expect(klavier).toBeDisabled()
   await expect(klavier).toHaveAccessibleDescription('Nicht offline verfügbar')
   await expect(page.getByRole('region', { name: 'Musik' }).getByText('Nicht offline verfügbar')).toHaveCount(7)
+  await expect(page.getByRole('region', { name: 'Lofi' }).getByText('Nicht offline verfügbar')).toHaveCount(4)
   await expect(soundTile(page, 'Regen')).toBeEnabled()
 
   await context.setOffline(false)

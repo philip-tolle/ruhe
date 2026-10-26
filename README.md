@@ -67,6 +67,13 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
+## Handy-Checkliste Lofi
+
+1. „Klänge“: Die Gruppe „Lofi“ steht zwischen „Musik“ und „Natur“, mit vier Motiven, die zu den übrigen passen.
+2. „Kaffee & Notizen“ gut 5 Minuten laufen lassen, **mit gesperrtem Bildschirm**: An der Naht blendet das Stück in etwa 3 Sekunden in den Anfang über, ohne dass zwei Beats lange durcheinanderlaufen.
+3. Ein Lofi-Stück als Hintergrund unter dem Timer und unter „Atmen“ wählen: Es läuft wie die übrigen Musikstücke.
+4. „Alle offline speichern“, dann Flugmodus: Auch die Lofi-Stücke spielen.
+
 ## Handy-Checkliste Meilenstein 8
 
 1. Unter „Atmen“ ein eigenes Muster anlegen (z. B. 4-4-6-2), benennen und speichern: Es steht unter „Eigene Muster“.
@@ -105,7 +112,7 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 9. „Atmen“: „Hintergrundklang“ auf „Regen“ stellen, Box-Atmung starten. Der Regen läuft leise unter dem Atemgeräusch, das deutlich hörbar bleibt. Mit „Stilles Klavier“ wiederholen: Die Musik setzt gleich mit der Übung ein. Danach die Atemübung auf „Heute“ und „Erneut starten“ antippen: Der gewählte Hintergrund läuft auch dort. Unter „Ich“ → „Atemgeräusch bei Atemübungen“ ausschalten: Der Hintergrund spielt dann in normaler Lautstärke.
 10. Flugmodus mit einem nicht gespeicherten Musikstück als Hintergrund unter „Atmen“: Das Stück ist in der Auswahl deaktiviert, die Übung startet ohne Hintergrund. Ein gespeichertes Stück spielt auch offline.
 
-> Hinweis: Musik: ElevenLabs Music (4 Stücke) und vom Nutzer mit Gemini erstellt (3 Stücke). Das Atemgeräusch ist eine echte Aufnahme (ElevenLabs).
+> Hinweis: Musik: ElevenLabs Music (4 Stücke, dazu die 4 Lofi-Stücke) und vom Nutzer mit Gemini erstellt (3 Stücke). Das Atemgeräusch ist eine echte Aufnahme (ElevenLabs).
 
 ## Meditationen vertonen
 
@@ -123,15 +130,16 @@ Solange eine Meditation noch nicht vertont ist, spielt eine Platzhalter-Datei (l
 
 ## Musik aufbereiten
 
-Die sieben Stücke liegen als `public/audio/music/<id>.opus`, die beiden Atemgeräusche als `public/audio/breath/ein.ogg` und `aus.ogg`. Ihre Daten stehen in `content/sounds.json` (`music` und `breath`): Titel, Datei, Version, Länge, Größe und Herkunft (Prompt, Flow und Generierung im ElevenLabs-Connector bzw. der Gemini-Titel). Aufbereitet wird mit `scripts/musik.py`, einem Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit NumPy und ffmpeg (libopus, libvorbis) braucht.
+Die elf Stücke (sieben Meditationsmusik, vier Lofi) liegen als `public/audio/music/<id>.opus`, die beiden Atemgeräusche als `public/audio/breath/ein.ogg` und `aus.ogg`. Ihre Daten stehen in `content/sounds.json` (`music` und `breath`): Titel, Datei, Version, Länge, Größe und Herkunft (Prompt, Flow und Generierung im ElevenLabs-Connector bzw. der Gemini-Titel). Aufbereitet wird mit `scripts/musik.py`, einem Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit NumPy und ffmpeg (libopus, libvorbis) braucht.
 
-- **Musik:** `python3 scripts/musik.py musik <quelle> public/audio/music/<id>.opus` blendet 1,5 s ein und 3 s aus, bringt das Stück auf −26 LUFS (True Peak höchstens −2 dBTP) und speichert es als Opus mit 96 kbit/s, Stereo, 48 kHz. Alle Stücke zusammen bleiben unter 22 MB.
+- **Musik:** `python3 scripts/musik.py musik <quelle> public/audio/music/<id>.opus` blendet 1,5 s ein und 3 s aus, bringt das Stück auf −26 LUFS (True Peak höchstens −2 dBTP) und speichert es als Opus mit 96 kbit/s, Stereo, 48 kHz. Die Meditationsmusik bleibt unter 22 MB, die Lofi-Stücke unter 16 MB.
+- **Gruppe und Naht:** Ein Lofi-Stück trägt in `content/sounds.json` `"group": "lofi"` und steht dann unter „Klänge“ und in der Hintergrundauswahl in der Gruppe „Lofi“. `"crossfade"` legt fest, wie viele Sekunden das Stück an der Naht der Schleife überblendet (Lofi: 3 s, damit zwei Beats nicht lange durcheinanderlaufen); ohne Angabe gilt die Standardlänge der Musik-Stimme (8 s).
 - **Atem:** `python3 scripts/musik.py atem <quelle> public/audio/breath/<ein|aus>.ogg` dämpft die Höhen (4 kHz), schneidet die Stille an Anfang und Ende ab und speichert −26 LUFS als Mono-Ogg. Wie leise es in der App klingt, regelt `BREATH_GAIN` in `src/lib/audio/breath-sound.ts`.
 - **Ein Stück austauschen:** Neu erzeugen (in einer Claude-Sitzung mit dem ElevenLabs-Connector, Modell `eleven_music_v2_5`, 300 s, instrumental; ein API-Schlüssel ist nicht nötig, und es wird keiner gespeichert), aufbereiten, dann in `content/sounds.json` `version`, `bytes` und `seconds` aus der Ausgabe des Skripts übernehmen. Die neue Version ändert die Adresse, Geräte laden das Stück dann neu.
 
 ## Motive malen
 
-Die 39 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entstehen in einer Claude-Sitzung über den ElevenLabs-Connector; ein API-Schlüssel ist dafür nicht nötig, und es wird keiner gespeichert. Das Freistellen übernimmt `scripts/freistellen.py`, ein Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit Pillow und NumPy braucht.
+Die 43 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entstehen in einer Claude-Sitzung über den ElevenLabs-Connector; ein API-Schlüssel ist dafür nicht nötig, und es wird keiner gespeichert. Das Freistellen übernimmt `scripts/freistellen.py`, ein Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit Pillow und NumPy braucht.
 
 1. **Prompt aufstellen:** `content/motive.json` hält das Schema. `prompt` beschreibt drei Motive nebeneinander (`Icon 1: … Icon 2: … Icon 3: …`); die `…` werden mit dem `subject` der drei Motive einer Gruppe gefüllt, `<style>` wird durch den Stiltext `style` ersetzt; dazu `model` und `background`. Je Motiv stehen `id`, `subject` (was gemalt ist), `flow` und `generation` (Quelle im Connector), `crop` (Ausschnitt) und `size`. So lässt sich ein Motiv später im selben Stil nachmalen.
 2. **Erzeugen:** In der Claude-Sitzung mit dem ElevenLabs-Connector, Modell `gpt-image-2.5-sunburst`, je Bild drei Motive einer Gruppe auf flacher Navy-Fläche `#1B2350`. Eine Variante kostet etwa 190 Credits (rund 4 US-Cent); jeder Aufruf zählt, wiederhole ihn also nicht ohne Grund.

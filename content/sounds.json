@@ -149,6 +149,70 @@
         "kind": "gemini",
         "title": "Underneath the Surface"
       }
+    },
+    {
+      "id": "kaffee-und-notizen",
+      "title": "Kaffee & Notizen",
+      "group": "lofi",
+      "file": "audio/music/kaffee-und-notizen.opus",
+      "version": "e2c100d126",
+      "seconds": 300,
+      "bytes": 3906663,
+      "crossfade": 3,
+      "source": {
+        "kind": "elevenlabs",
+        "prompt": "Relaxed instrumental lo-fi hip hop for focused work, around 75 BPM, soft dusty drum pattern with a gentle kick and brushed snare, warm Rhodes electric piano chords, mellow upright bass, light vinyl crackle and tape warmth, no vocals. Steady and even energy throughout, no build-ups or drops, so it loops calmly.",
+        "flow": "Doy0ZWPCLAFHox5Drm9C",
+        "generation": "dLp1jqLI0YEVJSFQxDio"
+      }
+    },
+    {
+      "id": "regenfenster",
+      "title": "Regenfenster",
+      "group": "lofi",
+      "file": "audio/music/regenfenster.opus",
+      "version": "9dee5b74f0",
+      "seconds": 300,
+      "bytes": 3624408,
+      "crossfade": 3,
+      "source": {
+        "kind": "elevenlabs",
+        "prompt": "Calm instrumental lo-fi hip hop for studying, around 70 BPM, soft laid-back drum groove with muted kick and quiet rimshot, mellow jazz guitar chords, muffled felt piano, warm round bass, subtle tape hiss, no vocals. Steady, even energy throughout, no build-ups, breaks or drops, so it loops calmly.",
+        "flow": "Doy0ZWPCLAFHox5Drm9C",
+        "generation": "wv9u6WrFad9ufv29qSWi"
+      }
+    },
+    {
+      "id": "abendlicht",
+      "title": "Abendlicht",
+      "group": "lofi",
+      "file": "audio/music/abendlicht.opus",
+      "version": "30528515bc",
+      "seconds": 300,
+      "bytes": 3709295,
+      "crossfade": 3,
+      "source": {
+        "kind": "elevenlabs",
+        "prompt": "Very slow, relaxing instrumental lo-fi for winding down in the evening, almost no drums, only a faint soft shaker, warm soft piano chords with gentle tape saturation, mellow analog synth pads, quiet vinyl crackle, no vocals. Dreamy and calm, steady energy throughout with no build-ups or drops, so it loops seamlessly.",
+        "flow": "Doy0ZWPCLAFHox5Drm9C",
+        "generation": "MAqLk9JMrf2mAEapPMYF"
+      }
+    },
+    {
+      "id": "alte-kassette",
+      "title": "Alte Kassette",
+      "group": "lofi",
+      "file": "audio/music/alte-kassette.opus",
+      "version": "05c902fc9e",
+      "seconds": 300,
+      "bytes": 3776039,
+      "crossfade": 3,
+      "source": {
+        "kind": "elevenlabs",
+        "prompt": "Slow, peaceful instrumental lo-fi ambient with no drums, dreamy clean electric guitar playing soft arpeggios, warm wobbly cassette tape sound with gentle wow and flutter, soft low pad underneath, light tape hiss, no vocals. Calm and nostalgic, steady energy throughout with no build-ups or drops, so it loops seamlessly.",
+        "flow": "Doy0ZWPCLAFHox5Drm9C",
+        "generation": "y6pYWxp2BXqd5HZMcNdb"
+      }
     }
   ],
   "breath": [

@@ -427,7 +427,7 @@ test.describe('background for the exercises', () => {
     expect(select!.height).toBeGreaterThanOrEqual(48)
     await expect(sound.locator('option:checked')).toHaveText('Keiner')
     const groups = await sound.locator('optgroup').evaluateAll((list) => list.map((group) => (group as HTMLOptGroupElement).label))
-    expect(groups).toEqual(['Musik', 'Natur'])
+    expect(groups).toEqual(['Musik', 'Lofi', 'Natur'])
 
     await page.getByRole('button', { name: 'Box-Atmung starten' }).click()
     await expect(page.getByRole('heading', { name: 'Atmen · Box-Atmung' })).toBeVisible()

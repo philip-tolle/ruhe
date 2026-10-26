@@ -189,14 +189,15 @@ test.describe('when the bowl does not load', () => {
   })
 })
 
-test('the background select groups music before nature and a music piece runs under the timer', async ({ page }) => {
+test('the background select groups music, lofi and nature and a music piece runs under the timer', async ({ page }) => {
   await openMeditieren(page)
   await page.getByRole('button', { name: 'Timer einstellen' }).click()
   const sound = page.getByLabel('Hintergrundklang')
   const groups = await sound.locator('optgroup').evaluateAll((list) => list.map((group) => (group as HTMLOptGroupElement).label))
-  expect(groups).toEqual(['Musik', 'Natur'])
+  expect(groups).toEqual(['Musik', 'Lofi', 'Natur'])
   await expect(sound.locator('option').first()).toHaveText('Keiner')
   await expect(sound.locator('optgroup[label="Musik"] option')).toHaveText(['Schwebende Flächen', 'Stilles Klavier', 'Obertöne', 'Bambusflöte', 'Zwischen zwei Atemzügen', 'Salz und Sternenlicht', 'Unter der Oberfläche'])
+  await expect(sound.locator('optgroup[label="Lofi"] option')).toHaveText(['Kaffee & Notizen', 'Regenfenster', 'Abendlicht', 'Alte Kassette'])
   await expect(sound.locator('optgroup[label="Natur"] option')).toHaveCount(8)
 
   await sound.selectOption({ label: 'Stilles Klavier' })

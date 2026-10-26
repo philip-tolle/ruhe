@@ -357,7 +357,7 @@ test('pausing right after a start is not a failed start', async () => {
 })
 
 // Musik: ein gestreamter Ton von 10 s mit 1 s Überblendung statt der echten Datei.
-type MusicFactory = (ctx: AudioContext, url: string) => MusicVoice
+type MusicFactory = (ctx: AudioContext, url: string, opts?: { crossfade?: number }) => MusicVoice
 let tone = ''
 beforeAll(async () => {
   tone = await toneUrl(10)
@@ -437,6 +437,18 @@ test('a program superseded before its music is ready drops the music', async () 
   await Promise.all([first, second])
   expect(made[0].stop).toHaveBeenCalled()
   expect(e.snapshot()).toMatchObject({ program: { title: 'Atmen · 4-7-8' }, volumes: {}, loading: [] })
+})
+
+test('a lofi piece passes its own crossfade to the music voice, meditation music keeps the default', async () => {
+  const seen: (number | undefined)[] = []
+  const factory: MusicFactory = (ctx, _url, opts) => {
+    seen.push(opts?.crossfade)
+    return { output: ctx.createGain(), ready: Promise.resolve(), stop: vi.fn(), hold: vi.fn(), resume: vi.fn(async () => {}) }
+  }
+  const e = makeMusic(factory)
+  await e.toggle('kaffee-und-notizen')
+  await e.toggle('klavier')
+  expect(seen).toEqual([3, undefined])
 })
 
 test('tapping a second piece before the first is ready stops the first', async () => {

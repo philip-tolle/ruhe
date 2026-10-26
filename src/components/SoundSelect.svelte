@@ -1,12 +1,12 @@
 <script lang="ts">
-  // Auswahl des Hintergrunds: „Keiner“, dann die Gruppe „Musik“, dann „Natur“ mit den acht Klängen.
+  // Auswahl des Hintergrunds: „Keiner“, dann die Gruppen „Musik“ und „Lofi“, dann „Natur“ mit den acht Klängen.
   // Der Timer-Sheet, der Bildschirm „Atmen“, der Reiter „Ich“ und der Player geführter Meditationen
   // teilen sich Liste und Aussehen. Ohne Netz ist ein Musikstück nur wählbar, wenn es offline gespeichert ist (wie ein
   // Eintrag unter „Meditieren“); Naturklänge liegen immer vor.
   import { onMount } from 'svelte'
   import { startable } from '../lib/meditation/guided-view'
   import { offline, refreshSaved } from '../lib/offline/status.svelte'
-  import { MUSIC, SOUNDS, type BackgroundId } from '../lib/sounds/catalog'
+  import { MUSIC, SOUNDS, type BackgroundId, type MusicGroup } from '../lib/sounds/catalog'
   import { absoluteMusicUrl } from '../lib/ui/offline-ui.svelte'
 
   let {
@@ -16,6 +16,10 @@
   }: { label: string; value: BackgroundId | null; disabled?: boolean } = $props()
 
   const music = MUSIC.map((m) => ({ ...m, url: absoluteMusicUrl(m, location.href) }))
+  const MUSIC_GROUPS: { group: MusicGroup; label: string }[] = [
+    { group: 'musik', label: 'Musik' },
+    { group: 'lofi', label: 'Lofi' },
+  ]
 
   onMount(() => {
     void refreshSaved(music.map((m) => m.url))
@@ -24,12 +28,14 @@
 
 <select aria-label={label} bind:value {disabled}>
   <option value={null}>Keiner</option>
-  <optgroup label="Musik">
-    {#each music as item (item.id)}
-      {@const available = startable(offline.saved[item.url], offline.online)}
-      <option value={item.id} disabled={!available}>{available ? item.title : `${item.title} – nicht offline verfügbar`}</option>
-    {/each}
-  </optgroup>
+  {#each MUSIC_GROUPS as { group, label } (group)}
+    <optgroup {label}>
+      {#each music.filter((m) => (m.group ?? 'musik') === group) as item (item.id)}
+        {@const available = startable(offline.saved[item.url], offline.online)}
+        <option value={item.id} disabled={!available}>{available ? item.title : `${item.title} – nicht offline verfügbar`}</option>
+      {/each}
+    </optgroup>
+  {/each}
   <optgroup label="Natur">
     {#each SOUNDS as item (item.id)}
       <option value={item.id}>{item.title}</option>

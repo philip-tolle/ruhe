@@ -30,8 +30,8 @@ test('works offline after first visit', async ({ page, context }) => {
   await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Klänge' }).click()
   await page.getByRole('button', { name: 'Kaminfeuer' }).click()
   await expect(page.getByRole('button', { name: 'Kaminfeuer' })).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
-  await page.getByRole('button', { name: 'Regen' }).click()
-  await expect(page.getByRole('button', { name: 'Regen' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Regen', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Regen', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Meditieren' }).click()
   await page.getByRole('button', { name: 'Timer einstellen' }).click()
   await page.getByRole('button', { name: 'Starten' }).click()
@@ -53,9 +53,9 @@ test('music is not precached, the breath sounds are', async ({ page, request }) 
   expect(music.headers()['content-type']).toBe('audio/ogg')
 })
 
-test('all 39 painted motifs are precached and available offline', async ({ page, context }) => {
+test('all 43 painted motifs are precached and available offline', async ({ page, context }) => {
   const ids = (JSON.parse(readFileSync('content/motive.json', 'utf8')).motive as { id: string }[]).map((m) => m.id)
-  expect(ids).toHaveLength(39)
+  expect(ids).toHaveLength(43)
   await page.goto('./')
   await page.evaluate(async () => { await navigator.serviceWorker.ready })
   await page.reload()

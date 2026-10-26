@@ -510,6 +510,58 @@
         407
       ],
       "size": 192
+    },
+    {
+      "id": "musik-kaffee-und-notizen",
+      "subject": "a steaming coffee cup beside a small open notebook",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "RqcLbOoJS07OZ4Gw4B3B",
+      "crop": [
+        45,
+        131,
+        391,
+        439
+      ],
+      "size": 480
+    },
+    {
+      "id": "musik-regenfenster",
+      "subject": "a small window with raindrops running down the glass",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "RqcLbOoJS07OZ4Gw4B3B",
+      "crop": [
+        471,
+        136,
+        337,
+        426
+      ],
+      "size": 480
+    },
+    {
+      "id": "musik-abendlicht",
+      "subject": "a small reading lamp glowing warmly",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "RqcLbOoJS07OZ4Gw4B3B",
+      "crop": [
+        895,
+        156,
+        362,
+        425
+      ],
+      "size": 480
+    },
+    {
+      "id": "musik-alte-kassette",
+      "subject": "a vintage audio cassette tape",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "T6m0itIhvVSAsX6J1a5p",
+      "crop": [
+        26,
+        221,
+        387,
+        254
+      ],
+      "size": 480
     }
   ]
 }

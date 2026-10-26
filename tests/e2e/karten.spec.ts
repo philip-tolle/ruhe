@@ -980,7 +980,7 @@ test.describe('Klänge', () => {
   test('no tile has a wash; idle tiles have the gold border, an active one keeps the accent', async ({ page }) => {
     await openTab(page, 'Klänge')
     const tiles = page.locator('.screen .tile')
-    await expect(tiles).toHaveCount(15) // sieben Musikstücke, acht Naturklänge
+    await expect(tiles).toHaveCount(19) // sieben Musikstücke, vier Lofi-Stücke, acht Naturklänge
     await expect(page.locator('.screen .waschung')).toHaveCount(0)
     for (const tile of await tiles.all()) await expectGoldBorder(tile, 0.26)
 
@@ -991,7 +991,7 @@ test.describe('Klänge', () => {
     const accent = parseColor(await accentOf(page))
     await expect.poll(async () => parseColor(await active.evaluate((el) => getComputedStyle(el).borderTopColor))).toEqual(accent)
     const idle = page.locator('.screen .tile:not(.active)')
-    await expect(idle).toHaveCount(14)
+    await expect(idle).toHaveCount(18)
     for (const tile of await idle.all()) await expectGoldBorder(tile, 0.26)
   })
 })

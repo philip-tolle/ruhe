@@ -68,13 +68,13 @@ const offlineStatus = (page: Page) => card(page, 'Offline').getByRole('status')
 const saveAll = (page: Page) => page.getByRole('button', { name: 'Alle offline speichern' })
 const progress = (page: Page) => page.getByRole('progressbar')
 const summary = (page: Page) => card(page, 'Offline').getByText(/Musikstücken offline gespeichert/)
-// Alles, was „Alle offline speichern“ lädt: 18 Meditationen und sieben Musikstücke, Größe laut Katalog.
+// Alles, was „Alle offline speichern“ lädt: 18 Meditationen und elf Musikstücke (davon vier Lofi), Größe laut Katalog.
 const MEDITATION_BYTES: number[] = JSON.parse(readFileSync('src/content/meditations.json', 'utf8')).meditations.map((m: { bytes: number }) => m.bytes)
 const MUSIC_BYTES: number[] = JSON.parse(readFileSync('content/sounds.json', 'utf8')).music.map((m: { bytes: number }) => m.bytes)
 const TOTAL_BYTES = [...MEDITATION_BYTES, ...MUSIC_BYTES].reduce((sum, b) => sum + b, 0)
 const TOTAL_MB = `${(TOTAL_BYTES / 1_000_000).toFixed(1).replace('.', ',')} MB`
 const SUMMARY = (meditations: number, music: number) =>
-  new RegExp(`^${meditations} von 18 Meditationen und ${music} von 7 Musikstücken offline gespeichert \\((0|\\d+,\\d) MB von ${TOTAL_MB}\\)$`)
+  new RegExp(`^${meditations} von 18 Meditationen und ${music} von 11 Musikstücken offline gespeichert \\((0|\\d+,\\d) MB von ${TOTAL_MB}\\)$`)
 const DONE = 'Alle Meditationen und die Musik sind offline verfügbar.'
 const balanceSlider = (page: Page) => page.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
 const nav = (page: Page, name: string) =>
@@ -343,7 +343,7 @@ test('the offline card sits above the backup and starts empty', async ({ page })
   const backupBox = (await page.getByRole('heading', { level: 2, name: 'Backup' }).boundingBox())!
   expect(offlineBox.y).toBeLessThan(backupBox.y)
 
-  await expect(summary(page)).toHaveText(`0 von 18 Meditationen und 0 von 7 Musikstücken offline gespeichert (0 MB von ${TOTAL_MB})`)
+  await expect(summary(page)).toHaveText(`0 von 18 Meditationen und 0 von 11 Musikstücken offline gespeichert (0 MB von ${TOTAL_MB})`)
   await expect(saveAll(page)).toBeEnabled()
   await expect(progress(page)).toHaveCount(0)
   await expect(offlineStatus(page)).toHaveText('')
@@ -401,10 +401,10 @@ test.describe('saving all meditations and the music', () => {
     await expect(summary(page)).toHaveText(SUMMARY(0, 0))
 
     await saveAll(page).click()
-    await expect(page.getByText('Speichere 3 von 25 …')).toBeVisible()
+    await expect(page.getByText('Speichere 3 von 29 …')).toBeVisible()
     const bar = progress(page)
     await expect(bar).toBeVisible()
-    await expect(bar).toHaveAccessibleName('Speichere 3 von 25 …')
+    await expect(bar).toHaveAccessibleName('Speichere 3 von 29 …')
     await expect(bar).toHaveAttribute('aria-valuemin', '0')
     await expect(bar).toHaveAttribute('aria-valuemax', '100')
     const now = Number(await bar.getAttribute('aria-valuenow'))
@@ -416,18 +416,18 @@ test.describe('saving all meditations and the music', () => {
     // Der Stand gehört der App, nicht dem Reiter: Wer wegwechselt und zurückkommt, sieht ihn weiter.
     await nav(page, 'Meditieren')
     await nav(page, 'Ich')
-    await expect(page.getByText('Speichere 3 von 25 …')).toBeVisible()
+    await expect(page.getByText('Speichere 3 von 29 …')).toBeVisible()
     await expect(saveAll(page)).toBeDisabled()
 
     release()
     await expect(offlineStatus(page)).toHaveText(DONE)
-    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    await expect(summary(page)).toHaveText(SUMMARY(18, 11))
     await expect(progress(page)).toHaveCount(0)
     await expect(saveAll(page)).toBeDisabled() // es gibt nichts mehr zu speichern
     expect(requests).toHaveLength(18)
     expect(await page.evaluate(() => (window as unknown as { __persist: number }).__persist)).toBe(1)
     expect(await cachedAddresses(page)).toHaveLength(18)
-    expect(await cachedAddresses(page, 'ruhe-musik')).toHaveLength(7)
+    expect(await cachedAddresses(page, 'ruhe-musik')).toHaveLength(11)
 
     // „Meditieren“ zeigt überall das Zeichen „offline gespeichert“, ohne dass eine Datei nochmals geladen wird.
     await nav(page, 'Meditieren')
@@ -438,7 +438,7 @@ test.describe('saving all meditations and the music', () => {
     // Auch nach dem Neuladen kommt der Stand aus dem Cache; die Meldung ist weg.
     await page.reload()
     await nav(page, 'Ich')
-    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    await expect(summary(page)).toHaveText(SUMMARY(18, 11))
     await expect(offlineStatus(page)).toHaveText('')
     await expect(saveAll(page)).toBeDisabled()
   })
@@ -475,7 +475,7 @@ test.describe('saving all meditations and the music', () => {
     await expect(offlineStatus(page)).toHaveText('') // die alte Meldung ist weg
     await saveAll(page).click()
     await expect(offlineStatus(page)).toHaveText(DONE)
-    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    await expect(summary(page)).toHaveText(SUMMARY(18, 11))
     expect(requests).toHaveLength(3 + 16)
   })
 
@@ -501,7 +501,7 @@ test.describe('saving all meditations and the music', () => {
     await open(page)
 
     await saveAll(page).click()
-    await expect(page.getByText('Speichere 3 von 25 …')).toBeVisible() // der Lauf steht an der festgehaltenen Datei
+    await expect(page.getByText('Speichere 3 von 29 …')).toBeVisible() // der Lauf steht an der festgehaltenen Datei
     await nav(page, 'Meditieren')
     release()
     // Nach dem Merker bleiben nur Folgen von Promises (kein Timer, keine Ein-/Ausgabe): Bis das nächste
@@ -522,7 +522,7 @@ test.describe('saving all meditations and the music', () => {
     const meditations: { file: string; version: string; bytes: number }[] = JSON.parse(
       readFileSync('src/content/meditations.json', 'utf8'),
     ).meditations
-    // Gezählt wird gegen alle 25 Dateien; bis zur letzten Meditation fehlen ihre Bytes und die der Musik.
+    // Gezählt wird gegen alle 29 Dateien; bis zur letzten Meditation fehlen ihre Bytes und die der Musik.
     const meditationTotal = meditations.reduce((sum, m) => sum + m.bytes, 0)
     const last = meditations.at(-1)!
     const expected = Math.round(((meditationTotal - last.bytes) / TOTAL_BYTES) * 100)
@@ -549,13 +549,13 @@ test.describe('saving all meditations and the music', () => {
     )
 
     await saveAll(page).click()
-    await expect(page.getByText('Speichere 18 von 25 …')).toBeVisible()
+    await expect(page.getByText('Speichere 18 von 29 …')).toBeVisible()
     // Die erste Datei war schon da und zählt mit ihrer Größe laut Katalog; die letzte hat noch kein Byte geliefert.
     await expect(progress(page)).toHaveAttribute('aria-valuenow', String(expected))
     release()
     await expect(offlineStatus(page)).toHaveText(DONE)
     expect(requests).toBe(17)
-    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    await expect(summary(page)).toHaveText(SUMMARY(18, 11))
   })
 
   test('a file that fails does not stop the others and is counted', async ({ page }) => {
@@ -568,8 +568,8 @@ test.describe('saving all meditations and the music', () => {
     await open(page)
 
     await saveAll(page).click()
-    await expect(offlineStatus(page)).toHaveText('24 von 25 gespeichert, 1 fehlgeschlagen.')
-    await expect(summary(page)).toHaveText(SUMMARY(17, 7))
+    await expect(offlineStatus(page)).toHaveText('28 von 29 gespeichert, 1 fehlgeschlagen.')
+    await expect(summary(page)).toHaveText(SUMMARY(17, 11))
     await expect(saveAll(page)).toBeEnabled()
     expect(requests).toHaveLength(18)
 
@@ -580,7 +580,7 @@ test.describe('saving all meditations and the music', () => {
     await nav(page, 'Ich')
     await saveAll(page).click()
     await expect(offlineStatus(page)).toHaveText(DONE)
-    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    await expect(summary(page)).toHaveText(SUMMARY(18, 11))
     expect(requests).toHaveLength(19)
   })
 
@@ -613,7 +613,7 @@ test.describe('saving all meditations and the music', () => {
 
     await saveAll(page).click()
     await expect(offlineStatus(page)).toHaveText(DONE)
-    await expect(summary(page)).toHaveText(SUMMARY(18, 7))
+    await expect(summary(page)).toHaveText(SUMMARY(18, 11))
     expect(requests.map((path) => path.split('/').at(-1)!.replace('.mp3', '')).sort()).toEqual([...added].sort())
     expect(await cachedAddresses(page)).toHaveLength(18)
   })

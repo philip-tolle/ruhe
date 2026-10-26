@@ -170,6 +170,8 @@ Näheres in `docs/superpowers/specs/2026-10-24-ruhe-m8-eigene-atemmuster-design.
 
 *Ergänzung vom 22.10.2026 (Meilenstein 4):* Die acht Klänge sind Kacheln mit einem gemalten Motiv; der Titel steht gut lesbar über dem Motiv, auf einem Verlauf. Antippen, Lautstärke, Sleep-Timer und Mini-Player bleiben unverändert (siehe `docs/superpowers/specs/2026-10-22-ruhe-m4-optik-design.md` §4.4).
 
+*Ergänzung vom 26.10.2026 (auf Nutzerwunsch):* Vier Lofi-Stücke zu je 5 Minuten (ElevenLabs Music) stehen als eigene Gruppe „Lofi“ zwischen „Musik“ und „Natur“, ebenso in der Hintergrundauswahl. Zwei haben einen sanften Beat zum Arbeiten (Kaffee & Notizen, Regenfenster), zwei kommen fast ohne Schlagzeug zum Entspannen aus (Abendlicht, Alte Kassette). Jedes hat ein eigenes gemaltes Motiv. An der Naht der Schleife überblenden sie in 3 s statt 8 s, damit zwei Beats nicht lange durcheinanderlaufen.
+
 ### 3.5 Ich
 
 - Serie, Gesamtminuten, Anzahl Sitzungen.

@@ -526,6 +526,7 @@ test('offline, unsaved music options are disabled with a hint', async ({ page, c
   await context.setOffline(true)
   await expect(sound.getByRole('option', { name: 'Stilles Klavier – nicht offline verfügbar', exact: true })).toBeDisabled()
   await expect(sound.locator('optgroup[label="Musik"] option:disabled')).toHaveCount(7)
+  await expect(sound.locator('optgroup[label="Lofi"] option:disabled')).toHaveCount(4)
   await expect(sound.getByRole('option', { name: 'Regen', exact: true })).toBeEnabled()
   await expect(sound.getByRole('option', { name: 'Keiner', exact: true })).toBeEnabled()
 

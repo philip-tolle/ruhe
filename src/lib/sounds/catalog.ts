@@ -1,5 +1,5 @@
 // Katalog aller Klänge: acht echte Aufnahmen der Natur (ElevenLabs, nahtlose 30-s-Schleifen), sieben
-// Musikstücke (gestreamt, Schleife mit Überblendung), dazu der Einzelanschlag der Klangschale und die
+// Musikstücke und vier Lofi-Stücke (gestreamt, Schleife mit Überblendung), dazu der Einzelanschlag der Klangschale und die
 // beiden Atemgeräusche. Die Daten stehen in content/sounds.json. Ein Hintergrund (Klänge, Timer,
 // Atemübung, geführte Meditation) ist entweder ein Naturklang oder ein Musikstück.
 import catalog from '../../../content/sounds.json'
@@ -31,6 +31,13 @@ export type MusicId =
   | 'zwischen-zwei-atemzuegen'
   | 'salz-und-sternenlicht'
   | 'unter-der-oberflaeche'
+  | 'kaffee-und-notizen'
+  | 'regenfenster'
+  | 'abendlicht'
+  | 'alte-kassette'
+
+/** Gruppe unter „Klänge“ und in der Hintergrundauswahl: Meditationsmusik oder Lofi. */
+export type MusicGroup = 'musik' | 'lofi'
 
 // Herkunft eines Stücks: erzeugt mit ElevenLabs Music oder vom Nutzer mit Gemini erstellt.
 export type MusicSource =
@@ -40,12 +47,17 @@ export type MusicSource =
 export interface MusicDef {
   id: MusicId
   title: string
+  /** Fehlt bei der Meditationsmusik; die Lofi-Stücke tragen `'lofi'`. */
+  group?: 'lofi'
   // Pfad der Datei (Opus) relativ zu BASE_URL.
   file: string
   // Anfang des SHA-256 der Datei; steht in der Adresse, damit eine neue Aufnahme neu geladen wird.
   version: string
   seconds: number
   bytes: number
+  /** Sekunden Überblendung an der Naht der Schleife; ohne Angabe die Standardlänge der Musik-Stimme. Stücke mit
+      Beat überblenden kurz, damit zwei Schlagzeuge nicht lange durcheinanderlaufen. */
+  crossfade?: number
   source: MusicSource
 }
 
@@ -66,6 +78,11 @@ export const SOUNDS: readonly SoundDef[] = catalog.sounds as SoundDef[]
 export const EFFECTS: readonly EffectDef[] = catalog.effects as EffectDef[]
 export const MUSIC: readonly MusicDef[] = catalog.music as MusicDef[]
 export const BREATH: readonly BreathDef[] = catalog.breath as BreathDef[]
+
+/** Die Stücke einer Gruppe in Katalog-Reihenfolge. */
+export function musicIn(group: MusicGroup): MusicDef[] {
+  return MUSIC.filter((m) => (m.group ?? 'musik') === group)
+}
 
 export function soundById(id: SoundId): SoundDef {
   const sound = SOUNDS.find((s) => s.id === id)
@@ -99,6 +116,8 @@ const TITLE_BREAKS: Record<string, string> = {
   Bambusflöte: 'Bambus\u00ADflöte',
   Sternenlicht: 'Sternen\u00ADlicht',
   Oberfläche: 'Ober\u00ADfläche',
+  Regenfenster: 'Regen\u00ADfenster',
+  Abendlicht: 'Abend\u00ADlicht',
 }
 
 /** Titel für die Kachel mit weichen Trennstellen in den langen Zusammensetzungen. Nur zur Anzeige: Der Name des Knopfes bleibt der Titel selbst. */

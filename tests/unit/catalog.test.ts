@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { SOUNDS, EFFECTS, MUSIC, BREATH, soundById, soundTileTitle, backgroundById, isBackgroundId } from '../../src/lib/sounds/catalog'
+import { SOUNDS, EFFECTS, MUSIC, BREATH, soundById, soundTileTitle, backgroundById, isBackgroundId, musicIn } from '../../src/lib/sounds/catalog'
 
 test('eight sounds in spec order', () => {
   expect(SOUNDS.map(s => s.title)).toEqual(['Regen', 'Meeresrauschen', 'Wind', 'Braunes Rauschen', 'Wald mit Vögeln', 'Kaminfeuer', 'Bach', 'Klangschalen'])
@@ -36,6 +36,8 @@ test('the tile titles of the sounds get a soft hyphen at the joint of their long
   expect(soundTileTitle('Bambusflöte')).toBe(`Bambus${shy}flöte`)
   expect(soundTileTitle('Salz und Sternenlicht')).toBe(`Salz und Sternen${shy}licht`)
   expect(soundTileTitle('Unter der Oberfläche')).toBe(`Unter der Ober${shy}fläche`)
+  expect(soundTileTitle('Regenfenster')).toBe(`Regen${shy}fenster`)
+  expect(soundTileTitle('Abendlicht')).toBe(`Abend${shy}licht`)
   for (const sound of [...SOUNDS, ...MUSIC]) {
     const shown = soundTileTitle(sound.title)
     // Ohne die Trennstellen ist es der Titel selbst; jedes Wort ab 10 Buchstaben hat genau eine.
@@ -46,8 +48,24 @@ test('the tile titles of the sounds get a soft hyphen at the joint of their long
 })
 
 test('seven music pieces in spec order', () => {
-  expect(MUSIC.map(m => m.id)).toEqual(['schwebend', 'klavier', 'obertoene', 'bambusfloete', 'zwischen-zwei-atemzuegen', 'salz-und-sternenlicht', 'unter-der-oberflaeche'])
-  expect(MUSIC.map(m => m.title)).toEqual(['Schwebende Flächen', 'Stilles Klavier', 'Obertöne', 'Bambusflöte', 'Zwischen zwei Atemzügen', 'Salz und Sternenlicht', 'Unter der Oberfläche'])
+  const musik = musicIn('musik')
+  expect(musik.map(m => m.id)).toEqual(['schwebend', 'klavier', 'obertoene', 'bambusfloete', 'zwischen-zwei-atemzuegen', 'salz-und-sternenlicht', 'unter-der-oberflaeche'])
+  expect(musik.map(m => m.title)).toEqual(['Schwebende Flächen', 'Stilles Klavier', 'Obertöne', 'Bambusflöte', 'Zwischen zwei Atemzügen', 'Salz und Sternenlicht', 'Unter der Oberfläche'])
+  // Meditationsmusik blendet an der Naht mit der Standardlänge der Musik-Stimme über.
+  for (const m of musik) expect(m.crossfade).toBeUndefined()
+})
+
+test('four lofi pieces after the music, each 5 minutes with a 3 s crossfade at the seam', () => {
+  const lofi = musicIn('lofi')
+  expect(lofi.map(m => m.id)).toEqual(['kaffee-und-notizen', 'regenfenster', 'abendlicht', 'alte-kassette'])
+  expect(lofi.map(m => m.title)).toEqual(['Kaffee & Notizen', 'Regenfenster', 'Abendlicht', 'Alte Kassette'])
+  for (const m of lofi) {
+    expect(m.group).toBe('lofi')
+    expect(m.crossfade).toBe(3)
+    expect(m.seconds).toBe(300)
+    expect(m.source).toMatchObject({ kind: 'elevenlabs', flow: 'Doy0ZWPCLAFHox5Drm9C' })
+  }
+  expect(MUSIC.map(m => m.id)).toEqual([...musicIn('musik'), ...lofi].map(m => m.id))
 })
 
 test('every music piece is an opus file of its catalogue version and size, all within budget', () => {
@@ -63,7 +81,11 @@ test('every music piece is an opus file of its catalogue version and size, all w
     expect(['elevenlabs', 'gemini']).toContain(m.source.kind)
     total += m.bytes
   }
-  expect(total).toBeLessThanOrEqual(22_000_000)
+  // Meditationsmusik bis 22 MB, Lofi bis 16 MB.
+  const bytes = (group: 'musik' | 'lofi') => musicIn(group).reduce((sum, m) => sum + m.bytes, 0)
+  expect(bytes('musik')).toBeLessThanOrEqual(22_000_000)
+  expect(bytes('lofi')).toBeLessThanOrEqual(16_000_000)
+  expect(total).toBe(bytes('musik') + bytes('lofi'))
 })
 
 test('music and nature ids never collide and backgroundById knows both kinds', () => {

@@ -1,4 +1,4 @@
-// Katalog der 39 gemalten Motive (Spec M4 §3.2, dazu die Musik aus M5, die Ruhe-Karte aus M6 und drei Themen aus M7). Die Dateien liegen in public/images/motive/<id>.webp,
+// Katalog der 43 gemalten Motive (Spec M4 §3.2, dazu die Musik aus M5, die Ruhe-Karte aus M6, drei Themen aus M7 und die vier Lofi-Stücke). Die Dateien liegen in public/images/motive/<id>.webp,
 // ihre Herkunft (Prompts, Ausschnitt, Größe) steht in content/motive.json. Motive sind Schmuck:
 // Wo sie erscheinen, bekommen sie `alt=""`; die Bedeutung trägt der Text daneben.
 import { assetUrl, backgroundById } from '../sounds/catalog'
@@ -21,6 +21,7 @@ const IDS = [
   // Musik
   'musik-schwebend', 'musik-klavier', 'musik-obertoene', 'musik-bambusfloete',
   'musik-zwischen-zwei-atemzuegen', 'musik-salz-und-sternenlicht', 'musik-unter-der-oberflaeche',
+  'musik-kaffee-und-notizen', 'musik-regenfenster', 'musik-abendlicht', 'musik-alte-kassette',
   // Blütenblätter der Atem-Blüte: Einatmen, Halten, Ausatmen
   'blatt-ein', 'blatt-halten', 'blatt-aus',
 ] as const

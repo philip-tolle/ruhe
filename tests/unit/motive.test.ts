@@ -14,9 +14,9 @@ const DIR = 'public/images/motive'
 const file = (id: string) => `${DIR}/${id}.webp`
 const sizeOf = (id: string) => readFileSync(file(id)).length
 
-test('MOTIV_IDS lists exactly the 39 motifs of content/motive.json', () => {
-  expect(MOTIV_IDS).toHaveLength(39)
-  expect(new Set(MOTIV_IDS).size).toBe(39)
+test('MOTIV_IDS lists exactly the 43 motifs of content/motive.json', () => {
+  expect(MOTIV_IDS).toHaveLength(43)
+  expect(new Set(MOTIV_IDS).size).toBe(43)
   expect([...MOTIV_IDS].sort()).toEqual(motive.motive.map((m) => m.id).sort())
 })
 
@@ -44,6 +44,7 @@ test('helpers name the motif of every sound, breath pattern, topic and time of d
   expect(music.map(musicMotiv)).toEqual([
     'musik-schwebend', 'musik-klavier', 'musik-obertoene', 'musik-bambusfloete',
     'musik-zwischen-zwei-atemzuegen', 'musik-salz-und-sternenlicht', 'musik-unter-der-oberflaeche',
+    'musik-kaffee-und-notizen', 'musik-regenfenster', 'musik-abendlicht', 'musik-alte-kassette',
   ])
   expect(backgroundMotiv('klavier')).toBe('musik-klavier')
   expect(backgroundMotiv('regen')).toBe('klang-regen')
