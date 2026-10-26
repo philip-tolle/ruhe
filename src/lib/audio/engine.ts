@@ -204,6 +204,11 @@ export class AudioEngine {
     this.emit()
   }
 
+  // Lautstärke der Stimme einer geführten Sitzung (Balance zum Hintergrund); ohne Sitzung nichts.
+  setVoiceVolume(volume: number): void {
+    this.sessions.guided?.setVolume(Math.min(1, Math.max(0, volume)), VOLUME_GLIDE)
+  }
+
   // Nach einem Ladefehler: dieselbe Meditation ab der letzten Position neu laden und abspielen.
   async retryGuided(): Promise<void> {
     const run = this.sessions.guided

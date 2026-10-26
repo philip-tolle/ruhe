@@ -6,7 +6,7 @@
   import { engine } from '../../lib/audio/engine'
   import { audio } from '../../lib/audio/engine-store.svelte'
   import { meditationById } from '../../lib/content/catalog'
-  import { backgroundVolume, canSeek, guidedDisplay, SEEK_SECONDS } from '../../lib/meditation/guided-view'
+  import { canSeek, guidedDisplay, guidedLevels, SEEK_SECONDS } from '../../lib/meditation/guided-view'
   import type { BackgroundId } from '../../lib/sounds/catalog'
   import { stats, updateSettings } from '../../lib/stats/store.svelte'
   import { formatRemaining } from '../../lib/time/format'
@@ -38,15 +38,22 @@
   const sound = $derived(stats.data.settings.guidedSound)
   let balance = $state(stats.data.settings.voiceBalance)
 
+  // Hintergrund und Stimme nach der Balance; ohne Hintergrund bleibt die Stimme voll.
+  function mix(id: BackgroundId | null, value: number) {
+    const levels = guidedLevels(value, id !== null)
+    engine.setBackground(id, levels.background)
+    engine.setVoiceVolume(levels.voice)
+  }
+
   function setSound(id: BackgroundId | null) {
-    engine.setBackground(id, backgroundVolume(balance))
+    mix(id, balance)
     updateSettings({ guidedSound: id })
     saveBackgroundForOffline(id)
   }
 
   function slideBalance(value: number) {
     balance = value
-    engine.setBackground(sound, backgroundVolume(value))
+    mix(sound, value)
   }
 
   function saveBalance(value: number) {

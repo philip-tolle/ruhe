@@ -5,8 +5,10 @@ import { audioUrl, durationMinutes, type Meditation } from '../content/catalog'
 /** Sekunden je Tipp auf „15 Sekunden zurück“ bzw. „15 Sekunden vor“. */
 export const SEEK_SECONDS = 15
 
-// Lautstärke des Hintergrunds bei voller Balance; so laut wie ein Klang im Klänge-Reiter.
-const MAX_BACKGROUND = 0.7
+// Abstand des Hintergrunds zur Stimme knapp über 0 (dB); bei voller Balance sind beide gleich laut.
+const QUIETEST_DB = -30
+// So viel leiser als die Stimme sind die Hintergrundklänge abgemischt (−26 zu −19 LUFS).
+const MIX_GAP_DB = 7
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
@@ -34,9 +36,23 @@ export function absoluteAudioUrl(m: Meditation, base: string): string {
   return new URL(audioUrl(m), base).href
 }
 
-/** Lautstärke des Hintergrunds aus der Balance (0 … 1): 0,7 × Balance, Standard 0,5 → 0,35. */
-export function backgroundVolume(balance: number): number {
-  return MAX_BACKGROUND * clamp01(balance)
+export interface GuidedLevels {
+  voice: number // 0 … 1
+  background: number // 0 … 1
+}
+
+/**
+ * Lautstärken von Stimme und Hintergrund aus der Balance (0 … 1). Der Abstand des Hintergrunds zur
+ * Stimme wächst gleichmäßig in dB, wie das Ohr Lautstärke hört: knapp über 0 liegt er 30 dB unter der
+ * Stimme, je 10 % 3 dB näher, bei 1 ist er gleich laut (Standard 0,5: 15 dB darunter); 0 ist aus. Ab
+ * etwa 77 % spielt der Hintergrund voll, darüber gibt die Stimme nach (bei 1 um 7 dB), statt ihn über 1
+ * zu verstärken und den Begrenzer pumpen zu lassen. Ohne Hintergrund bleibt die Stimme voll.
+ */
+export function guidedLevels(balance: number, withBackground: boolean): GuidedLevels {
+  const b = clamp01(balance)
+  if (b === 0) return { voice: 1, background: 0 }
+  const gain = 10 ** ((QUIETEST_DB * (1 - b) + MIX_GAP_DB) / 20) // Hintergrund gegen die volle Stimme
+  return { voice: withBackground ? Math.min(1, 1 / gain) : 1, background: Math.min(1, gain) }
 }
 
 /** Balance als ganze Prozent für den Regler. */

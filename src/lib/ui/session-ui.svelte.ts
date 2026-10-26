@@ -3,7 +3,7 @@
 import { engine } from '../audio/engine'
 import type { ProgramSpec } from '../audio/program'
 import type { Meditation } from '../content/catalog'
-import { absoluteAudioUrl, backgroundVolume } from '../meditation/guided-view'
+import { absoluteAudioUrl, guidedLevels } from '../meditation/guided-view'
 import { saveForOffline } from '../offline/status.svelte'
 import { saveBackgroundForOffline } from './offline-ui.svelte'
 import type { SessionKind } from '../stats/schema'
@@ -45,8 +45,9 @@ export function startGuidedSession(m: Meditation): void {
   setLastUsed({ kind: 'guided', id: m.id })
   const url = absoluteAudioUrl(m, location.href)
   const { guidedSound, voiceBalance } = stats.data.settings
+  const levels = guidedLevels(voiceBalance, guidedSound !== null)
   engine
-    .startGuided({ id: m.id, title: m.title, url, background: guidedSound, backgroundVolume: backgroundVolume(voiceBalance) })
+    .startGuided({ id: m.id, title: m.title, url, background: guidedSound, backgroundVolume: levels.background, voiceVolume: levels.voice })
     .catch(() => {})
   saveForOffline(url)
   saveBackgroundForOffline(guidedSound)

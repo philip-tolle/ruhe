@@ -67,6 +67,13 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
+## Handy-Checkliste Balance
+
+1. Eine geführte Meditation mit Hintergrund (z. B. „Regen“) starten und den Regler „Balance Stimme ↔ Hintergrund“ langsam von links nach rechts schieben: Ganz links ist fast nur die Stimme zu hören, jeder Schritt macht den Hintergrund hörbar lauter, ganz rechts sind beide etwa gleich laut.
+2. Bei 50 % klingt es ungefähr wie vor der Änderung.
+3. Rechts von etwa drei Vierteln wird die Stimme etwas leiser; mit „Keiner“ als Hintergrund ist sie wieder voll.
+4. Den Regler weit rechts lassen, beenden und die nächste Meditation starten: Stimme und Hintergrund beginnen gleich im gemerkten Verhältnis, ohne Knacken beim Ziehen.
+
 ## Handy-Checkliste Lofi
 
 1. „Klänge“: Die Gruppe „Lofi“ steht zwischen „Musik“ und „Natur“, mit vier Motiven, die zu den übrigen passen.

@@ -244,18 +244,31 @@ test('the background sound and the balance reach the engine', async ({ page }) =
   const WAIT = 30_000
 
   // Die Engine blendet jeden Klang auf seine Lautstärke ein und fährt sie später mit einer Rampe auf
-  // den neuen Wert. Der Test zeichnet die Ziele der Rampen je AudioParam auf: Der Hintergrund ist der
-  // Regler, dessen erste Rampe 0,7 × Balance ist und dem danach die neuen Werte folgen. Ein anderer
-  // Parameter (Stimme, Sleep-Timer, Ausblenden) erfüllt das nicht.
+  // den neuen Wert; die Stimme gleitet ebenso. Der Test zeichnet die Ziele der Rampen je AudioParam auf:
+  // Der Hintergrund ist der Parameter, dessen Rampen den Pegeln der Balance folgen, die Stimme der, der
+  // ganz rechts nachgibt. Ein anderer Parameter (Sleep-Timer, Ausblenden) erfüllt das nicht. Den
+  // Startwert der Stimme setzt die Sitzung direkt; auch diese Werte zeichnet der Test auf.
   await page.addInitScript(() => {
     const ramps: { param: AudioParam; value: number }[] = []
-    ;(window as unknown as { __ramps: typeof ramps }).__ramps = ramps
+    const sets: number[] = []
+    ;(window as unknown as { __ramps: typeof ramps; __sets: number[] }).__ramps = ramps
+    ;(window as unknown as { __sets: number[] }).__sets = sets
     const original = AudioParam.prototype.linearRampToValueAtTime
     AudioParam.prototype.linearRampToValueAtTime = function (value: number, endTime: number) {
       ramps.push({ param: this, value })
       return original.call(this, value, endTime)
     }
+    const value = Object.getOwnPropertyDescriptor(AudioParam.prototype, 'value')!
+    Object.defineProperty(AudioParam.prototype, 'value', {
+      ...value,
+      set(v: number) {
+        sets.push(v)
+        value.set!.call(this, v)
+      },
+    })
   })
+  // Lautstärke aus dB; die Klänge sind 7 dB leiser abgemischt als die Stimme.
+  const level = (db: number) => 10 ** (db / 20)
   // Was mit den Klangdateien geschah (für die Meldung bei einem Fehlschlag).
   const soundLog: string[] = []
   page.on('response', (r) => r.url().includes('/audio/sounds/') && soundLog.push(`${r.status()} ${r.url()}`))
@@ -295,26 +308,45 @@ test('the background sound and the balance reach the engine', async ({ page }) =
   const sound = player.getByRole('combobox', { name: 'Hintergrundklang' })
   const balance = player.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
 
-  // Ein neuer Hintergrund beginnt mit 0,7 × Balance (Standard 0,5 → 0,35) …
+  // Ein neuer Hintergrund beginnt mit dem Pegel der Balance (Standard 0,5: 15 dB unter der Stimme,
+  // also −8 dB), die Stimme bleibt voll …
   await sound.selectOption({ label: 'Regen' })
-  await startsWith([0.35])
-  // … und derselbe Parameter fährt danach auf 0,7 × 0,2 und 0,7 × 1.
+  await startsWith([level(-8)])
+  await startsWith([1])
+  // … und derselbe Parameter folgt dem Regler: 20 % liegen 24 dB unter der Stimme, ab 77 % spielt der
+  // Hintergrund voll. Darüber gibt die Stimme nach: bei 100 % um 7 dB, bei 90 % um 4 dB.
   await balance.fill('20')
-  await startsWith([0.35, 0.14])
+  await startsWith([level(-8), level(-17)])
   await balance.fill('100')
-  await startsWith([0.35, 0.14, 0.7])
-  await balance.fill('80')
-  await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.8)
-  await startsWith([0.35, 0.14, 0.7, 0.56])
+  await startsWith([level(-8), level(-17), 1])
+  await startsWith([1, level(-7)])
+  await balance.fill('90')
+  await expect.poll(async () => (await stored(page)).settings.voiceBalance).toBe(0.9)
+  await startsWith([1, level(-7), level(-4)])
+  // Ohne Hintergrund gibt es nichts, dem die Stimme nachgeben müsste: Sie ist wieder voll, mit dem
+  // Klang gibt sie wieder nach.
+  await sound.selectOption({ label: 'Keiner' })
+  await startsWith([1, level(-7), level(-4), 1])
+  await sound.selectOption({ label: 'Regen' })
+  await startsWith([1, level(-7), level(-4), 1, level(-4)])
+  await expect.poll(async () => (await stored(page)).settings.guidedSound).toBe('regen')
 
-  // Die nächste Meditation beginnt gleich mit der gemerkten Wahl: Regen bei 0,7 × 0,8, als erste Rampe
-  // eines neuen Parameters.
+  // Die nächste Meditation beginnt gleich mit der gemerkten Wahl: Regen voll als erste Rampe eines
+  // neuen Parameters, die Stimme von Anfang an 4 dB leiser.
   await player.getByRole('button', { name: 'Beenden' }).click()
   await page.getByRole('button', { name: 'Fertig' }).click()
-  await page.evaluate(() => (window as unknown as { __ramps: unknown[] }).__ramps.splice(0))
+  await page.evaluate(() => {
+    const w = window as unknown as { __ramps: unknown[]; __sets: unknown[] }
+    w.__ramps.splice(0)
+    w.__sets.splice(0)
+  })
   await entry(page, 'Ankommen im Atem').click()
   await expect(player.getByRole('heading', { name: 'Ankommen im Atem' })).toBeVisible()
-  await startsWith([0.56])
+  await startsWith([1])
+  const voiceStart = level(-4)
+  await expect
+    .poll(() => page.evaluate((v) => (window as unknown as { __sets: number[] }).__sets.some((s) => Math.abs(s - v) < 1e-6), voiceStart))
+    .toBe(true)
 })
 
 test.describe('when the file does not load', () => {

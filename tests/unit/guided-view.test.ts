@@ -2,12 +2,12 @@ import { describe, test, expect } from 'vitest'
 import { audioUrl, MEDITATIONS, type Meditation } from '../../src/lib/content/catalog'
 import {
   absoluteAudioUrl,
-  backgroundVolume,
   balanceFromPercent,
   balancePercent,
   canSeek,
   entryLabel,
   guidedDisplay,
+  guidedLevels,
   SEEK_SECONDS,
   startable,
 } from '../../src/lib/meditation/guided-view'
@@ -58,16 +58,53 @@ test('an entry that has not been checked yet is never held back', () => {
 })
 
 describe('balance', () => {
-  test('background volume is 0.7 × balance, the default 0.5 gives 0.35', () => {
-    expect(backgroundVolume(0.5)).toBeCloseTo(0.35, 10)
-    expect(backgroundVolume(0.2)).toBeCloseTo(0.14, 10)
-    expect(backgroundVolume(0)).toBe(0)
-    expect(backgroundVolume(1)).toBeCloseTo(0.7, 10)
+  // Abstand des Hintergrunds zur Stimme in dB; die Klänge sind 7 dB leiser abgemischt (−26 zu −19 LUFS).
+  const gap = (balance: number) => {
+    const { voice, background } = guidedLevels(balance, true)
+    return 20 * Math.log10(background / voice) - 7
+  }
+
+  test('at 0 the background is off and the voice is full', () => {
+    expect(guidedLevels(0, true)).toEqual({ voice: 1, background: 0 })
   })
 
-  test('background volume stays within 0 … 0.7', () => {
-    expect(backgroundVolume(-0.5)).toBe(0)
-    expect(backgroundVolume(3)).toBeCloseTo(0.7, 10)
+  test('just above 0 the background is 30 dB under the voice, at 100 % as loud as the voice', () => {
+    expect(gap(0.01)).toBeCloseTo(-29.7, 6)
+    expect(gap(1)).toBeCloseTo(0, 6)
+  })
+
+  test('the default 0.5 puts the background 15 dB under the voice, close to before (0.35)', () => {
+    expect(gap(0.5)).toBeCloseTo(-15, 6)
+    expect(guidedLevels(0.5, true).voice).toBe(1)
+    expect(guidedLevels(0.5, true).background).toBeCloseTo(10 ** (-8 / 20), 6) // ≈ 0,40
+  })
+
+  test('every 10 % makes the background 3 dB louder against the voice', () => {
+    for (let p = 10; p < 100; p += 10) expect(gap((p + 10) / 100) - gap(p / 100)).toBeCloseTo(3, 6)
+  })
+
+  test('the voice stays full up to 76 %; above, the background is full and the voice gives way', () => {
+    expect(guidedLevels(0.76, true).voice).toBe(1)
+    expect(guidedLevels(0.76, true).background).toBeLessThan(1)
+    expect(guidedLevels(0.77, true).background).toBe(1)
+    expect(guidedLevels(0.77, true).voice).toBeLessThan(1)
+    expect(guidedLevels(1, true)).toEqual({ voice: expect.closeTo(10 ** (-7 / 20), 6), background: 1 }) // ≈ 0,45
+  })
+
+  test('levels stay within 0 … 1 for any balance', () => {
+    expect(guidedLevels(-0.5, true)).toEqual({ voice: 1, background: 0 })
+    expect(guidedLevels(3, true)).toEqual(guidedLevels(1, true))
+    for (let p = 0; p <= 100; p++) {
+      const { voice, background } = guidedLevels(p / 100, true)
+      expect(voice).toBeGreaterThan(0.44)
+      expect(voice).toBeLessThanOrEqual(1)
+      expect(background).toBeGreaterThanOrEqual(0)
+      expect(background).toBeLessThanOrEqual(1)
+    }
+  })
+
+  test('without a background the voice stays full at any balance', () => {
+    for (const balance of [0, 0.5, 0.9, 1]) expect(guidedLevels(balance, false).voice).toBe(1)
   })
 
   test('the slider shows whole percent', () => {

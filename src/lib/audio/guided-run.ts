@@ -16,6 +16,7 @@ export interface GuidedSpec {
   url: string
   background: BackgroundId | null
   backgroundVolume: number // 0..1
+  voiceVolume?: number // 0..1, ohne Angabe 1; gibt bei starkem Hintergrund nach (Balance)
 }
 
 export interface GuidedEvents {
@@ -53,9 +54,9 @@ export class GuidedRun implements SessionRun {
     const { element, source } = createVoice(ctx, spec.url)
     this.element = element
     this.source = source
-    // Eigener Gain (1,0) in das Mischpult: Begrenzer und Sleep-Gesamtlautstärke gelten wie für alles.
+    // Eigener Gain in das Mischpult: Begrenzer und Sleep-Gesamtlautstärke gelten wie für alles.
     this.gain = ctx.createGain()
-    this.gain.gain.value = 1
+    this.gain.gain.value = Math.min(1, Math.max(0, spec.voiceVolume ?? 1))
     source.connect(this.gain).connect(sink)
     element.addEventListener('loadedmetadata', this.onMetadata)
     element.addEventListener('durationchange', this.onMetadata)
@@ -128,6 +129,14 @@ export class GuidedRun implements SessionRun {
     // es die nächste echte Unterbrechung.
     this.ownPauses = 0
     return this.play()
+  }
+
+  // Lautstärke der Stimme (0 … 1); gleitet in `glide` s dorthin, gegen Knacken beim Ziehen.
+  setVolume(volume: number, glide: number): void {
+    if (this.freed) return
+    const now = this.ctx.currentTime
+    holdParam(this.gain.gain, now)
+    this.gain.gain.linearRampToValueAtTime(volume, now + glide)
   }
 
   // Meldet (falls noch nicht geschehen) die gehörte Zeit und gibt das Element frei. Was noch

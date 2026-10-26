@@ -377,6 +377,30 @@ test('background plays at the given volume and fades at the end', async () => {
   }
 }, 15000)
 
+test('the voice starts at its volume and follows setVoiceVolume while the session runs', async () => {
+  const set = vi.spyOn(AudioParam.prototype, 'value', 'set')
+  const ramp = vi.spyOn(AudioParam.prototype, 'linearRampToValueAtTime')
+  try {
+    const e = make()
+    e.setVoiceVolume(0.6)                    // ohne Sitzung: nichts
+    expect(ramp.mock.calls.some(([value]) => value === 0.6)).toBe(false)
+    await e.startGuided(spec({ background: 'regen', backgroundVolume: 1, voiceVolume: 0.45 }))
+    expect(set.mock.calls.some(([value]) => value === 0.45)).toBe(true) // die Stimme beginnt bei 0,45
+    expect(e.snapshot().volumes).toEqual({ regen: 1 })
+    e.setVoiceVolume(0.8)                    // gleitet, wie der Hintergrund beim Ziehen
+    expect(ramp.mock.lastCall?.[0]).toBe(0.8)
+    e.setVoiceVolume(3)                      // begrenzt auf 0 … 1
+    expect(ramp.mock.lastCall?.[0]).toBe(1)
+    await e.endProgram()
+    ramp.mockClear()
+    e.setVoiceVolume(0.5)                    // nach dem Ende stört nichts das Ausblenden
+    expect(ramp).not.toHaveBeenCalled()
+  } finally {
+    set.mockRestore()
+    ramp.mockRestore()
+  }
+}, 15000)
+
 test('media session has seek actions and position during a guided session', async () => {
   const setHandler = vi.spyOn(navigator.mediaSession, 'setActionHandler')
   const setPosition = vi.spyOn(navigator.mediaSession, 'setPositionState')
