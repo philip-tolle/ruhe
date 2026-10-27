@@ -90,7 +90,6 @@
     border: 0;
     background: none;
     color: var(--text-muted);
-    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.01em;
   }
@@ -113,15 +112,21 @@
     box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 18%, transparent);
   }
 
-  /* Sechs Reiter teilen sich die Leiste: Auf einem 360 px breiten Handy ist ein Reiter nur gut 57 px breit,
-     „Meditieren“ in 12 px liefe über. Darunter bekommt die Beschriftung 11 px (Spec M9 §3.1). Wächst die Schrift mit
-     der Einstellung der Person (130 %), hielte der Reiter „Meditieren“ nicht mehr aus: Die Größe ist darum zusätzlich
-     an die Breite des Reiters gebunden (1 cqi = 1 % seiner Breite; „Meditieren“ braucht rund 4,9 × die Schriftgröße). */
-  @media (max-width: 379.98px) {
-    button {
-      container-type: inline-size;
-    }
+  /* Sechs Reiter teilen sich die Leiste: „Meditieren“ braucht rund 4,9 × die Schriftgröße, ein Reiter ist auf einem
+     412 px breiten Handy 66 px, auf einem 360 px breiten gut 57 px breit. Wächst die Schrift mit der Einstellung der
+     Person (130 %), stieße „Meditieren“ an „Energie“. Darum ist die Größe der Beschriftung an die Breite ihres
+     Reiters gebunden (1 cqi = 1 % seiner Breite): Bei normaler Schrift bleibt es bei 12 px, sie wächst nur so weit,
+     wie sie in den Reiter passt. Unter 380 px Breite sind es 11 px (Spec M9 §3.1), wiederum höchstens so viel,
+     wie passt. */
+  button {
+    container-type: inline-size;
+  }
 
+  .label {
+    font-size: min(0.75rem, 19.5cqi);
+  }
+
+  @media (max-width: 379.98px) {
     .label {
       font-size: min(0.6875rem, 19.5cqi);
       letter-spacing: 0;

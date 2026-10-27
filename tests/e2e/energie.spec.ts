@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { doubleTap } from './taps'
 
 // Reiter „Energie“ mit Akku-Karte und Check-in-Blatt (Spec M9 §3.2, §3.3). Der Browser läuft in Berlin und die
 // Uhr steht fest, so hängt kein Test von Zeitzone und Tageszeit des Rechners ab. Alle Werte sind ausgedachte Testdaten.
@@ -33,6 +34,8 @@ async function open(page: Page, { now = NOW, checkins }: { now?: Date; checkins?
 async function openSheet(page: Page) {
   await akkuCard(page).getByRole('button', { name: 'Check-in', exact: true }).click()
   await expect(dialog(page)).toBeVisible()
+  // Punkte und Knöpfe nehmen Tipps erst kurz nach dem Einblenden an (Schutz vor dem Doppeltipp); hier ist es so weit.
+  await expect(dialog(page).getByRole('button', { name: 'Später' })).toBeEnabled()
 }
 
 const checkin = (id: string, at: string, levels: [number, number, number, number]) => ({
@@ -251,6 +254,17 @@ test.describe('on a 360px phone', () => {
     await dialog(page).getByRole('button', { name: 'Speichern' }).scrollIntoViewIfNeeded()
     await expect(dialog(page).getByRole('button', { name: 'Speichern' })).toBeInViewport()
     await expect(dialog(page).getByRole('button', { name: 'Später' })).toBeVisible()
-    await page.evaluate(() => (document.documentElement.style.fontSize = ''))
+  })
+
+  // Ein Doppeltipp auf „Check-in“: Der zweite Tipp trifft dort, wo sich gerade das Blatt einblendet (auf 360 × 640
+  // liegt an dieser Stelle eine Punktereihe). Er darf weder das Blatt schließen noch einen Punkt wählen.
+  test('a double tap on "Check-in" leaves the sheet open with no dot checked', async ({ page }) => {
+    await open(page)
+    await doubleTap(page, akkuCard(page).getByRole('button', { name: 'Check-in', exact: true }), 0.5)
+    await expect(dialog(page)).toBeVisible()
+    await expect(dialog(page).locator('[role="radio"][aria-checked="true"]')).toHaveCount(0)
+    // Kurz danach nehmen die Punkte Tipps an.
+    await dot(page, 'Körper', 4, 'gut').click()
+    await expect(dot(page, 'Körper', 4, 'gut')).toHaveAttribute('aria-checked', 'true')
   })
 })

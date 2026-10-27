@@ -12,27 +12,55 @@ test('tab bar buttons are at least 48px tall and wide, and none is a toggle', as
   await expect(page.locator('button[aria-pressed]')).toHaveCount(0)
 })
 
-// Sechs Reiter auf der schmalsten Telefonbreite (Spec M9 §3.1): Unter 380 px sinken die Beschriftungen auf 11 px, und
-// keine ragt über ihren Reiter hinaus. Die Beschriftung ist ein Flex-Element, das sich auf die Breite ihres Textes
-// legt; `scrollWidth <= clientWidth` allein ginge also auch dann auf, wenn der Text den Reiter überragt. Darum zählt
+// Sechs Reiter (Spec M9 §3.1): Auf der schmalsten Telefonbreite sinken die Beschriftungen auf 11 px, und keine ragt über
+// ihren Reiter hinaus. Die Beschriftung ist ein Flex-Element, das sich auf die Breite ihres Textes legt;
+// `scrollWidth <= clientWidth` allein ginge also auch dann auf, wenn der Text den Reiter überragt. Darum zählt
 // zusätzlich, dass die Beschriftung im Kasten ihres Reiters liegt.
+const labelsFit = (page: Page) =>
+  page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button').evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const label = button.querySelector<HTMLElement>('.label')!
+      const own = button.getBoundingClientRect()
+      const text = label.getBoundingClientRect()
+      return {
+        name: label.textContent,
+        fits: label.scrollWidth <= label.clientWidth,
+        inside: text.left >= own.left - 0.5 && text.right <= own.right + 0.5,
+        height: own.height,
+      }
+    }),
+  )
+
+// Wächst die Schrift mit der Einstellung der Person (130 %), ist „Meditieren“ auch auf einem normal breiten Handy
+// (Pixel 7, 412 px) breiter als sein Sechstel der Leiste, wenn die Größe nur von der Schrift abhängt.
+test.describe('tab bar at 412px', () => {
+  test.use({ viewport: { width: 412, height: 780 } })
+
+  test('with 130% text size every label still lies within its tab', async ({ page }) => {
+    await page.goto('./')
+    await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+    await expect(page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button')).toHaveCount(6)
+    // 412 px (Pixel 7), 390 px (iPhone) und 380 px, die schmalste Breite ohne die 11-px-Regel.
+    for (const width of [412, 390, 380]) {
+      await page.setViewportSize({ width, height: 780 })
+      for (const label of await labelsFit(page)) {
+        expect(label.inside, `${width} px: ${label.name} liegt in seinem Reiter`).toBe(true)
+        expect(label.height, `${width} px: ${label.name} ist mindestens 48 px hoch`).toBeGreaterThanOrEqual(48)
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${width} px: kein seitliches Scrollen`).toBe(true)
+    }
+  })
+
+  // Ohne Einstellung bleibt es bei 12 px, die Bindung an die Breite greift erst, wenn die Schrift nicht mehr passt.
+  test('at the normal text size the labels keep their 12px', async ({ page }) => {
+    await page.goto('./')
+    expect(await page.locator('nav .label').first().evaluate((el) => getComputedStyle(el).fontSize)).toBe('12px')
+    for (const label of await labelsFit(page)) expect(label.inside, `${label.name} liegt in seinem Reiter`).toBe(true)
+  })
+})
+
 test.describe('tab bar at 360px', () => {
   test.use({ viewport: { width: 360, height: 640 } })
-
-  const labelsFit = (page: Page) =>
-    page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button').evaluateAll((buttons) =>
-      buttons.map((button) => {
-        const label = button.querySelector<HTMLElement>('.label')!
-        const own = button.getBoundingClientRect()
-        const text = label.getBoundingClientRect()
-        return {
-          name: label.textContent,
-          fits: label.scrollWidth <= label.clientWidth,
-          inside: text.left >= own.left - 0.5 && text.right <= own.right + 0.5,
-          height: own.height,
-        }
-      }),
-    )
 
   test('all six labels fit, every target is at least 48px tall, and the page does not scroll sideways', async ({ page }) => {
     await page.goto('./')

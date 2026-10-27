@@ -3,11 +3,17 @@
   import LevelDots from './LevelDots.svelte'
   import { AREAS, AREA_INFO, LEVEL_WORD, type EnergyArea, type EnergyLevel } from '../../lib/energy/areas'
   import { saveCheckin } from '../../lib/stats/store.svelte'
+  import { tapArming } from '../../lib/ui/arming.svelte'
   import { closeCheckIn } from '../../lib/ui/energy-ui.svelte'
 
   // Energie-Check-in als Blatt von unten (Spec M9 §3.3). Jede Zeile beginnt leer: Das Blatt wird nur bei
   // offenem Blatt eingehängt (App.svelte), also fängt jedes Öffnen von vorn an. „Speichern“ gilt erst mit
   // allen vier Bereichen; „Später“, die Zurück-Geste und Tippen daneben schließen ohne Speichern (Sheet).
+  // Ein Doppeltipp auf „Check-in“ träfe mit dem zweiten Tipp sonst einen Punkt, der sich gerade an dieselbe Stelle
+  // legt: Punkte, „Speichern“ und „Später“ nehmen Tipps erst nach kurzer Zeit an (siehe `tapArming`). Das Tippen
+  // daneben bleibt, wie es ist: Es gehört dem Sheet und teilt sich den Weg mit der Zurück-Geste.
+  const arming = tapArming()
+
   let picked = $state<Partial<Record<EnergyArea, EnergyLevel>>>({})
 
   // Stufen sind 1 bis 5, also genügt die Wahrheitsprüfung, um jede Zeile als gesetzt zu erkennen.
@@ -37,14 +43,14 @@
           <span class="word" aria-hidden="true">{value ? LEVEL_WORD[value] : '–'}</span>
         </p>
         <p class="question">{info.question}</p>
-        <LevelDots {area} {value} onPick={(level) => (picked[area] = level)} />
+        <LevelDots {area} {value} disabled={!arming.armed} onPick={(level) => (picked[area] = level)} />
       </div>
     {/each}
   </div>
 
   <div class="actions">
-    <button type="button" class="button save" disabled={!levels} onclick={save}>Speichern</button>
-    <button type="button" class="later" onclick={closeCheckIn}>Später</button>
+    <button type="button" class="button save" disabled={!levels || !arming.armed} onclick={save}>Speichern</button>
+    <button type="button" class="later" disabled={!arming.armed} onclick={closeCheckIn}>Später</button>
   </div>
 </Sheet>
 
