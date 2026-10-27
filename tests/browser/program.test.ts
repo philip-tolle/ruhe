@@ -648,7 +648,7 @@ test('an early ended sprint reports its kind, ref and note; other programs carry
   const e = make()
   const seen = results(e)
   await e.startProgram(focusProgram(25, 'regen', 'X'))
-  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { kind: 'focus', title: 'Fokus-Sprint · 25 Min', noBowl: false }, volumes: { regen: 0.7 } })
+  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { kind: 'focus', title: 'Fokus-Sprint · 25 Min', noBowl: false, note: 'X' }, volumes: { regen: 0.7 } })
   await wait(200)
   await e.endProgram()
   expect(seen).toHaveLength(1)
@@ -656,6 +656,7 @@ test('an early ended sprint reports its kind, ref and note; other programs carry
   expect(seen[0].seconds).toBeGreaterThan(0)
   expect(seen[0].seconds).toBeLessThan(25 * 60)
   await e.startProgram(spec())
+  expect('note' in e.snapshot().program!).toBe(false) // die Notiz im Snapshot (der Sprint-Player zeigt sie) gibt es nur mit Notiz
   await e.endProgram()
   expect(seen).toHaveLength(2)
   expect(seen[1]).toMatchObject({ kind: 'timer', ref: 'timer' })

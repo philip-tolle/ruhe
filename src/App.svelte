@@ -8,6 +8,7 @@
   import BreathPlayer from './components/player/BreathPlayer.svelte'
   import GuidedPlayer from './components/player/GuidedPlayer.svelte'
   import HackPlayer from './components/player/HackPlayer.svelte'
+  import SprintPlayer from './components/player/SprintPlayer.svelte'
   import TimerPlayer from './components/player/TimerPlayer.svelte'
   import Heute from './screens/Heute.svelte'
   import Energie from './screens/Energie.svelte'
@@ -27,12 +28,13 @@
 
   const program = $derived(audio.snap.program)
 
-  // Vollbild-Player von Timer, Atemübung, Brain Hack und geführter Meditation: Laufansicht, solange die
+  // Vollbild-Player von Timer, Atemübung, Brain Hack, Fokus-Sprint und geführter Meditation: Laufansicht, solange die
   // Sitzung läuft; danach ihr Abschluss, solange er offen ist (die End-Schalen klingen dabei noch aus).
   // Darunter ist die App unerreichbar.
   const timerPlayerVisible = $derived(playerOpen('timer'))
   const breathPlayerVisible = $derived(playerOpen('breath'))
   const hackPlayerVisible = $derived(playerOpen('hack'))
+  const sprintPlayerVisible = $derived(playerOpen('focus'))
   const guidedPlayerVisible = $derived(playerOpen('guided'))
   const appInert = $derived(anyPlayerOpen())
 
@@ -101,6 +103,10 @@
 
 {#if hackPlayerVisible}
   <HackPlayer />
+{/if}
+
+{#if sprintPlayerVisible}
+  <SprintPlayer />
 {/if}
 
 {#if guidedPlayerVisible}

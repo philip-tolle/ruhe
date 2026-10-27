@@ -21,6 +21,7 @@ export interface ProgramSnapshot {
   ended: boolean // gezählte Zeit vorbei und Ergebnis gemeldet; es klingt noch aus
   noBowl: boolean // ein Programm mit Klangschale (Timer, Hack, Sprint), die nicht geladen werden konnte: Es läuft still
   error: boolean // eine geführte Meditation, deren Datei nicht lädt; bei Programmen nie
+  note?: string // Notiz der Spec, beim Fokus-Sprint das Vorhaben: Der Player zeigt es, solange er läuft
 }
 
 // Ausblenden beim Beenden (Audio-Uhr): Rampe auf 0 bis `fadeEnd`, die Klänge enden bei `stopAt`.
@@ -101,8 +102,11 @@ export class ProgramRun implements SessionRun {
   }
 
   snapshot(): ProgramSnapshot {
-    const { kind, ref, title, lead, length, finish } = this.spec
-    return { kind, ref, title, lead, length, finish, elapsed: this.elapsed(), ended: this.hasReported, noBowl: this.noBowl, error: false }
+    const { kind, ref, title, lead, length, finish, note } = this.spec
+    return {
+      kind, ref, title, lead, length, finish, elapsed: this.elapsed(), ended: this.hasReported, noBowl: this.noBowl, error: false,
+      ...(note === undefined ? {} : { note }),
+    }
   }
 
   // Beendet den Durchlauf; die Marken entfallen sofort. Was klingt, blendet mit `fade` aus wie ein

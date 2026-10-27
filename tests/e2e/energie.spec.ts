@@ -3,8 +3,9 @@ import { expectMotiv } from './motiv'
 import { doubleTap, expectStillRunning } from './taps'
 
 // Reiter „Energie“ mit Akku-Karte und Check-in-Blatt (Spec M9 §3.2, §3.3), Jetzt-Reset, Bibliothek, Hack-Karte und
-// Hack-Player (§3.2, §3.4, §3.5). Der Browser läuft in Berlin und die Uhr steht fest, so hängt kein Test von Zeitzone
-// und Tageszeit des Rechners ab; nur die Tests mit laufendem Hack nehmen die echte Uhr (siehe `open`, `live`).
+// Hack-Player (§3.2, §3.4, §3.5), Sprint-Karte und „Deine Woche“ (§3.2, §3.6, §6). Der Browser läuft in Berlin und die
+// Uhr steht fest, so hängt kein Test von Zeitzone und Tageszeit des Rechners ab; nur die Tests mit laufendem Hack oder
+// Sprint nehmen die echte Uhr (siehe `open`, `live`). Die langen Sprint-Tests (5 Minuten) liegen in sprint.spec.ts.
 // Alle Werte sind ausgedachte Testdaten.
 test.use({ timezoneId: 'Europe/Berlin' })
 const NOW = new Date('2026-10-21T14:00:00+02:00')
@@ -24,15 +25,29 @@ const SETTINGS = { vibration: true, voiceBalance: 0.5, timerSound: null, guidedS
 // Programm; solche Tests säen ihre Check-ins relativ zur echten Zeit (`ago`).
 async function open(
   page: Page,
-  { now = NOW, checkins, hackRuns, live = false }: { now?: Date; checkins?: object[]; hackRuns?: object[]; live?: boolean } = {},
+  {
+    now = NOW,
+    checkins,
+    hackRuns,
+    focusSprints,
+    focus,
+    live = false,
+  }: { now?: Date; checkins?: object[]; hackRuns?: object[]; focusSprints?: object[]; focus?: object; live?: boolean } = {},
 ) {
   if (!live) await page.clock.setFixedTime(now)
-  if (checkins || hackRuns) {
+  if (checkins || hackRuns || focusSprints || focus) {
     await page.addInitScript((json) => {
       if (sessionStorage.getItem('seeded')) return
       sessionStorage.setItem('seeded', '1')
       localStorage.setItem('ruhe.v1', json)
-    }, JSON.stringify({ version: 1, sessions: [], settings: SETTINGS, ...(checkins ? { energyCheckins: checkins } : {}), ...(hackRuns ? { hackRuns } : {}) }))
+    }, JSON.stringify({
+      version: 1,
+      sessions: [],
+      settings: focus ? { ...SETTINGS, focus } : SETTINGS,
+      ...(checkins ? { energyCheckins: checkins } : {}),
+      ...(hackRuns ? { hackRuns } : {}),
+      ...(focusSprints ? { focusSprints } : {}),
+    }))
   }
   await page.goto('./')
   await nav(page).getByRole('button', { name: 'Energie' }).click()
@@ -910,5 +925,298 @@ test.describe('on a 360px phone with 130% text', () => {
     expect(await pageScrolls()).toBe(false)
     await page.getByRole('button', { name: 'Beenden' }).click()
     await expect(hackDialog(page)).toHaveCount(0)
+  })
+})
+
+// ── Fokus-Sprint (Spec M9 §3.2 Punkt 4, §3.6) ────────────────────────────────────────────────────────────────────
+// Die Karte und kurze Läufe stehen hier; ein Sprint, der zählt, läuft mindestens 5 Minuten und steht in sprint.spec.ts.
+
+const sprintCard = (page: Page) => page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Fokus-Sprint', exact: true }) })
+const sprintDialog = (page: Page) => page.getByRole('dialog', { name: 'Fokus-Sprint', exact: true })
+const sprintField = (page: Page) => sprintCard(page).getByLabel('Woran arbeitest du?')
+const startSprintButton = (page: Page) => sprintCard(page).getByRole('button', { name: 'Sprint starten', exact: true })
+
+test('the cards come in this order: battery, reset, sprint, hacks, week', async ({ page }) => {
+  await open(page)
+  await expect(page.locator('.screen').getByRole('heading', { level: 2 })).toHaveText(['Dein Akku', 'Jetzt-Reset', 'Fokus-Sprint', 'Brain Hacks', 'Deine Woche'])
+})
+
+test('the sprint card shows the motif, a free field of at most 80 characters, the three lengths and the background', async ({ page }) => {
+  await open(page)
+  const card = sprintCard(page)
+  await expectMotiv(card.locator('img'), 'fokus', 72)
+
+  // Das Feld ist freiwillig und fasst höchstens 80 Zeichen (Tippen schneidet ab, auch bei längerem Text).
+  await expect(sprintField(page)).toHaveValue('')
+  await expect(sprintField(page)).toHaveAttribute('maxlength', '80')
+  await sprintField(page).click()
+  await page.keyboard.type('x'.repeat(95))
+  expect(await sprintField(page).inputValue()).toHaveLength(80)
+
+  // Standard 50 Min und „Kaffee & Notizen“; die Länge ist eine Radiogruppe wie die anderen Auswahlen.
+  const lengths = card.getByRole('radiogroup', { name: 'Dauer', exact: true })
+  await expect(lengths.getByRole('radio')).toHaveText(['25 Min', '50 Min', '90 Min'])
+  await expect(lengths.getByRole('radio', { name: '50 Min', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(lengths.getByRole('radio', { name: '25 Min', exact: true })).toHaveAttribute('aria-checked', 'false')
+  await expect(card.getByLabel('Hintergrund', { exact: true })).toHaveValue('kaffee-und-notizen')
+  // Dieselbe gegliederte Auswahl wie beim Timer, mit „Keiner“.
+  await expect(card.getByLabel('Hintergrund', { exact: true }).locator('option').first()).toHaveText('Keiner')
+  await expect(startSprintButton(page)).toBeVisible()
+  // Die Tippflächen sind mindestens 44 px hoch.
+  for (const target of [sprintField(page), startSprintButton(page), ...(await lengths.getByRole('radio').all())]) {
+    expect((await target.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  }
+})
+
+test('the sprint card opens with the remembered length and background', async ({ page }) => {
+  await open(page, { focus: { minutes: 90, sound: 'regen' } })
+  const card = sprintCard(page)
+  await expect(card.getByRole('radio', { name: '90 Min', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(card.getByLabel('Hintergrund', { exact: true })).toHaveValue('regen')
+})
+
+test('the sprint card opens on "Keiner" when no background was remembered', async ({ page }) => {
+  await open(page, { focus: { minutes: 25, sound: null } })
+  await expect(sprintCard(page).getByRole('radio', { name: '25 Min', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(sprintCard(page).getByLabel('Hintergrund', { exact: true })).toHaveValue('')
+})
+
+test('a sprint under 5 minutes leaves no entry, no summary, and the player closes by itself', async ({ page }) => {
+  await open(page, { live: true })
+  await sprintField(page).fill('Nur ein Versuch')
+  await startSprintButton(page).click()
+  const player = sprintDialog(page)
+
+  // Laufansicht: Titel, Motiv, Restzeit groß, Vorhaben, Pause/Beenden.
+  await expect(player.getByRole('heading', { level: 2, name: 'Fokus-Sprint · 50 Min' })).toBeVisible()
+  await expectMotiv(player.locator('img'), 'fokus', 72)
+  await expect(player.getByRole('timer')).toHaveText('50:00')
+  await expect(player.getByText('Nur ein Versuch', { exact: true })).toBeVisible()
+  await expect(player.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+  await expect(page.locator('[inert] main')).toHaveCount(1) // darunter ist die App unerreichbar
+  await untilTimer(page, '49:57')
+
+  await player.getByRole('button', { name: 'Beenden', exact: true }).click()
+  await expect(sprintDialog(page)).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Sprint geschafft' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Energie')
+  await expect(page.locator('[inert]')).toHaveCount(0)
+  const data = await stored(page)
+  expect(data.focusSprints).toBeUndefined()
+  expect(data.sessions).toEqual([])
+  // Die Wahl gilt trotzdem beim nächsten Mal.
+  expect(data.settings.focus).toEqual({ minutes: 50, sound: 'kaffee-und-notizen' })
+  await expect.poll(() => depth(page)).toBe(0)
+})
+
+test('an empty field shows "Fokus-Sprint" in the player, and the back gesture asks before ending', async ({ page }) => {
+  await open(page, { live: true })
+  await startSprintButton(page).click()
+  const player = sprintDialog(page)
+  await expect(player.getByRole('timer')).toBeVisible()
+  // Ohne Vorhaben steht „Fokus-Sprint“ unter der Zeit (der Titel oben heißt „Fokus-Sprint · 50 Min“).
+  await expect(player.locator('.task')).toHaveText('Fokus-Sprint')
+
+  await page.goBack()
+  const confirm = page.getByRole('alertdialog', { name: 'Sprint beenden?' })
+  await expect(confirm).toBeVisible()
+  await confirm.getByRole('button', { name: 'Weiter fokussieren' }).click()
+  await expect(confirm).toHaveCount(0)
+  await expect(player.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+  await expect.poll(() => depth(page)).toBe(1)
+
+  await player.getByRole('button', { name: 'Pause', exact: true }).click()
+  await expect(player.getByRole('button', { name: 'Weiter', exact: true })).toBeVisible()
+  await player.getByRole('button', { name: 'Weiter', exact: true }).click()
+
+  await page.goBack()
+  await expect(confirm).toBeVisible()
+  await confirm.getByRole('button', { name: 'Beenden', exact: true }).click()
+  await expect(sprintDialog(page)).toHaveCount(0) // unter 5 Minuten: schließt ohne Ende-Ansicht
+  await expect.poll(() => depth(page)).toBe(0)
+})
+
+// ── „Deine Woche“ (Spec M9 §3.2 Punkt 6, §6.3–§6.6) ──────────────────────────────────────────────────────────────
+
+const weekCard = (page: Page) => page.getByRole('region', { name: 'Deine Woche', exact: true })
+const WEEKDAY = '(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)'
+const cell = (page: Page, name: string) => weekCard(page).getByRole('img', { name, exact: true })
+
+// Alles ausgedacht. Heute ist Mittwoch, der 21.10.; das Raster zeigt Do 15. bis Mi 21. Acht Check-ins in zehn Tagen, der
+// Geist durchweg bei 1–2, über alle Tageszeiten gleich (so entsteht nur der Satz „Am niedrigsten …“, kein Tageszeit-Satz).
+const WEEK_CHECKINS = [
+  checkin('w-1', '2026-10-12T10:00:00+02:00', [4, 4, 2, 4]),
+  checkin('w-2', '2026-10-13T15:00:00+02:00', [3, 3, 1, 4]),
+  checkin('w-3', '2026-10-16T09:00:00+02:00', [4, 3, 2, 4]), // Fr
+  checkin('w-4', '2026-10-17T14:00:00+02:00', [3, 4, 1, 3]), // Sa
+  checkin('w-5', '2026-10-19T09:00:00+02:00', [4, 4, 2, 4]), // Mo (zwei Check-ins)
+  checkin('w-6', '2026-10-19T15:00:00+02:00', [3, 3, 1, 4]),
+  checkin('w-7', '2026-10-20T10:30:00+02:00', [4, 3, 2, 3]), // Di
+  checkin('w-8', '2026-10-21T09:00:00+02:00', [3, 4, 1, 4]), // Mi (heute, aber nicht mehr frisch)
+]
+// Drei Hacks mit je zwei Bewertungen: Kopf leeren +2 und +2, Bewegungs-Snack +1 und +2, Seufzer +1 und 0.
+const WEEK_RUNS = [
+  rated('r-1', 'kopf-leeren', 'geist', '2026-10-16T09:10:00+02:00', 1, 3),
+  rated('r-2', 'kopf-leeren', 'geist', '2026-10-19T09:10:00+02:00', 2, 4),
+  rated('r-3', 'bewegungs-snack', 'koerper', '2026-10-17T14:10:00+02:00', 3, 4),
+  rated('r-4', 'bewegungs-snack', 'koerper', '2026-10-20T10:40:00+02:00', 2, 4),
+  rated('r-5', 'seufzer', 'gefuehl', '2026-10-18T11:00:00+02:00', 2, 3),
+  rated('r-6', 'seufzer', 'gefuehl', '2026-10-20T11:00:00+02:00', 3, 3),
+]
+// Zwei Sprints in der Woche (25 Min und 50 Min, zusammen 1 Std. 15 Min) und einer davor, der nicht zählt.
+const WEEK_SPRINTS = [
+  { id: 'sp-1', at: '2026-10-19T09:00:00+02:00', planned: 25, seconds: 1500 },
+  { id: 'sp-2', at: '2026-10-20T13:00:00+02:00', planned: 50, seconds: 3000, task: 'Beispielaufgabe' },
+  { id: 'sp-0', at: '2026-10-10T09:00:00+02:00', planned: 90, seconds: 5400 },
+]
+
+test('the week shows 28 named cells, the pattern, the focus line and what works', async ({ page }) => {
+  await open(page, { checkins: WEEK_CHECKINS, hackRuns: WEEK_RUNS, focusSprints: WEEK_SPRINTS })
+  const week = weekCard(page)
+  await expect(week.getByRole('heading', { level: 2, name: 'Deine Woche', exact: true })).toBeVisible()
+
+  // 4 Bereiche × 7 Tage, jedes Feld ein Bild mit Namen „Geist, Dienstag: 2 von 5“ bzw. „… kein Check-in“.
+  const cells = week.getByRole('img')
+  await expect(cells).toHaveCount(28)
+  const names = await cells.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))
+  for (const name of names) expect(name).toMatch(new RegExp(`^(?:Körper|Gefühl|Geist|Sinn), ${WEEKDAY}: (?:\\d(?:,\\d)? von 5|kein Check-in)$`))
+  // Die Tage laufen vom ältesten (Do) zu heute (Mi); die Bereiche in fester Reihenfolge.
+  expect(names.slice(0, 7).map((n) => n!.split(': ')[0])).toEqual([
+    'Körper, Donnerstag', 'Körper, Freitag', 'Körper, Samstag', 'Körper, Sonntag', 'Körper, Montag', 'Körper, Dienstag', 'Körper, Mittwoch',
+  ])
+  expect(names.filter((n) => n!.startsWith('Geist')).length).toBe(7)
+  expect(names.filter((n) => n!.endsWith('kein Check-in')).length).toBe(8) // Do und So, je viermal
+
+  // Werte: Geist am Montag (2 und 1) im Schnitt 1,5; am Freitag 2; am Mittwoch 1; am Donnerstag ohne Check-in.
+  await expect(cell(page, 'Geist, Montag: 1,5 von 5')).toBeVisible()
+  await expect(cell(page, 'Geist, Freitag: 2 von 5')).toBeVisible()
+  await expect(cell(page, 'Geist, Mittwoch: 1 von 5')).toBeVisible()
+  await expect(cell(page, 'Geist, Donnerstag: kein Check-in')).toBeVisible()
+  await expect(cell(page, 'Körper, Montag: 3,5 von 5')).toBeVisible()
+
+  // Die Deckkraft folgt der ganzen Stufe (1,5 → 2): 0,2 / 0,4 / 0,6 / 0,8 / 1,0; ohne Wert ein gestrichelter Rahmen ohne Füllung.
+  const look = (name: string) =>
+    cell(page, name).evaluate((el) => {
+      const style = getComputedStyle(el)
+      return { opacity: style.opacity, border: style.borderTopStyle, fill: style.backgroundColor }
+    })
+  expect((await look('Geist, Mittwoch: 1 von 5')).opacity).toBe('0.2')
+  expect((await look('Geist, Montag: 1,5 von 5')).opacity).toBe('0.4')
+  expect((await look('Körper, Samstag: 3 von 5')).opacity).toBe('0.6')
+  expect((await look('Körper, Freitag: 4 von 5')).opacity).toBe('0.8')
+  const filled = await look('Körper, Freitag: 4 von 5')
+  expect(filled.border).not.toBe('dashed')
+  const empty = await look('Geist, Donnerstag: kein Check-in')
+  expect(empty.border).toBe('dashed')
+  expect(empty.opacity).toBe('1')
+  expect(empty.fill).toBe('rgba(0, 0, 0, 0)')
+
+  // Muster-Satz (ab 7 Check-ins in 14 Tagen), kein Hinweis.
+  await expect(week.getByText('Am niedrigsten ist zurzeit dein Geist.', { exact: true })).toBeVisible()
+  await expect(week.getByText('Ab sieben Check-ins in zwei Wochen zeigt dir die App hier deine Muster.')).toHaveCount(0)
+
+  // Fokus-Zeile: nur die zwei Sprints der letzten 7 Tage.
+  await expect(week.getByText('Diese Woche: 2 Sprints, 1 Std. 15 Min Fokus', { exact: true })).toBeVisible()
+
+  // Was bei dir wirkt: drei Zeilen in der Reihenfolge der Wirkung, mit Platz, Titel, Bereich und Stufen.
+  await expect(week.getByRole('heading', { level: 3, name: 'Was bei dir wirkt', exact: true })).toBeVisible()
+  const works = week.getByRole('listitem')
+  await expect(works).toHaveText([
+    '1 · Kopf leeren · Geist · +2 Stufen',
+    '2 · Bewegungs-Snack · Körper · +1,5 Stufen',
+    '3 · Physiologischer Seufzer · Gefühl · +0,5 Stufen',
+  ])
+  await expect(week.getByText('Bewerte nach einem Hack kurz', { exact: false })).toHaveCount(0)
+
+  // In der Bibliothek trägt der beste Hack „wirkt bei dir“.
+  await expect(tile(page, 'Kopf leeren')).toContainText('wirkt bei dir')
+})
+
+test('an empty week shows dashed cells, both hints and no focus line', async ({ page }) => {
+  await open(page)
+  const week = weekCard(page)
+  const cells = week.getByRole('img')
+  await expect(cells).toHaveCount(28)
+  const looks = await cells.evaluateAll((els) =>
+    els.map((el) => ({ name: el.getAttribute('aria-label') ?? '', border: getComputedStyle(el).borderTopStyle, opacity: getComputedStyle(el).opacity })),
+  )
+  expect(looks.every((l) => l.name.endsWith(': kein Check-in'))).toBe(true)
+  expect(looks.every((l) => l.border === 'dashed' && l.opacity === '1')).toBe(true)
+
+  await expect(week.getByText('Ab sieben Check-ins in zwei Wochen zeigt dir die App hier deine Muster.', { exact: true })).toBeVisible()
+  await expect(week.getByRole('heading', { level: 3, name: 'Was bei dir wirkt', exact: true })).toBeVisible()
+  await expect(
+    week.getByText('Bewerte nach einem Hack kurz, wie es dir jetzt geht. Ab zwei Bewertungen je Hack siehst du hier, was bei dir wirkt.', { exact: true }),
+  ).toBeVisible()
+  await expect(week.getByText(/^Diese Woche:/)).toHaveCount(0)
+  await expect(week.getByRole('listitem')).toHaveCount(0)
+})
+
+test('with few check-ins the week shows the cells but only the hint instead of patterns', async ({ page }) => {
+  await open(page, { checkins: WEEK_CHECKINS.slice(2, 7) }) // fünf Check-ins in 14 Tagen
+  const week = weekCard(page)
+  await expect(week.getByText('Ab sieben Check-ins in zwei Wochen zeigt dir die App hier deine Muster.', { exact: true })).toBeVisible()
+  await expect(week.getByText(/Am niedrigsten/)).toHaveCount(0)
+  await expect(cell(page, 'Geist, Freitag: 2 von 5')).toBeVisible()
+})
+
+test('the sprint line counts one sprint in the singular', async ({ page }) => {
+  await open(page, { focusSprints: [WEEK_SPRINTS[0]] })
+  await expect(weekCard(page).getByText('Diese Woche: 1 Sprint, 25 Min Fokus', { exact: true })).toBeVisible()
+})
+
+test.describe('on a 360px phone with 130% text, sprint and week', () => {
+  test.use({ viewport: { width: 360, height: 640 } })
+
+  const sticksOut = (page: Page, selector: string) =>
+    page.locator(selector).evaluate((root) =>
+      [...root.querySelectorAll('*')].filter((e) => e.getBoundingClientRect().right > innerWidth + 0.5 || e.getBoundingClientRect().left < -0.5).length,
+    )
+  const pageScrolls = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+
+  test('the card, the week grid and its cells fit the screen', async ({ page }) => {
+    await open(page, { checkins: WEEK_CHECKINS, hackRuns: WEEK_RUNS, focusSprints: WEEK_SPRINTS })
+    await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+    await sprintField(page).fill('x'.repeat(80))
+    expect(await sticksOut(page, '.screen')).toBe(0)
+    expect(await pageScrolls(page)).toBe(false)
+    // Auch bei 130 % bleiben die Felder sichtbar groß (kein Zusammenschieben auf wenige Pixel) und innerhalb der Karte.
+    const card = (await weekCard(page).boundingBox())!
+    for (const box of await weekCard(page).getByRole('img').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()))) {
+      expect(box.width).toBeGreaterThanOrEqual(18)
+      expect(box.height).toBeGreaterThanOrEqual(18)
+      expect(box.left).toBeGreaterThanOrEqual(card.x)
+      expect(box.right).toBeLessThanOrEqual(card.x + card.width)
+    }
+  })
+
+  test('an 80 character task without spaces wraps inside the player', async ({ page }) => {
+    await open(page, { live: true })
+    await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+    const task = 'Kurskonzeptmodul'.repeat(5) // 80 Zeichen, kein Leerzeichen
+    expect(task).toHaveLength(80)
+    await sprintField(page).fill(task)
+    await startSprintButton(page).click()
+    const player = sprintDialog(page)
+    await expect(player.getByRole('timer')).toBeVisible()
+
+    const line = player.getByText(task, { exact: true })
+    await expect(line).toBeVisible()
+    const { width, height, lineHeight } = await line.evaluate((el) => ({
+      width: el.getBoundingClientRect().width,
+      height: el.getBoundingClientRect().height,
+      lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+    }))
+    expect(width).toBeLessThanOrEqual(360)
+    expect(height).toBeGreaterThan(lineHeight * 1.5) // mehr als eine Zeile: Das Wort bricht um
+    expect(await sticksOut(page, '[role="dialog"]')).toBe(0)
+    expect(await pageScrolls(page)).toBe(false)
+    expect(await player.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+    // Auch mit fünf Zeilen Vorhaben liegen Pause und Beenden ohne Blättern im Bild.
+    await expect(player.getByRole('button', { name: 'Pause', exact: true })).toBeInViewport()
+    await expect(player.getByRole('button', { name: 'Beenden', exact: true })).toBeInViewport()
+
+    await player.getByRole('button', { name: 'Beenden', exact: true }).click() // unter 5 Minuten: schließt
+    await expect(sprintDialog(page)).toHaveCount(0)
   })
 })

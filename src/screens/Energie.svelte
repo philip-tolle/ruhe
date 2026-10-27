@@ -2,6 +2,8 @@
   import AkkuCard from '../components/energy/AkkuCard.svelte'
   import HackLibrary from '../components/energy/HackLibrary.svelte'
   import ResetCard from '../components/energy/ResetCard.svelte'
+  import SprintCard from '../components/energy/SprintCard.svelte'
+  import WeekCard from '../components/energy/WeekCard.svelte'
   import { headerLine } from '../lib/energy/insights'
   import { stats } from '../lib/stats/store.svelte'
 
@@ -17,5 +19,7 @@
 
   <AkkuCard />
   <ResetCard />
+  <SprintCard />
   <HackLibrary />
+  <WeekCard />
 </section>
