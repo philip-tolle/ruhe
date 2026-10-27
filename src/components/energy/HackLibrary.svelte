@@ -25,13 +25,14 @@
     ...AREAS.map((area) => ({ value: area, label: AREA_INFO[area].title })),
   ]
 
+  const id = $props.id()
   const shown = $derived(filter === 'alle' ? HACKS : HACKS.filter((h) => h.area === filter))
   const works = $derived(new Set(whatWorks(stats.data.hackRuns ?? []).map(({ hack }) => hack.id)))
 </script>
 
-<section class="library" aria-labelledby="library-title">
+<section class="library" aria-labelledby="{id}-title">
   <div>
-    <h2 id="library-title">Brain Hacks</h2>
+    <h2 id="{id}-title">Brain Hacks</h2>
     <span class="rule" aria-hidden="true"></span>
   </div>
 

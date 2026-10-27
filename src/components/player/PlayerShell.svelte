@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, type Snippet } from 'svelte'
+  import { onMount, tick, untrack, type Snippet } from 'svelte'
   import ConfirmDialog from '../ConfirmDialog.svelte'
   import SessionDone from './SessionDone.svelte'
   import { engine, type ProgramSnapshot } from '../../lib/audio/engine'
@@ -74,6 +74,17 @@
     title?.focus()
     closeLayer = openLayer(onBack)
     return () => closeLayer()
+  })
+
+  // Beginnt in demselben Rahmen eine neue Laufansicht (der Brain Hack zeigt nach dem Ende „Noch einmal“), ist der Knopf
+  // mit dem Fokus weg: Der Fokus fiele auf `body`, mitten in den modalen Dialog. Er geht dann auf den neuen Titel, wie
+  // beim Einblenden. Der erste Lauf bleibt bei `onMount`; Timer, Atemübung und Geführte Meditation kennen keinen zweiten.
+  let wasRunning = untrack(() => running)
+
+  $effect(() => {
+    const now = running
+    if (now && !wasRunning) void tick().then(() => title?.focus())
+    wasRunning = now
   })
 
   function end() {

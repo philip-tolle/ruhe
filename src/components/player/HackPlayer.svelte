@@ -88,7 +88,7 @@
     {:else}
       <!-- Ring: der Ring mit der Restzeit, darunter alle Schritte als ruhige Liste. -->
       <ProgressDial fit {progress} value={formatRemaining(remaining)} />
-      <ol class="list">
+      <ol class="list" role="list">
         {#each hack.steps as s, i (i)}
           <li>
             <span class="badge small"><HackIcon name={s.icon} size={22} /></span>

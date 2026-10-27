@@ -1,6 +1,7 @@
 <script lang="ts">
   import Motiv from '../Motiv.svelte'
   import { areaMotiv } from '../../lib/content/motive'
+  import { untrack } from 'svelte'
   import { AREAS, AREA_INFO, type EnergyArea } from '../../lib/energy/areas'
   import { areaLine, resetPick } from '../../lib/energy/hack-view'
   import { freshCheckin, weakestArea, whatWorks } from '../../lib/energy/insights'
@@ -12,37 +13,55 @@
   // das der niedrigste Bereich („Dein Geist ist gerade am niedrigsten.“); sonst wählt die Person den Bereich. „Anderer“
   // geht in der Folge weiter, auch in den nächsten Bereich; der Satz oben bleibt dabei, denn er nennt, was am niedrigsten
   // ist, nicht, woher der Vorschlag kommt. „Starten“ öffnet die Hack-Karte; gestartet wird erst dort.
-  //
+  const id = $props.id()
+
   // „Jetzt“ ist wie auf „Heute“ und „Ich“ die Zeit beim Berechnen: neu bei jeder Änderung der Daten und beim Öffnen des
   // Reiters (Zeitfenster der Hacks, Frische des Check-ins), keine tickende Uhr.
   const view = $derived.by(() => {
     const now = new Date()
-    const levels = freshCheckin(stats.data.energyCheckins ?? [], now)?.levels ?? null
+    const fresh = freshCheckin(stats.data.energyCheckins ?? [], now)
+    const levels = fresh?.levels ?? null
     const start = energyUi.resetStart
     // Ohne Grundlage (weder Check-in noch gewählter Bereich) gibt es noch nichts vorzuschlagen.
     const sequence = levels || start ? resetSequence(levels, start ?? 'koerper', stats.data.hackRuns ?? [], now) : []
-    return { levels, start, sequence }
+    return { levels, start, sequence, basis: fresh?.id ?? null }
+  })
+
+  // Die Grundlage wechselt, wenn ein neuer Check-in frisch wird oder der frische zu alt wird (nach 3 Stunden, beim
+  // nächsten Berechnen). Dann gelten die Schritte von „Anderer“ nicht mehr, und ein früher gewählter Bereich auch nicht,
+  // sobald ein Check-in da ist: Sonst zeigte die Bereichswahl danach einen alten Bereich als gewählt, mit einem Vorschlag
+  // mitten aus der Folge. Der Stand liegt im Zustand der Oberfläche, damit auch ein Check-in, der anderswo (auf „Heute“)
+  // gespeichert wurde, beim Öffnen des Reiters als Wechsel gilt.
+  $effect(() => {
+    const basis = view.basis
+    untrack(() => {
+      if (energyUi.resetBasis === basis) return
+      energyUi.resetBasis = basis
+      energyUi.resetSkip = 0
+      if (basis !== null) energyUi.resetStart = null
+    })
   })
 
   // Die Folge kann leer sein; dann zeigt die Karte nur den Satz bzw. die Bereichswahl.
   const pick = $derived(resetPick(view.sequence, energyUi.resetSkip))
   const works = $derived(new Set(whatWorks(stats.data.hackRuns ?? []).map(({ hack }) => hack.id)))
 
-  // Eine neue Wahl ist eine neue Grundlage: Die Vorschläge fangen von vorn an. (Ein neuer Check-in tut dasselbe im Blatt.)
+  // Eine neue Wahl ist eine neue Grundlage: Die Vorschläge fangen von vorn an. (Ein neuer Check-in tut dasselbe im Blatt,
+  // und der Wechsel der Grundlage oben fängt auch den Rest ab.)
   function choose(area: EnergyArea) {
     energyUi.resetStart = area
     energyUi.resetSkip = 0
   }
 </script>
 
-<section class="card reset" aria-labelledby="reset-title">
-  <h2 class="kicker" id="reset-title">Jetzt-Reset</h2>
+<section class="card reset" aria-labelledby="{id}-title">
+  <h2 class="kicker" id="{id}-title">Jetzt-Reset</h2>
 
   {#if view.levels}
     <p class="ask">Dein {AREA_INFO[weakestArea(view.levels)].title} ist gerade am niedrigsten.</p>
   {:else}
-    <p class="ask" id="reset-ask">Was braucht gerade Energie?</p>
-    <div class="areas" role="group" aria-labelledby="reset-ask">
+    <p class="ask" id="{id}-ask">Was braucht gerade Energie?</p>
+    <div class="areas" role="group" aria-labelledby="{id}-ask">
       {#each AREAS as area (area)}
         <button
           type="button"

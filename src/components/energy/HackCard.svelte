@@ -22,25 +22,33 @@
   const exercise = $derived(linkTitle(hack))
 
   // Wer die Karte über „Starten“ des Jetzt-Resets öffnet, tippt dort ein zweites Mal an dieselbe Stelle: Der Tipp träfe
-  // sonst ein Bedienelement des Blatts. „Passt dazu“ und „Starten“ nehmen darum erst nach kurzer Zeit Tipps an (siehe `tapArming`).
+  // sonst ein Bedienelement des Blatts. „Zurück“, „Passt dazu“ und „Starten“ nehmen darum erst nach kurzer Zeit Tipps an
+  // (siehe `tapArming`).
   const arming = tapArming()
 
   // Im Tipp selbst, damit der Audio-Start als Nutzergeste gilt: Die Karte schließt, der Player übernimmt ihre Ebene.
   // Die Kennung wird vor dem Schließen gelesen: `hack` ist eine Eigenschaft der Karte, und mit `closeHackCard()` ist
   // der Hack in App.svelte sofort `null`.
   function start() {
-    const id = hack.id
+    const hackId = hack.id
     closeHackCard()
-    startHack(id)
+    startHack(hackId)
   }
 </script>
 
 <Sheet title="Brain Hack" kicker onClose={closeHackCard}>
+  <!-- Oben links „Zurück“, rechts der Chip (wie im Entwurf); der Knopf ist ein Kreis von 44 px mit dem Namen „Zurück“. -->
+  <div class="top">
+    <button type="button" class="back" aria-label="Zurück" disabled={!arming.armed} onclick={closeHackCard}>
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+    </button>
+    <AreaChip area={hack.area} label={areaLine(hack)} />
+  </div>
+
   <div class="head">
-    <div class="intro">
-      <AreaChip area={hack.area} label={areaLine(hack)} />
-      <h3 class="name">{hack.title}</h3>
-    </div>
+    <h3 class="name">{hack.title}</h3>
     <Motiv id={areaMotiv(hack.area)} size={96} />
   </div>
   <p class="benefit">{hack.benefit}</p>
@@ -55,7 +63,7 @@
 
   <section class="panel" aria-labelledby="{id}-steps">
     <h3 id="{id}-steps">So geht’s</h3>
-    <ol class="steps">
+    <ol class="steps" role="list">
       {#each hack.steps as step, i (i)}
         <li>
           <span class="badge"><HackIcon name={step.icon} size={30} /></span>
@@ -94,8 +102,29 @@
 </Sheet>
 
 <style>
-  /* Chip und Titel links, das Motiv des Bereichs rechts davon; der Nutzen läuft darunter über die ganze Breite. Lange
-     Wörter brechen um, statt ins Motiv zu laufen. */
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .back {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--surface-border);
+    border-radius: 50%;
+    background: var(--sky-mid);
+    background: color-mix(in srgb, var(--text) 8%, var(--sky-mid));
+    color: var(--text);
+  }
+
+  /* Der Titel links, das Motiv des Bereichs rechts davon; der Nutzen läuft darunter über die ganze Breite. Lange Wörter
+     brechen um, statt ins Motiv zu laufen. */
   .head {
     display: flex;
     align-items: center;
@@ -103,16 +132,9 @@
     gap: 12px;
   }
 
-  .intro {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    min-width: 0;
-  }
-
   .name {
+    flex: 1;
+    min-width: 0;
     font-size: clamp(1.375rem, 6vw, 1.75rem);
     line-height: 1.15;
     overflow-wrap: anywhere;

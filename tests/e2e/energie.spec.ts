@@ -347,6 +347,35 @@ test('the suggestions start over when a new check-in is saved', async ({ page })
   await expect(resetName(page)).toHaveText('Bewegungs-Snack')
 })
 
+test('when the fresh check-in expires, the area question starts clean, without an old area or a step in the middle of a sequence', async ({ page }) => {
+  await open(page)
+  // Erst ohne Check-in einen Bereich wählen, dann einen Check-in speichern: Die Wahl gehört nicht mehr dazu.
+  await area(page, 'Geist').click()
+  await expect(area(page, 'Geist')).toHaveAttribute('aria-pressed', 'true')
+  await akkuCard(page).getByRole('button', { name: 'Check-in', exact: true }).click()
+  await expect(dialog(page).getByRole('button', { name: 'Später' })).toBeEnabled()
+  for (const [areaName, n, word] of [['Körper', 1, 'leer'], ['Gefühl', 4, 'gut'], ['Geist', 4, 'gut'], ['Sinn', 4, 'gut']] as const) {
+    await dot(page, areaName, n, word).click()
+  }
+  await dialog(page).getByRole('button', { name: 'Speichern' }).click()
+  await expect(resetCard(page).getByText('Dein Körper ist gerade am niedrigsten.')).toBeVisible()
+  await next(page).click()
+  await next(page).click()
+  await expect(resetName(page)).toHaveText('Wach-Atmung')
+
+  // Vier Stunden später (nicht mehr frisch), beim nächsten Öffnen des Reiters: Die Frage steht da, nichts ist gewählt.
+  await page.clock.setFixedTime(new Date('2026-10-21T18:00:00+02:00'))
+  await nav(page).getByRole('button', { name: 'Atmen' }).click()
+  await nav(page).getByRole('button', { name: 'Energie' }).click()
+  await expect(resetCard(page).getByText('Was braucht gerade Energie?')).toBeVisible()
+  for (const name of ['Körper', 'Gefühl', 'Geist', 'Sinn']) await expect(area(page, name)).toHaveAttribute('aria-pressed', 'false')
+  await expect(resetCard(page).locator('.name')).toHaveCount(0)
+
+  // Eine neue Wahl beginnt wieder beim ersten Vorschlag des Bereichs.
+  await area(page, 'Gefühl').click()
+  await expect(resetName(page)).toHaveText('Physiologischer Seufzer')
+})
+
 test('without a fresh check-in the reset asks what needs energy, and the chosen area shows its hacks', async ({ page }) => {
   await open(page)
   const card = resetCard(page)
@@ -510,6 +539,13 @@ test('a tile opens the hack card with steps, reason, source and start; "Passt da
   await expect(card.getByText('Kann dir helfen, Stress in einer Minute spürbar herunterzufahren.')).toBeVisible()
   await expectMotiv(card.locator('img'), 'energie-gefuehl', 96)
 
+  // „Zurück“: sichtbarer Weg zum Schließen (ohne Zurück-Geste, etwa in einer installierten App auf iOS), ein Kreis von 44 px
+  const back = card.getByRole('button', { name: 'Zurück', exact: true })
+  await expect(back).toBeVisible()
+  const backBox = (await back.boundingBox())!
+  expect(backBox.width).toBeGreaterThanOrEqual(44)
+  expect(backBox.height).toBeGreaterThanOrEqual(44)
+
   // „So geht’s“: drei nummerierte Schritte, je mit Symbol, Titel und Erklärung
   const steps = card.getByRole('region', { name: 'So geht’s' })
   await expect(steps.getByRole('listitem')).toHaveCount(3)
@@ -518,6 +554,8 @@ test('a tile opens the hack card with steps, reason, source and start; "Passt da
   await expect(steps.getByRole('listitem').nth(1)).toContainText('Kurz nachatmen')
   await expect(steps.getByRole('listitem').nth(2)).toContainText('Lang ausatmen')
   await expect(steps.locator('svg[aria-hidden="true"]')).toHaveCount(3)
+  // Die Liste bleibt eine Liste für Hilfstechnik, auch ohne Aufzählungszeichen (WebKit lässt sie sonst fallen).
+  await expect(steps.locator('ol')).toHaveAttribute('role', 'list')
 
   // „Warum es wirkt“: Wirkungsbild von … nach … und der Text
   const why = card.getByRole('region', { name: 'Warum es wirkt' })
@@ -569,6 +607,14 @@ test('the hack card closes with Escape, the back gesture and a tap beside it, an
   await openCard(page, 'Big Domino')
   await page.mouse.click(8, 8)
   await expect(hackDialog(page)).toHaveCount(0)
+
+  // „Zurück“ oben im Blatt, mit sauberem History-Stapel
+  await openCard(page, 'Drei gute Dinge')
+  await expect.poll(() => depth(page)).toBe(1)
+  await hackDialog(page).getByRole('button', { name: 'Zurück', exact: true }).click()
+  await expect(hackDialog(page)).toHaveCount(0)
+  await expect.poll(() => depth(page)).toBe(0)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Energie')
 })
 
 // ── Hack-Player und Ende (Spec M9 §3.5, §6.2) ───────────────────────────────────────────────────────────────────
@@ -699,8 +745,9 @@ test('a steps hack counts its steps; ending it after 40 s still asks for the eff
   expect(await runs(page)).toHaveLength(1)
   const first = (await runs(page))[0]
   expect(first).toMatchObject({ hack: 'bewegungs-snack', area: 'koerper' })
+  // Die Restzeit zeigt „1:20“, sobald 40 s gelaufen sind (sie rundet auf); der Test beendet im selben Bild: 40 oder 41.
   expect(first.seconds).toBeGreaterThanOrEqual(40)
-  expect(first.seconds).toBeLessThanOrEqual(42)
+  expect(first.seconds).toBeLessThanOrEqual(41)
   expect('before' in first || 'after' in first).toBe(false)
 
   // Ohne Check-in zwei Reihen. „vorher“ macht daraus keine einzelne Reihe.
@@ -715,10 +762,22 @@ test('a steps hack counts its steps; ending it after 40 s still asks for the eff
   await expect.poll(async () => (await runs(page))[0].after).toBe(4)
   expect(await vibrations(page)).toContain(200)
 
-  // „Noch einmal“: derselbe Hack von vorn, das alte Ende ist weg; ein Doppeltipp trifft nicht „Beenden“ des neuen Laufs.
-  await doubleTap(page, player.getByRole('button', { name: 'Noch einmal' }), 0.75)
+  // „Noch einmal“: derselbe Hack von vorn, das alte Ende ist weg. Ein Doppeltipp (zwei Tipps im Abstand von 150 ms, wie
+  // `doubleTap`) trifft nicht „Beenden“ des neuen Laufs. Nach dem ersten Tipp ist der Knopf mit dem Fokus weg: Der Fokus
+  // geht auf den Titel der neuen Laufansicht, nicht auf `body` im Dialog. Der zweite Tipp auf das gesperrte „Beenden“
+  // nähme ihn wieder (ein Tipp auf etwas, das keinen Fokus annimmt, entfernt ihn), darum wird dazwischen geprüft.
+  const again = player.getByRole('button', { name: 'Noch einmal' })
+  await again.click({ trial: true })
+  const againBox = (await again.boundingBox())!
+  const [tapX, tapY] = [againBox.x + againBox.width * 0.75, againBox.y + againBox.height / 2]
+  const newTitle = player.getByRole('heading', { level: 2, name: 'Bewegungs-Snack' })
+  await page.touchscreen.tap(tapX, tapY)
+  await page.waitForTimeout(150)
+  await expect(newTitle).toBeFocused()
+  await page.touchscreen.tap(tapX, tapY)
+  await page.waitForTimeout(500)
   await expectStillRunning(page)
-  await expect(player.getByRole('heading', { level: 2, name: 'Bewegungs-Snack' })).toBeVisible()
+  await expect(newTitle).toBeVisible()
   await expect(player.getByText('Schritt 1 von 4', { exact: true })).toBeVisible()
   await expect(player.getByText('Geschafft')).toHaveCount(0)
   await expect.poll(() => depth(page)).toBe(1)
@@ -741,6 +800,7 @@ test('ending a ring hack after 10 s closes the player without the effect questio
   // Ring: Restzeit im Ring, darunter alle Schritte als ruhige Liste
   await expect(player.getByText('Körper · 5 Min', { exact: true })).toBeVisible()
   const list = player.getByRole('list')
+  await expect(list).toHaveAttribute('role', 'list')
   await expect(list.getByRole('listitem')).toHaveCount(3)
   await expect(list).toContainText('Raus ins Freie')
   await expect(list).toContainText('Zum Himmel schauen')
