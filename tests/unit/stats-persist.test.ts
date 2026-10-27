@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { loadData, saveData, withBreathPattern, withCalm, withoutBreathPattern, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
+import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withFocusSprint, withHackEffect, withHackRun, withoutBreathPattern, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
 import { emptyData } from '../../src/lib/stats/schema'
 const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) } }
 
@@ -98,4 +98,57 @@ test('withoutBreathPattern entfernt ein Muster; ist es das letzte, entfällt das
   expect(withoutBreathPattern(withoutBreathPattern(two, 'eigen-0000000a'), 'eigen-0000000b')).not.toHaveProperty('breathPatterns')
   expect(withoutBreathPattern(two, 'eigen-ffffffff')).toEqual(two)
   expect(two.breathPatterns).toHaveLength(2)
+})
+
+const checkin = { id: 'c1', at: '2026-10-21T08:00:00.000Z', levels: { koerper: 3, gefuehl: 2, geist: 4, sinn: 5 } } as const
+const run = { id: 'r1', at: '2026-10-21T09:00:00.000Z', hack: 'seufzer', area: 'gefuehl', seconds: 64 } as const
+const sprint = { id: 's1', at: '2026-10-21T10:00:00.000Z', planned: 50, seconds: 3000 } as const
+
+test('withCheckin, withHackRun und withFocusSprint hängen an und lassen sessions unverändert', () => {
+  const d = two()
+  const before = structuredClone(d)
+  const a = withCheckin(d, checkin)
+  expect(a.energyCheckins).toEqual([checkin])
+  expect(a.sessions).toBe(d.sessions)
+  const b = withHackRun(a, run)
+  expect(b.hackRuns).toEqual([run])
+  expect(b.energyCheckins).toEqual([checkin])
+  const c = withFocusSprint(b, sprint)
+  expect(c.focusSprints).toEqual([sprint])
+  expect(c.sessions).toBe(d.sessions)
+  expect(withCheckin(c, { ...checkin, id: 'c2' }).energyCheckins?.map(x => x.id)).toEqual(['c1', 'c2'])
+  expect(withHackRun(c, { ...run, id: 'r2' }).hackRuns?.map(x => x.id)).toEqual(['r1', 'r2'])
+  expect(withFocusSprint(c, { ...sprint, id: 's2' }).focusSprints?.map(x => x.id)).toEqual(['s1', 's2'])
+  expect(d).toEqual(before) // der alte Stand bleibt
+})
+test('withHackEffect setzt, ändert und entfernt Werte eines Laufs', () => {
+  const d = withHackRun(withHackRun(emptyData(), run), { ...run, id: 'r2' })
+  const before = structuredClone(d)
+  const one = withHackEffect(d, 'r1', 'before', 2)!
+  expect(one.hackRuns![0]).toEqual({ ...run, before: 2 })
+  expect(one.hackRuns![1]).toEqual({ ...run, id: 'r2' })
+  const both = withHackEffect(one, 'r1', 'after', 4)!
+  expect(both.hackRuns![0]).toEqual({ ...run, before: 2, after: 4 })
+  expect(withHackEffect(both, 'r1', 'after', 5)!.hackRuns![0]).toEqual({ ...run, before: 2, after: 5 })
+  const noBefore = withHackEffect(both, 'r1', 'before', null)!
+  expect(noBefore.hackRuns![0]).toEqual({ ...run, after: 4 })
+  const none = withHackEffect(noBefore, 'r1', 'after', null)!
+  expect(none.hackRuns![0]).toEqual(run)
+  expect('before' in none.hackRuns![0] || 'after' in none.hackRuns![0]).toBe(false)
+  expect(d).toEqual(before)
+})
+test('withHackEffect mit unbekannter ID ergibt null', () => {
+  expect(withHackEffect(emptyData(), 'r1', 'before', 3)).toBeNull()
+  expect(withHackEffect(withHackRun(emptyData(), run), 'x', 'after', 3)).toBeNull()
+})
+test('Energie-Daten überstehen Speichern und Laden', () => {
+  const s = mem()
+  const data = withFocusSprint(withHackRun(withCheckin(emptyData(), checkin), { ...run, before: 2 }), sprint)
+  saveData(s, data)
+  expect(loadData(s)).toEqual(data)
+})
+test('withSession lässt Hack-Läufe und Sprints nicht in die Sitzungen', () => {
+  const start = new Date('2026-10-21T08:00:00.000Z')
+  expect(withSession(emptyData(), { kind: 'hack', ref: 'seufzer', start, seconds: 600 }, 'x')).toBeNull()
+  expect(withSession(emptyData(), { kind: 'focus', ref: 'focus-50', start, seconds: 3000, note: 'Kurs' }, 'x')).toBeNull()
 })

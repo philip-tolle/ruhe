@@ -7,6 +7,7 @@
   import { tapArming } from '../../lib/ui/arming.svelte'
   import { openLayer } from '../../lib/ui/layers.svelte'
   import { clearDone, type SessionDoneInfo } from '../../lib/ui/session-ui.svelte'
+  import { isSessionKind } from '../../lib/stats/schema'
 
   // Rahmen der Vollbild-Player (Timer, Atemübung, geführte Meditation): Titel, Pause/Beenden, Hinweis
   // „Zum Starten tippen“, Rückfrage bei der Zurück-Geste und der Abschluss. Die Art der Sitzung
@@ -98,7 +99,7 @@
     </div>
 
     {@render footer?.()}
-  {:else if done}
+  {:else if done && isSessionKind(done.kind)}
     <SessionDone kind={done.kind} seconds={done.seconds} counted={done.counted} sessionId={done.sessionId} onDone={clearDone} />
   {/if}
 </div>

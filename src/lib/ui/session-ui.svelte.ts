@@ -6,11 +6,11 @@ import type { Meditation } from '../content/catalog'
 import { absoluteAudioUrl, guidedLevels } from '../meditation/guided-view'
 import { saveForOffline } from '../offline/status.svelte'
 import { saveBackgroundForOffline } from './offline-ui.svelte'
-import type { SessionKind } from '../stats/schema'
+import type { ResultKind } from '../stats/schema'
 import { setLastUsed, stats } from '../stats/store.svelte'
 
 export interface SessionDoneInfo {
-  kind: SessionKind
+  kind: ResultKind
   ref: string
   seconds: number
   counted: boolean

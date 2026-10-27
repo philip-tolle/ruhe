@@ -3,7 +3,9 @@
 // sofort; die Logik steckt in persist.ts und backup.ts.
 import { mergeBackup } from './backup'
 import type { CustomBreathPattern } from '../breath/custom'
-import { loadData, saveData, withBreathPattern, withCalm, withoutBreathPattern, withSession, type StorageLike } from './persist'
+import type { EnergyArea, EnergyLevel } from '../energy/areas'
+import { focusSprintFrom, hackRunFrom } from '../energy/record'
+import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withFocusSprint, withHackEffect, withHackRun, withoutBreathPattern, withSession, type StorageLike } from './persist'
 import type { AppData, CalmLevel, LastUsed, SessionResult, Settings } from './schema'
 
 /** `window.localStorage`, oder `null`, wenn der Zugriff wirft (z. B. SecurityError) oder fehlt. */
@@ -37,6 +39,38 @@ export function recordSession(result: SessionResult): string | null {
   return id
 }
 
+/**
+ * Leitet ein Ergebnis nach seiner Art weiter: Hack-Lauf, Fokus-Sprint oder Sitzung (wie `recordSession`). Gibt die ID
+ * des neuen Eintrags zurück, wenn er zählt (auch bei fehlgeschlagenem Speichern), sonst `null`.
+ */
+export function recordResult(r: SessionResult): string | null {
+  const id = crypto.randomUUID()
+  let next: AppData | null
+  if (r.kind === 'hack') {
+    const run = hackRunFrom(r, id, stats.data.energyCheckins ?? [])
+    next = run && withHackRun(stats.data, run)
+  } else if (r.kind === 'focus') {
+    const sprint = focusSprintFrom(r, id)
+    next = sprint && withFocusSprint(stats.data, sprint)
+  } else {
+    next = withSession(stats.data, r, id)
+  }
+  if (!next) return null
+  commit(next)
+  return id
+}
+
+/** Energie-Check-in mit allen vier Stufen, zeitgestempelt mit der aktuellen Uhrzeit. */
+export function saveCheckin(levels: Record<EnergyArea, EnergyLevel>): void {
+  commit(withCheckin(stats.data, { id: crypto.randomUUID(), at: new Date().toISOString(), levels: { ...levels } }))
+}
+
+/** Vorher- oder Jetzt-Wert eines Hack-Laufs: setzt oder entfernt (`null`); eine unbekannte ID ändert nichts. */
+export function setHackEffect(runId: string, which: 'before' | 'after', level: EnergyLevel | null): void {
+  const next = withHackEffect(stats.data, runId, which, level)
+  if (next) commit(next)
+}
+
 /** Ruhe-Check-in vom Abschluss: setzt oder entfernt (`null`) einen Wert; eine unbekannte ID ändert nichts. */
 export function setCalm(sessionId: string, which: 'before' | 'after', level: CalmLevel | null): void {
   const next = withCalm(stats.data, sessionId, which, level)
@@ -63,9 +97,9 @@ export function updateSettings(patch: Partial<Settings>): void {
 }
 
 /** Bei einem Fehler bleibt alles unverändert und nichts wird gespeichert. */
-export function importBackup(text: string): { added: number } | { error: string } {
+export function importBackup(text: string): { added: number; addedEnergy: number } | { error: string } {
   const merged = mergeBackup(stats.data, text)
   if ('error' in merged) return merged
   commit(merged.data)
-  return { added: merged.added }
+  return { added: merged.added, addedEnergy: merged.addedEnergy }
 }

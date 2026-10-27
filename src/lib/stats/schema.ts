@@ -4,8 +4,12 @@ import { isBackgroundId, type BackgroundId } from '../sounds/catalog'
 import { BREATH_MINUTES, isBuiltinPatternId } from '../breath/patterns'
 import { CUSTOM_PATTERN_ID, MAX_LOADED_PATTERNS, parseCustomPattern, type CustomBreathPattern } from '../breath/custom'
 import { INTERVAL_OPTIONS } from '../meditation/timer-plan'
+import { isEnergyArea, isEnergyLevel, AREAS, type EnergyArea, type EnergyLevel } from '../energy/areas'
 
 export type SessionKind = 'guided' | 'timer' | 'breath'
+
+/** Art eines Engine-Ergebnisses: Sitzungen, dazu Hack-Läufe und Fokus-Sprints (Spec M9 §5.2). */
+export type ResultKind = SessionKind | 'hack' | 'focus'
 
 /** Ruhe in fünf Stufen, von 1 „sehr unruhig“ bis 5 „ganz ruhig“ (Spec M6 §2). */
 export type CalmLevel = 1 | 2 | 3 | 4 | 5
@@ -29,12 +33,54 @@ export interface Session {
   calm?: Calm
 }
 
-/** Von der Engine gemeldetes Ende einer Sitzung. */
+/** Check-in der vier Energie-Bereiche (Spec M9 §6.1): alle vier Stufen oder gar kein Eintrag. */
+export interface EnergyCheckin {
+  id: string
+  /** ISO-Zeitpunkt des Check-ins. */
+  at: string
+  levels: Record<EnergyArea, EnergyLevel>
+}
+
+/** Ein gespielter Hack; `before` und `after` sind freiwillig, die Wirkung ist `after − before`. */
+export interface HackRun {
+  id: string
+  /** ISO-Zeitpunkt des Beginns. */
+  at: string
+  /** Hack-Kennung; ob es ihn noch gibt, prüft der Katalog beim Anzeigen. */
+  hack: string
+  /** Bereich des Hacks zum Zeitpunkt des Laufs. */
+  area: EnergyArea
+  /** Tatsächlich gehörte Sekunden. */
+  seconds: number
+  before?: EnergyLevel
+  after?: EnergyLevel
+}
+
+/** Angebotene Längen eines Fokus-Sprints in Minuten. */
+export const FOCUS_MINUTES = [25, 50, 90] as const
+export type FocusMinutes = (typeof FOCUS_MINUTES)[number]
+
+export interface FocusSprint {
+  id: string
+  /** ISO-Zeitpunkt des Beginns. */
+  at: string
+  /** Gewählte Länge; `seconds` ist die tatsächliche. */
+  planned: FocusMinutes
+  seconds: number
+  /** Woran gearbeitet wurde, höchstens `MAX_TASK_LENGTH` Zeichen; fehlt, wenn leer. */
+  task?: string
+}
+
+export const MAX_TASK_LENGTH = 80
+
+/** Von der Engine gemeldetes Ende einer Sitzung, eines Hacks oder eines Sprints. */
 export interface SessionResult {
-  kind: SessionKind
+  kind: ResultKind
   ref: string
   start: Date
   seconds: number
+  /** Beim Sprint die Aufgabe (Freitext, ungeprüft); sonst ohne Bedeutung. */
+  note?: string
 }
 
 export interface Settings {
@@ -53,6 +99,8 @@ export interface Settings {
   timerLead: boolean
   /** Zuletzt gewählt im Timer. */
   timer: { minutes: number; intervalMin: number | null }
+  /** Fokus-Sprint: gewählte Länge und Hintergrund (Musik oder Naturklang, auch keiner). */
+  focus: { minutes: FocusMinutes; sound: BackgroundId | null }
 }
 
 export type LastUsed =
@@ -68,10 +116,14 @@ export interface AppData {
   lastUsed?: LastUsed
   /** Eigene Atemmuster (Spec M8 §7); fehlt, solange es keine gibt. */
   breathPatterns?: CustomBreathPattern[]
+  /** Energie-Check-ins, Hack-Läufe und Fokus-Sprints (Spec M9 §6.1); fehlen, solange es keine gibt. */
+  energyCheckins?: EnergyCheckin[]
+  hackRuns?: HackRun[]
+  focusSprints?: FocusSprint[]
 }
 
 function defaultSettings(): Settings {
-  return { vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
+  return { vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null }, focus: { minutes: 50, sound: 'kaffee-und-notizen' } }
 }
 
 export const DEFAULT_SETTINGS: Settings = defaultSettings()
@@ -83,6 +135,21 @@ export function emptyData(): AppData {
 
 const SESSION_KINDS: readonly string[] = ['guided', 'timer', 'breath']
 const MAX_TIMER_MINUTES = 120
+
+/** Eine echte Sitzung (nicht Hack-Lauf oder Sprint): Nur sie gehört in `sessions`. */
+export function isSessionKind(k: ResultKind): k is SessionKind {
+  return SESSION_KINDS.includes(k)
+}
+
+export function isFocusMinutes(v: unknown): v is FocusMinutes {
+  return (FOCUS_MINUTES as readonly unknown[]).includes(v)
+}
+
+/** Kürzt eine Aufgabe auf `MAX_TASK_LENGTH` Zeichen; gezählt werden Unicode-Zeichen, damit kein Ersatzpaar zerreißt. */
+export function clipTask(text: string): string {
+  const chars = Array.from(text)
+  return chars.length > MAX_TASK_LENGTH ? chars.slice(0, MAX_TASK_LENGTH).join('') : text
+}
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -99,6 +166,10 @@ function isPositive(v: unknown): v is number {
 
 // ISO-Datum mit Uhrzeit; Date.parse allein ließe auch Texte wie "1" oder "Oct 21" durch.
 const ISO_START = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
+
+function isIsoTime(v: unknown): v is string {
+  return typeof v === 'string' && ISO_START.test(v) && !Number.isNaN(Date.parse(v))
+}
 
 function isCalmLevel(v: unknown): v is CalmLevel {
   return Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5
@@ -117,7 +188,7 @@ function parseSession(raw: unknown): Session | null {
   if (!isRecord(raw)) return null
   const { id, start, kind, ref, seconds } = raw
   if (typeof id !== 'string' || id === '') return null
-  if (typeof start !== 'string' || !ISO_START.test(start) || Number.isNaN(Date.parse(start))) return null
+  if (!isIsoTime(start)) return null
   if (typeof kind !== 'string' || !SESSION_KINDS.includes(kind)) return null
   if (typeof ref !== 'string') return null
   if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return null
@@ -133,6 +204,7 @@ function parseSettings(raw: Record<string, unknown>): Settings {
   const { vibration, breathSound, voiceBalance, timerSound, guidedSound, breathBackground, timerLead } = raw
   const timer = isRecord(raw.timer) ? raw.timer : {}
   const { minutes, intervalMin } = timer
+  const focus = isRecord(raw.focus) ? raw.focus : {}
   return {
     vibration: typeof vibration === 'boolean' ? vibration : def.vibration,
     breathSound: typeof breathSound === 'boolean' ? breathSound : def.breathSound,
@@ -144,6 +216,10 @@ function parseSettings(raw: Record<string, unknown>): Settings {
     timer: {
       minutes: typeof minutes === 'number' && Number.isInteger(minutes) && minutes >= 1 && minutes <= MAX_TIMER_MINUTES ? minutes : def.timer.minutes,
       intervalMin: isInterval(intervalMin) ? intervalMin : def.timer.intervalMin,
+    },
+    focus: {
+      minutes: isFocusMinutes(focus.minutes) ? focus.minutes : def.focus.minutes,
+      sound: focus.sound === null || isBackgroundId(focus.sound) ? focus.sound : def.focus.sound,
     },
   }
 }
@@ -183,10 +259,65 @@ function parseBreathPatterns(raw: unknown): CustomBreathPattern[] {
   return patterns
 }
 
+/** Alle vier Stufen gültig, sonst `null`; weitere Schlüssel entfallen. */
+function parseLevels(raw: unknown): Record<EnergyArea, EnergyLevel> | null {
+  if (!isRecord(raw)) return null
+  const levels: Partial<Record<EnergyArea, EnergyLevel>> = {}
+  for (const area of AREAS) {
+    const level = raw[area]
+    if (!isEnergyLevel(level)) return null
+    levels[area] = level
+  }
+  return levels as Record<EnergyArea, EnergyLevel>
+}
+
+function parseCheckin(raw: unknown): EnergyCheckin | null {
+  if (!isRecord(raw)) return null
+  const { id, at } = raw
+  if (typeof id !== 'string' || id === '' || !isIsoTime(at)) return null
+  const levels = parseLevels(raw.levels)
+  return levels ? { id, at, levels } : null
+}
+
+/** Der Hack muss dem Katalog nicht (mehr) angehören; geprüft wird nur die Form. Ungültige Stufen entfallen einzeln. */
+function parseHackRun(raw: unknown): HackRun | null {
+  if (!isRecord(raw)) return null
+  const { id, at, hack, area, seconds } = raw
+  if (typeof id !== 'string' || id === '' || !isIsoTime(at)) return null
+  if (typeof hack !== 'string' || !isEnergyArea(area)) return null
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return null
+  const run: HackRun = { id, at, hack, area, seconds }
+  if (isEnergyLevel(raw.before)) run.before = raw.before
+  if (isEnergyLevel(raw.after)) run.after = raw.after
+  return run
+}
+
+function parseFocusSprint(raw: unknown): FocusSprint | null {
+  if (!isRecord(raw)) return null
+  const { id, at, planned, seconds, task } = raw
+  if (typeof id !== 'string' || id === '' || !isIsoTime(at) || !isFocusMinutes(planned)) return null
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return null
+  const sprint: FocusSprint = { id, at, planned, seconds }
+  const clipped = typeof task === 'string' ? clipTask(task) : ''
+  if (clipped !== '') sprint.task = clipped
+  return sprint
+}
+
+/** Gültige Einträge in ihrer Reihenfolge; ungültige entfallen einzeln. */
+function parseList<T>(raw: unknown, parse: (item: unknown) => T | null): T[] {
+  if (!Array.isArray(raw)) return []
+  const list: T[] = []
+  for (const item of raw) {
+    const parsed = parse(item)
+    if (parsed) list.push(parsed)
+  }
+  return list
+}
+
 /**
  * Strenge Strukturprüfung. Eine ungültige Sitzung macht alles ungültig (`null`);
- * fehlende oder ungültige Einstellungen werden aufgefüllt, ein ungültiges `lastUsed` und ungültige eigene
- * Atemmuster entfallen.
+ * fehlende oder ungültige Einstellungen werden aufgefüllt, ein ungültiges `lastUsed`, ungültige eigene
+ * Atemmuster sowie ungültige Check-ins, Hack-Läufe und Sprints entfallen einzeln.
  */
 export function parseData(raw: unknown): AppData | null {
   if (!isRecord(raw) || raw.version !== 1) return null
@@ -202,5 +333,11 @@ export function parseData(raw: unknown): AppData | null {
   if (lastUsed) data.lastUsed = lastUsed
   const breathPatterns = parseBreathPatterns(raw.breathPatterns)
   if (breathPatterns.length > 0) data.breathPatterns = breathPatterns
+  const energyCheckins = parseList(raw.energyCheckins, parseCheckin)
+  if (energyCheckins.length > 0) data.energyCheckins = energyCheckins
+  const hackRuns = parseList(raw.hackRuns, parseHackRun)
+  if (hackRuns.length > 0) data.hackRuns = hackRuns
+  const focusSprints = parseList(raw.focusSprints, parseFocusSprint)
+  if (focusSprints.length > 0) data.focusSprints = focusSprints
   return data
 }

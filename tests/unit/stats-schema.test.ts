@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { parseData, emptyData, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
+import { parseData, emptyData, isSessionKind, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
 import { MUSIC, SOUNDS } from '../../src/lib/sounds/catalog'
 import { BREATH_MINUTES, BREATH_PATTERNS } from '../../src/lib/breath/patterns'
 
@@ -8,7 +8,7 @@ const withSettings = (settings: unknown) => parseData({ version: 1, sessions: []
 const withLastUsed = (lastUsed: unknown) => parseData({ version: 1, sessions: [], settings: {}, lastUsed })
 
 test('defaults', () => {
-  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
+  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null }, focus: { minutes: 50, sound: 'kaffee-und-notizen' } })
   expect(emptyData()).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
 })
 test('emptyData hands out fresh objects', () => {
@@ -18,7 +18,7 @@ test('emptyData hands out fresh objects', () => {
   a.settings.vibration = false
   a.settings.timer.minutes = 99
   a.sessions.push({ id: 'x', start: session.start, kind: 'timer', ref: 'timer', seconds: 60 })
-  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null } })
+  expect(DEFAULT_SETTINGS).toEqual({ vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null }, focus: { minutes: 50, sound: 'kaffee-und-notizen' } })
   expect(emptyData()).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
 })
 test('parseData accepts valid data and fills missing settings', () => {
@@ -58,7 +58,7 @@ test('sessions: all kinds and zero seconds are valid; unknown fields are dropped
 test('settings fall back to defaults field by field', () => {
   expect(withSettings({ vibration: 'ja', voiceBalance: 'x', timerSound: 'foo', guidedSound: 'bar', timerLead: 1, timer: 'x' })).toEqual(DEFAULT_SETTINGS)
   expect(withSettings({ vibration: false, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', timerLead: false, timer: { minutes: 25, intervalMin: 5 } }))
-    .toEqual({ vibration: false, breathSound: true, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', breathBackground: null, timerLead: false, timer: { minutes: 25, intervalMin: 5 } })
+    .toEqual({ vibration: false, breathSound: true, voiceBalance: 0.2, timerSound: 'regen', guidedSound: 'meer', breathBackground: null, timerLead: false, timer: { minutes: 25, intervalMin: 5 }, focus: { minutes: 50, sound: 'kaffee-und-notizen' } })
 })
 test('breathBackground accepts every nature sound, every music track and null, and defaults to none', () => {
   for (const { id } of [...SOUNDS, ...MUSIC]) expect(withSettings({ breathBackground: id })?.breathBackground).toBe(id)
@@ -145,7 +145,7 @@ test('an unknown background falls back', () => {
 test('breathSound defaults to true and keeps a stored false', () => {
   // Gespeicherte Daten aus Meilenstein 4 kennen den Schalter noch nicht.
   const m4 = { vibration: false, voiceBalance: 0.4, timerSound: 'regen', guidedSound: null, timerLead: true, timer: { minutes: 15, intervalMin: 5 } }
-  expect(withSettings(m4)).toEqual({ ...m4, breathSound: true, breathBackground: null })
+  expect(withSettings(m4)).toEqual({ ...m4, breathSound: true, breathBackground: null, focus: { minutes: 50, sound: 'kaffee-und-notizen' } })
   expect(withSettings({ breathSound: false })!.breathSound).toBe(false)
   expect(withSettings({ breathSound: 'nein' })!.breathSound).toBe(true)
 })
@@ -205,4 +205,92 @@ test('lastUsed mit eigener Kennung bleibt, eine falsche Form entfällt', () => {
   expect(withLastUsed({ kind: 'breath', pattern: 'eigen-0123abcd', minutes: 3 })?.lastUsed).toEqual({ kind: 'breath', pattern: 'eigen-0123abcd', minutes: 3 })
   expect(withLastUsed({ kind: 'breath', pattern: 'eigen-xyz', minutes: 3 })).not.toHaveProperty('lastUsed')
   expect(withLastUsed({ kind: 'breath', pattern: 'unbekannt', minutes: 3 })).not.toHaveProperty('lastUsed')
+})
+
+// Energie (Spec M9 §6.1): Jeder Eintrag wird einzeln geprüft, ein ungültiger kostet nie den Rest.
+const checkin = { id: 'c1', at: '2026-10-21T08:00:00.000Z', levels: { koerper: 3, gefuehl: 2, geist: 4, sinn: 5 } }
+const hackRun = { id: 'r1', at: '2026-10-21T09:00:00.000Z', hack: 'seufzer', area: 'gefuehl', seconds: 64, before: 2, after: 4 }
+const sprint = { id: 's1', at: '2026-10-21T10:00:00.000Z', planned: 50, seconds: 3000, task: 'Kurskonzept' }
+const withEnergy = (extra: Record<string, unknown>) => parseData({ version: 1, sessions: [session], settings: { vibration: false }, ...extra })
+
+test('Energie-Felder werden einzeln geprüft', () => {
+  const { sinn: _sinn, ...noSinn } = checkin.levels
+  const bad = [
+    { ...checkin, id: 'a', levels: noSinn },
+    { ...checkin, id: 'b', levels: { ...checkin.levels, sinn: 6 } },
+    { ...checkin, id: 'c', at: 'gestern' },
+    { ...checkin, id: '' },
+    { ...checkin, id: 'd', levels: { ...checkin.levels, geist: 2.5 } },
+    { ...checkin, id: 'e', levels: 'viel' },
+    null,
+    'x',
+  ]
+  const data = withEnergy({ energyCheckins: [bad[0], checkin, ...bad.slice(1), { ...checkin, id: 'c2' }] })
+  expect(data?.energyCheckins?.map(c => c.id)).toEqual(['c1', 'c2'])
+  expect(data?.energyCheckins?.[0]).toEqual(checkin)
+  expect(data?.sessions).toEqual([session])
+  expect(data?.settings).toEqual({ ...DEFAULT_SETTINGS, vibration: false })
+})
+test('ein Check-in behält nur die vier Bereiche', () => {
+  expect(withEnergy({ energyCheckins: [{ ...checkin, levels: { ...checkin.levels, extra: 1 }, extra: 1 }] })?.energyCheckins).toEqual([checkin])
+})
+test('Läufe: ein unbekannter Hack bleibt, Form und Bereich werden geprüft', () => {
+  const unknown = { ...hackRun, id: 'u', hack: 'gibt-es-nicht' }
+  const bad = [
+    { ...hackRun, id: 'b1', hack: 5 }, { ...hackRun, id: 'b2', area: 'herz' }, { ...hackRun, id: 'b3', seconds: -1 }, { ...hackRun, id: 'b4', seconds: NaN },
+    { ...hackRun, id: 'b5', seconds: '60' }, { ...hackRun, id: 'b6', at: 'gestern' }, { ...hackRun, id: '' }, { ...hackRun, id: 'b7', at: undefined }, null,
+  ]
+  const data = withEnergy({ hackRuns: [hackRun, ...bad, unknown, { ...hackRun, id: 'zero', seconds: 0 }] })
+  expect(data?.hackRuns?.map(r => r.id)).toEqual(['r1', 'u', 'zero'])
+  expect(data?.hackRuns?.[1]).toEqual(unknown)
+  expect(data?.sessions).toEqual([session])
+})
+test('Läufe: eine ungültige Vorher- oder Jetzt-Stufe entfällt einzeln, der Lauf bleibt', () => {
+  expect(withEnergy({ hackRuns: [{ ...hackRun, before: 7 }] })?.hackRuns).toEqual([{ id: 'r1', at: hackRun.at, hack: 'seufzer', area: 'gefuehl', seconds: 64, after: 4 }])
+  expect(withEnergy({ hackRuns: [{ ...hackRun, after: 0 }] })?.hackRuns).toEqual([{ id: 'r1', at: hackRun.at, hack: 'seufzer', area: 'gefuehl', seconds: 64, before: 2 }])
+  const bare = { id: 'r1', at: hackRun.at, hack: 'seufzer', area: 'gefuehl', seconds: 64 }
+  expect(withEnergy({ hackRuns: [{ ...hackRun, before: '2', after: 2.5 }] })?.hackRuns).toEqual([bare])
+  expect(withEnergy({ hackRuns: [{ ...bare, extra: 1 }] })?.hackRuns).toEqual([bare])
+})
+test('Sprints: nur 25, 50 und 90 Minuten; ein langer Text wird auf 80 Zeichen gekürzt', () => {
+  const data = withEnergy({ focusSprints: [{ ...sprint, id: 'a', planned: 30 }, sprint, { ...sprint, id: 'b', planned: 25, task: 'x'.repeat(120) }, { ...sprint, id: 'c', seconds: -5 }, { ...sprint, id: 'd', at: '1' }] })
+  expect(data?.focusSprints?.map(s => s.id)).toEqual(['s1', 'b'])
+  expect(data?.focusSprints?.[1].task).toBe('x'.repeat(80))
+  expect(data?.focusSprints?.[0]).toEqual(sprint)
+})
+test('Sprints: ein leerer oder falscher Text entfällt, der Sprint bleibt', () => {
+  const { task: _task, ...bare } = sprint
+  for (const task of ['', 5, null, {}]) expect(withEnergy({ focusSprints: [{ ...sprint, task }] })?.focusSprints).toEqual([bare])
+  expect(withEnergy({ focusSprints: [bare] })?.focusSprints).toEqual([bare])
+})
+test('Leere Listen fehlen im Ergebnis', () => {
+  const data = withEnergy({ energyCheckins: [], hackRuns: 'kein Array', focusSprints: [{ id: 'x' }] })
+  expect(data).not.toBeNull()
+  for (const key of ['energyCheckins', 'hackRuns', 'focusSprints']) expect(data).not.toHaveProperty(key)
+  expect(parseData({ version: 1, sessions: [], settings: {} })).toEqual({ version: 1, sessions: [], settings: DEFAULT_SETTINGS })
+  // Nur kaputte Einträge: Das Feld fehlt, der Rest bleibt.
+  const onlyBad = withEnergy({ energyCheckins: [{ ...checkin, id: '' }] })
+  expect(onlyBad).not.toHaveProperty('energyCheckins')
+  expect(onlyBad?.sessions).toEqual([session])
+})
+test('settings.focus: fehlt oder ungültig ergibt den Standard, null bleibt null', () => {
+  const std = { minutes: 50, sound: 'kaffee-und-notizen' }
+  expect(withSettings({})?.focus).toEqual(std)
+  expect(withSettings({ focus: 'x' })?.focus).toEqual(std)
+  expect(withSettings({ focus: { minutes: 40, sound: 'gibtsnicht' } })?.focus).toEqual(std)
+  expect(withSettings({ focus: { minutes: 25, sound: null } })?.focus).toEqual({ minutes: 25, sound: null })
+  expect(withSettings({ focus: { sound: null } })?.focus).toEqual({ minutes: 50, sound: null })
+  for (const minutes of [25, 50, 90]) expect(withSettings({ focus: { minutes } })?.focus.minutes).toBe(minutes)
+  for (const minutes of [0, 30, '50', 50.5, null, NaN]) expect(withSettings({ focus: { minutes, sound: 'regen' } })?.focus).toEqual({ minutes: 50, sound: 'regen' })
+  for (const { id } of [...SOUNDS, ...MUSIC]) expect(withSettings({ focus: { sound: id } })?.focus.sound).toBe(id)
+  for (const sound of [undefined, 3, {}, 'nope']) expect(withSettings({ focus: { sound } })?.focus.sound).toBe('kaffee-und-notizen')
+})
+test('settings.focus hängt nicht an den Standard-Objekten', () => {
+  const a = withSettings({})!
+  expect(a.focus).not.toBe(DEFAULT_SETTINGS.focus)
+  expect(emptyData().settings.focus).not.toBe(DEFAULT_SETTINGS.focus)
+})
+test('isSessionKind trennt Sitzungen von Hack-Läufen und Sprints', () => {
+  for (const k of ['guided', 'timer', 'breath'] as const) expect(isSessionKind(k)).toBe(true)
+  for (const k of ['hack', 'focus'] as const) expect(isSessionKind(k)).toBe(false)
 })

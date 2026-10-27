@@ -20,7 +20,7 @@ const SESSIONS = [
   session('s-21', '2026-10-21T07:30:00+02:00', 'timer', 'timer', 600),
   session('s-sep', '2026-09-03T21:00:00+02:00', 'breath', '478', 76),
 ]
-const SETTINGS = { vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
+const SETTINGS = { vibration: true, breathSound: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, breathBackground: null, timerLead: true, timer: { minutes: 10, intervalMin: null }, focus: { minutes: 50, sound: 'kaffee-und-notizen' } }
 const backupOf = (sessions: object[], settings: object = SETTINGS) => ({ version: 1, sessions, settings })
 
 // addInitScript läuft bei jeder Navigation (auch Neuladen); ein Merker in sessionStorage lässt es nur

@@ -101,7 +101,7 @@
     // Eine unlesbare Datei gilt wie eine ungültige: Der leere Text ergibt dieselbe Fehlermeldung.
     const text = await file.text().catch(() => '')
     const outcome = importBackup(text)
-    result = 'error' in outcome ? outcome.error : importMessage(outcome.added)
+    result = 'error' in outcome ? outcome.error : importMessage(outcome.added, outcome.addedEnergy)
   }
 </script>
 

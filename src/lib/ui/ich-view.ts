@@ -67,9 +67,14 @@ export function streakLabel(days: number): string {
   return days === 1 ? '1 Tag' : `${days} Tage`
 }
 
-/** Ergebnis eines Imports: „1 neue Sitzung importiert.“ / „3 neue Sitzungen importiert.“ */
-export function importMessage(added: number): string {
-  return added === 1 ? '1 neue Sitzung importiert.' : `${added} neue Sitzungen importiert.`
+/**
+ * Ergebnis eines Imports: „1 neue Sitzung importiert.“ / „3 neue Sitzungen importiert.“; kamen Energie-Daten
+ * (Check-ins, Hack-Läufe, Sprints) dazu: „… Dazu 1 neuer Energie-Eintrag.“ / „… Dazu 5 neue Energie-Einträge.“
+ */
+export function importMessage(added: number, addedEnergy = 0): string {
+  const sessions = added === 1 ? '1 neue Sitzung importiert.' : `${added} neue Sitzungen importiert.`
+  if (addedEnergy < 1) return sessions
+  return `${sessions} Dazu ${addedEnergy === 1 ? '1 neuer Energie-Eintrag' : `${addedEnergy} neue Energie-Einträge`}.`
 }
 
 /** Megabyte (1 MB = 1 000 000 Byte) mit einer Nachkommastelle und Komma: „7,7 MB“; ohne Bytes „0 MB“. */

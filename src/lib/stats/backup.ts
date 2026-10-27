@@ -10,20 +10,42 @@ export function backupFileName(now: Date): string {
   return `ruhe-backup-${dayKey(now)}.json`
 }
 
-/** Sitzungen, Einstellungen und eigene Atemmuster (falls vorhanden); `lastUsed` gehört nicht ins Backup. */
+/**
+ * Sitzungen, Einstellungen, eigene Atemmuster und Energie-Daten (Check-ins, Hack-Läufe, Sprints; jeweils falls
+ * vorhanden); `lastUsed` gehört nicht ins Backup.
+ */
 export function serializeBackup(data: AppData): string {
-  const { version, sessions, settings, breathPatterns } = data
-  return JSON.stringify(breathPatterns ? { version, sessions, settings, breathPatterns } : { version, sessions, settings }, null, 2)
+  const { version, sessions, settings, breathPatterns, energyCheckins, hackRuns, focusSprints } = data
+  const optional = { ...(breathPatterns && { breathPatterns }), ...(energyCheckins && { energyCheckins }), ...(hackRuns && { hackRuns }), ...(focusSprints && { focusSprints }) }
+  return JSON.stringify({ version, sessions, settings, ...optional }, null, 2)
+}
+
+/**
+ * Das Gerät behält seine Einträge; dazu kommen die der Datei mit unbekannter Kennung (auch eine doppelte in der Datei
+ * zählt nur einmal), nach Zeit sortiert. Kommt nichts dazu, bleibt die Liste des Geräts, wie sie ist.
+ */
+function mergeEntries<T extends { id: string; at: string }>(own: readonly T[] | undefined, incoming: readonly T[] | undefined): { list: T[]; added: number } {
+  const list = own ?? []
+  const known = new Set(list.map(e => e.id))
+  const fresh: T[] = []
+  for (const entry of incoming ?? []) {
+    if (known.has(entry.id)) continue
+    known.add(entry.id)
+    fresh.push(entry)
+  }
+  if (fresh.length === 0) return { list: [...list], added: 0 }
+  return { list: [...list, ...fresh].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)), added: fresh.length }
 }
 
 /**
  * Führt den Inhalt einer Backup-Datei mit dem aktuellen Stand zusammen: neue Sitzungen kommen
  * dazu (vorhandene IDs entfallen, ebenso Sitzungen unter 60 s, die nie gezählt hätten),
  * Einstellungen stammen aus der Datei, `lastUsed` bleibt. Eigene Atemmuster kommen dazu, wenn ihre
- * Kennung neu ist; ein Muster des Geräts bleibt, wie es ist. Bei ungültiger Datei kommt nur ein
- * Fehlertext zurück; `current` wird nie verändert.
+ * Kennung neu ist; ein Muster des Geräts bleibt, wie es ist. Ebenso Check-ins, Hack-Läufe und Sprints:
+ * nur unbekannte Kennungen kommen dazu (`addedEnergy` zählt sie), und ein Backup ohne Energie-Felder lässt die
+ * des Geräts unverändert. Bei ungültiger Datei kommt nur ein Fehlertext zurück; `current` wird nie verändert.
  */
-export function mergeBackup(current: AppData, text: string): { data: AppData; added: number } | { error: string } {
+export function mergeBackup(current: AppData, text: string): { data: AppData; added: number; addedEnergy: number } | { error: string } {
   let raw: unknown
   try {
     raw = JSON.parse(text)
@@ -45,5 +67,11 @@ export function mergeBackup(current: AppData, text: string): { data: AppData; ad
   const own = current.breathPatterns ?? []
   const breathPatterns = [...own, ...(incoming.breathPatterns ?? []).filter(p => !own.some(o => o.id === p.id))]
   if (breathPatterns.length > 0) data.breathPatterns = breathPatterns
-  return { data, added: added.length }
+  const checkins = mergeEntries(current.energyCheckins, incoming.energyCheckins)
+  const runs = mergeEntries(current.hackRuns, incoming.hackRuns)
+  const sprints = mergeEntries(current.focusSprints, incoming.focusSprints)
+  if (checkins.list.length > 0) data.energyCheckins = checkins.list
+  if (runs.list.length > 0) data.hackRuns = runs.list
+  if (sprints.list.length > 0) data.focusSprints = sprints.list
+  return { data, added: added.length, addedEnergy: checkins.added + runs.added + sprints.added }
 }

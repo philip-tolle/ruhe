@@ -104,12 +104,19 @@ test('streak label has singular and plural', () => {
 })
 
 test('import message has singular and plural', () => {
-  expect([0, 1, 2, 12].map(importMessage)).toEqual([
+  expect([0, 1, 2, 12].map(n => importMessage(n))).toEqual([
     '0 neue Sitzungen importiert.',
     '1 neue Sitzung importiert.',
     '2 neue Sitzungen importiert.',
     '12 neue Sitzungen importiert.',
   ])
+})
+
+test('import message names new energy entries only when there are some', () => {
+  expect(importMessage(3, 0)).toBe('3 neue Sitzungen importiert.')
+  expect(importMessage(1, 1)).toBe('1 neue Sitzung importiert. Dazu 1 neuer Energie-Eintrag.')
+  expect(importMessage(0, 5)).toBe('0 neue Sitzungen importiert. Dazu 5 neue Energie-Einträge.')
+  expect(importMessage(2, 2)).toBe('2 neue Sitzungen importiert. Dazu 2 neue Energie-Einträge.')
 })
 
 test('megabytes are decimal, with one decimal place and a comma', () => {

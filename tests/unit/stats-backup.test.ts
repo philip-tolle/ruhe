@@ -26,7 +26,7 @@ test('merge keeps own lastUsed and takes settings from the file', () => {
   const mine: AppData = { ...emptyData(), lastUsed }
   const theirs: AppData = { ...emptyData(), settings: { ...emptyData().settings, timerLead: false, timer: { minutes: 30, intervalMin: 5 } }, lastUsed: { kind: 'breath', pattern: 'box', minutes: 3 } }
   const r = mergeBackup(mine, serializeBackup(theirs))
-  expect(r).toEqual({ data: { version: 1, sessions: [], settings: theirs.settings, lastUsed }, added: 0 })
+  expect(r).toEqual({ data: { version: 1, sessions: [], settings: theirs.settings, lastUsed }, added: 0, addedEnergy: 0 })
   const r2 = mergeBackup(emptyData(), serializeBackup(theirs))
   expect('data' in r2 && 'lastUsed' in r2.data).toBe(false)
 })
@@ -103,4 +103,76 @@ test('Import fügt nur unbekannte Muster hinzu', () => {
   expect('data' in old && old.data.breathPatterns).toEqual([a])
   const none = mergeBackup(emptyData(), serializeBackup(emptyData()))
   expect('data' in none && none.data).not.toHaveProperty('breathPatterns')
+})
+
+// Energie (Spec M9 §6.1): Export enthält die drei Listen, Import fügt nur unbekannte IDs hinzu.
+const checkin = (id: string, at: string) => ({ id, at, levels: { koerper: 3, gefuehl: 2, geist: 4, sinn: 5 } as const })
+const run = (id: string, at: string) => ({ id, at, hack: 'seufzer', area: 'gefuehl' as const, seconds: 64, before: 2 as const })
+const sprint = (id: string, at: string) => ({ id, at, planned: 50 as const, seconds: 3000 })
+const energy = (): AppData => ({
+  ...emptyData(),
+  energyCheckins: [checkin('c1', '2026-10-20T08:00:00.000Z'), checkin('c2', '2026-10-21T08:00:00.000Z')],
+  hackRuns: [run('r1', '2026-10-20T09:00:00.000Z')],
+  focusSprints: [sprint('s1', '2026-10-20T10:00:00.000Z')],
+})
+
+test('Energie im Backup: Export enthält die drei Listen, ohne Energie fehlen sie', () => {
+  const parsed = JSON.parse(serializeBackup(energy()))
+  expect(Object.keys(parsed)).toEqual(['version', 'sessions', 'settings', 'energyCheckins', 'hackRuns', 'focusSprints'])
+  expect(parsed.energyCheckins).toEqual(energy().energyCheckins)
+  expect(parsed.hackRuns).toEqual(energy().hackRuns)
+  expect(parsed.focusSprints).toEqual(energy().focusSprints)
+  expect(Object.keys(JSON.parse(serializeBackup(emptyData())))).toEqual(['version', 'sessions', 'settings'])
+  expect(Object.keys(JSON.parse(serializeBackup({ ...emptyData(), hackRuns: [run('r1', '2026-10-20T09:00:00.000Z')] })))).toEqual(['version', 'sessions', 'settings', 'hackRuns'])
+})
+test('Energie im Backup: Import fügt nur unbekannte IDs hinzu, addedEnergy zählt sie', () => {
+  const mine: AppData = { ...emptyData(), energyCheckins: [checkin('c1', '2026-10-20T08:00:00.000Z')], hackRuns: [{ ...run('r1', '2026-10-20T09:00:00.000Z'), seconds: 99 }] }
+  const merged = mergeBackup(mine, serializeBackup(energy()))
+  if ('error' in merged) throw new Error(merged.error)
+  expect(merged.addedEnergy).toBe(2) // c2 und s1; c1 und r1 kannte das Gerät schon
+  expect(merged.added).toBe(0)
+  expect(merged.data.energyCheckins?.map(c => c.id)).toEqual(['c1', 'c2'])
+  expect(merged.data.hackRuns).toEqual([{ ...run('r1', '2026-10-20T09:00:00.000Z'), seconds: 99 }]) // der Eintrag des Geräts bleibt
+  expect(merged.data.focusSprints).toEqual([sprint('s1', '2026-10-20T10:00:00.000Z')])
+  const fresh = mergeBackup(emptyData(), serializeBackup(energy()))
+  expect('data' in fresh && fresh.addedEnergy).toBe(4)
+  expect('data' in fresh && fresh.data).toMatchObject({ energyCheckins: energy().energyCheckins, hackRuns: energy().hackRuns, focusSprints: energy().focusSprints })
+})
+test('Energie im Backup: zweimal importiert bleibt addedEnergy beim zweiten Mal 0, nichts doppelt', () => {
+  const file = serializeBackup(energy())
+  const once = mergeBackup(emptyData(), file)
+  if ('error' in once) throw new Error(once.error)
+  expect(once.addedEnergy).toBe(4)
+  const twice = mergeBackup(once.data, file)
+  if ('error' in twice) throw new Error(twice.error)
+  expect(twice.addedEnergy).toBe(0)
+  expect(twice.data).toEqual(once.data)
+  expect(twice.data.energyCheckins).toHaveLength(2)
+  // Dieselbe ID doppelt in der Datei zählt einmal.
+  const dup = JSON.stringify({ ...energy(), energyCheckins: [checkin('c1', '2026-10-20T08:00:00.000Z'), checkin('c1', '2026-10-20T08:00:00.000Z')], hackRuns: [], focusSprints: [] })
+  const d = mergeBackup(emptyData(), dup)
+  expect('data' in d && d.addedEnergy).toBe(1)
+  expect('data' in d && d.data.energyCheckins).toHaveLength(1)
+})
+test('Energie im Backup: Einträge kommen nach Zeit sortiert, ein ungültiger Eintrag der Datei entfällt einzeln', () => {
+  const mine: AppData = { ...emptyData(), energyCheckins: [checkin('c2', '2026-10-21T08:00:00.000Z')] }
+  const file = JSON.stringify({ ...emptyData(), energyCheckins: [checkin('c3', '2026-10-22T08:00:00.000Z'), { id: '', at: 'x' }, checkin('c1', '2026-10-20T08:00:00.000Z')] })
+  const merged = mergeBackup(mine, file)
+  expect('data' in merged && merged.data.energyCheckins?.map(c => c.id)).toEqual(['c1', 'c2', 'c3'])
+  expect('data' in merged && merged.addedEnergy).toBe(2)
+})
+test('Energie im Backup: ein altes Backup ohne Energie-Felder lässt die Daten des Geräts unverändert', () => {
+  const mine: AppData = { ...energy(), sessions: [sess('a', '2026-10-20T08:00:00.000Z')] }
+  const before = JSON.stringify(mine)
+  const merged = mergeBackup(mine, JSON.stringify({ version: 1, sessions: [sess('b', '2026-10-19T08:00:00.000Z')], settings: {} }))
+  if ('error' in merged) throw new Error(merged.error)
+  expect(merged.added).toBe(1)
+  expect(merged.addedEnergy).toBe(0)
+  expect(merged.data.energyCheckins).toEqual(mine.energyCheckins)
+  expect(merged.data.hackRuns).toEqual(mine.hackRuns)
+  expect(merged.data.focusSprints).toEqual(mine.focusSprints)
+  expect(JSON.stringify(mine)).toBe(before)
+  // Ohne Energie auf beiden Seiten fehlen die Felder.
+  const none = mergeBackup(emptyData(), serializeBackup(emptyData()))
+  for (const key of ['energyCheckins', 'hackRuns', 'focusSprints']) expect('data' in none && none.data).not.toHaveProperty(key)
 })
