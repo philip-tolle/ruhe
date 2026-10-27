@@ -5,13 +5,13 @@
       "title": "Bewegungs-Snack",
       "area": "koerper",
       "minutes": 2,
-      "benefit": "Zwei Minuten Bewegung bringen Kreislauf und Kopf wieder in Schwung.",
+      "benefit": "Zwei Minuten Bewegung können Kreislauf und Kopf wieder in Schwung bringen.",
       "guide": "schritte",
       "steps": [
-        { "title": "Kniebeugen", "detail": "Langsam in die Hocke und wieder hoch, Rücken gerade.", "icon": "bewegung", "seconds": 30 },
-        { "title": "Auf der Stelle laufen", "detail": "Knie locker anheben, die Arme schwingen mit.", "icon": "gehen", "seconds": 30 },
-        { "title": "Arme kreisen", "detail": "Große Kreise, erst vorwärts, dann rückwärts.", "icon": "bewegung", "seconds": 30 },
-        { "title": "Wadenheben", "detail": "Auf die Zehenspitzen, kurz halten, langsam wieder absenken.", "icon": "pfeil", "seconds": 30 }
+        { "title": "Kniebeugen", "detail": "Geh langsam in die Hocke und wieder hoch, Rücken gerade.", "icon": "bewegung", "seconds": 30 },
+        { "title": "Auf der Stelle laufen", "detail": "Heb die Knie locker an und lass die Arme mitschwingen.", "icon": "gehen", "seconds": 30 },
+        { "title": "Arme kreisen", "detail": "Kreise die Arme groß, erst vorwärts, dann rückwärts.", "icon": "bewegung", "seconds": 30 },
+        { "title": "Wadenheben", "detail": "Geh auf die Zehenspitzen, halte kurz und senk dich langsam ab.", "icon": "pfeil", "seconds": 30 }
       ],
       "why": {
         "from": "Trägheit",
@@ -32,9 +32,9 @@
       "benefit": "Fünf Minuten draußen im Hellen können dich spürbar wacher machen.",
       "guide": "ring",
       "steps": [
-        { "title": "Raus ins Freie", "detail": "Balkon, Garten oder ein paar Schritte vor die Tür.", "icon": "sonne" },
-        { "title": "Zum Himmel schauen", "detail": "Blick weit nach oben, aber nie direkt in die Sonne.", "icon": "auge" },
-        { "title": "Gemütlich gehen", "detail": "Ruhiges Tempo, der Blick bleibt offen und weit.", "icon": "gehen" }
+        { "title": "Raus ins Freie", "detail": "Geh auf den Balkon, in den Garten oder vor die Tür.", "icon": "sonne" },
+        { "title": "Zum Himmel schauen", "detail": "Schau weit nach oben, aber nie direkt in die Sonne.", "icon": "auge" },
+        { "title": "Gemütlich gehen", "detail": "Geh in ruhigem Tempo und lass den Blick offen und weit.", "icon": "gehen" }
       ],
       "why": {
         "from": "Müdigkeit",
@@ -55,9 +55,9 @@
       "benefit": "Eine Minute kräftiges Atmen kann dich aus dem Durchhänger holen.",
       "guide": "takt",
       "steps": [
-        { "title": "Kräftig einatmen", "detail": "Tief durch die Nase, Bauch und Brust weiten sich.", "icon": "einatmen" },
-        { "title": "Locker ausatmen", "detail": "Einfach loslassen, ohne zu drücken. 15-mal im Takt.", "icon": "ausatmen" },
-        { "title": "Ausatmen und halten", "detail": "Zum Schluss ganz ausatmen und 14 Sekunden die Luft anhalten.", "icon": "halten" }
+        { "title": "Kräftig einatmen", "detail": "Atme tief durch die Nase, lass Bauch und Brust weit werden.", "icon": "einatmen" },
+        { "title": "Locker ausatmen", "detail": "Lass die Luft einfach raus, ohne zu drücken. 15-mal im Takt.", "icon": "ausatmen" },
+        { "title": "Ausatmen und halten", "detail": "Atme zum Schluss ganz aus und halte 14 Sekunden die Luft an.", "icon": "halten" }
       ],
       "cycle": [
         {
@@ -73,11 +73,11 @@
       "why": {
         "from": "Schlappheit",
         "to": "Energie",
-        "text": "Schnelles, tiefes Atmen regt Kreislauf und Nervensystem kurz an. Das kann dich in einer Minute spürbar munterer machen."
+        "text": "Schnelles, tiefes Atmen kann Kreislauf und Nervensystem kurz anregen. Vielen hilft das, in einer Minute spürbar munterer zu werden."
       },
       "source": "Balban u. a. 2023 (zyklisches Hyperventilieren)",
       "further": null,
-      "caution": "Übe im Sitzen. Nicht beim Fahren und nicht im Wasser. Wird dir schwindelig, hör auf und atme normal weiter.",
+      "caution": "Übe nur im Sitzen, nie beim Fahren oder im Wasser. Verzichte darauf bei Epilepsie, in der Schwangerschaft und bei Herzproblemen. Wird dir schwindelig, hör auf und atme normal weiter.",
       "window": null,
       "link": null
     },
@@ -86,17 +86,17 @@
       "title": "Power-Pause",
       "area": "koerper",
       "minutes": 10,
-      "benefit": "Ein kurzes Nickerchen kann den Akku auffüllen, ohne dass du danach benommen bist.",
+      "benefit": "Ein kurzes Nickerchen kann den Akku auffüllen, meist ohne dass du danach benommen bist.",
       "guide": "ring",
       "steps": [
-        { "title": "Hinlegen oder anlehnen", "detail": "Sofa, Bett oder Stuhl: Mach es dir bequem.", "icon": "liegen" },
+        { "title": "Hinlegen oder anlehnen", "detail": "Leg dich hin oder lehn dich im Stuhl bequem zurück.", "icon": "liegen" },
         { "title": "Augen schließen", "detail": "Lass die Gedanken ziehen. Einschlafen musst du nicht.", "icon": "auge" },
-        { "title": "Sanft aufwachen", "detail": "Lass den Ton an: Nach zehn Minuten weckt dich die Klangschale.", "icon": "sonne" }
+        { "title": "Sanft aufwachen", "detail": "Lass den Ton an: Am Ende weckt dich die Klangschale.", "icon": "sonne" }
       ],
       "why": {
         "from": "Erschöpfung",
         "to": "Erholung",
-        "text": "Ein kurzes Nickerchen bleibt im leichten Schlaf, darum wachst du danach leichter auf. In einer Schlafstudie wirkten gerade zehn Minuten besonders erholsam. Auch wenn du nicht einschläfst, tut die Ruhe vielen gut."
+        "text": "Ein kurzes Nickerchen bleibt meist im leichten Schlaf, darum fällt vielen das Aufwachen danach leichter. In einer Schlafstudie wirkte ein Nickerchen dieser Länge besonders schnell erholsam. Auch wenn du nicht einschläfst, kann die Ruhe guttun."
       },
       "source": "Brooks & Lack 2006, 10-Minuten-Nickerchen",
       "further": null,
@@ -109,12 +109,12 @@
       "title": "Physiologischer Seufzer",
       "area": "gefuehl",
       "minutes": 1,
-      "benefit": "Hilft dir, Stress in einer Minute spürbar herunterzufahren.",
+      "benefit": "Kann dir helfen, Stress in einer Minute spürbar herunterzufahren.",
       "guide": "takt",
       "steps": [
-        { "title": "Tief einatmen", "detail": "Durch die Nase, bis die Lunge fast voll ist.", "icon": "einatmen" },
-        { "title": "Kurz nachatmen", "detail": "Noch ein kleiner Zug obendrauf, wieder durch die Nase.", "icon": "nachatmen" },
-        { "title": "Lang ausatmen", "detail": "Langsam durch den Mund, bis die Luft ganz draußen ist.", "icon": "ausatmen" }
+        { "title": "Tief einatmen", "detail": "Atme durch die Nase ein, bis die Lunge fast voll ist.", "icon": "einatmen" },
+        { "title": "Kurz nachatmen", "detail": "Nimm noch einen kleinen Zug obendrauf, wieder durch die Nase.", "icon": "nachatmen" },
+        { "title": "Lang ausatmen", "detail": "Atme langsam durch den Mund aus, bis die Luft ganz draußen ist.", "icon": "ausatmen" }
       ],
       "cycle": [
         { "phase": "ein", "seconds": 2, "say": "Tief einatmen …" },
@@ -124,7 +124,7 @@
       "why": {
         "from": "Alarm",
         "to": "Ruhe",
-        "text": "Das kurze Nachatmen füllt die Lunge noch einmal ganz. Beim langen Ausatmen wird der Herzschlag etwas langsamer, das kann den Körper rasch beruhigen. Vielen hilft schon eine Minute."
+        "text": "Das kurze Nachatmen füllt die Lunge noch einmal auf. Beim langen Ausatmen wird der Herzschlag meist etwas langsamer, das kann den Körper rasch beruhigen. Vielen hilft schon eine Minute."
       },
       "source": "Balban u. a. 2023",
       "further": null,
@@ -137,17 +137,17 @@
       "title": "Kaltes Gesicht",
       "area": "gefuehl",
       "minutes": 1,
-      "benefit": "Kaltes Wasser kann dich in Sekunden aus einem Gefühlssturm holen.",
+      "benefit": "Kaltes Wasser kann dich schnell aus einem Gefühlssturm holen.",
       "guide": "schritte",
       "steps": [
-        { "title": "Kaltes Wasser bereitstellen", "detail": "Waschbecken füllen oder einen kalten, nassen Lappen nehmen.", "icon": "wasser", "seconds": 15 },
-        { "title": "Gesicht abkühlen", "detail": "Luft anhalten, Gesicht eintauchen oder Lappen auflegen, solange es angenehm ist.", "icon": "halten", "seconds": 20 },
-        { "title": "Ruhig weiteratmen", "detail": "Abtrocknen, langsam ausatmen und nachspüren, wie es dir jetzt geht.", "icon": "ausatmen", "seconds": 25 }
+        { "title": "Kaltes Wasser bereitstellen", "detail": "Füll das Waschbecken mit kaltem Wasser, notfalls nimm einen nassen, kalten Lappen.", "icon": "wasser", "seconds": 15 },
+        { "title": "Gesicht abkühlen", "detail": "Halt die Luft an und kühl dein Gesicht, solange es angenehm ist.", "icon": "halten", "seconds": 20 },
+        { "title": "Ruhig weiteratmen", "detail": "Trockne dich ab, atme langsam und spür nach, wie es dir geht.", "icon": "ausatmen", "seconds": 25 }
       ],
       "why": {
         "from": "Aufruhr",
         "to": "Ruhe",
-        "text": "Kälte im Gesicht und angehaltene Luft lösen den Tauchreflex aus. Der Körper schaltet dabei auf Sparflamme, der Puls wird langsamer. Das kann starke Gefühle schnell dämpfen."
+        "text": "Kälte im Gesicht und angehaltene Luft können den Tauchreflex auslösen: Der Körper schaltet auf Sparflamme, der Puls wird oft langsamer. Das kann starke Gefühle rasch dämpfen. Ein nasser Lappen wirkt dabei wahrscheinlich schwächer als Eintauchen."
       },
       "source": "Physiologie des Tauchreflexes",
       "further": null,
@@ -163,15 +163,15 @@
       "benefit": "Benennst du ein Gefühl, verliert es oft etwas von seiner Wucht.",
       "guide": "schritte",
       "steps": [
-        { "title": "Innehalten", "detail": "Kurz stoppen und spüren, was gerade in dir los ist.", "icon": "halten", "seconds": 30 },
-        { "title": "Im Körper suchen", "detail": "Wo sitzt es? Enge, Druck, Wärme, Unruhe?", "icon": "frage", "seconds": 30 },
-        { "title": "Genau benennen", "detail": "Ein, zwei Wörter: gereizt, enttäuscht, besorgt, überfordert …", "icon": "stift", "seconds": 30 },
-        { "title": "Satz bilden", "detail": "„Ich spüre gerade …“ – leise sagen oder aufschreiben.", "icon": "herz", "seconds": 30 }
+        { "title": "Innehalten", "detail": "Halte kurz an und spür, was gerade in dir los ist.", "icon": "halten", "seconds": 30 },
+        { "title": "Im Körper suchen", "detail": "Spür nach, wo es sitzt: Enge, Druck, Wärme, Unruhe?", "icon": "frage", "seconds": 30 },
+        { "title": "Genau benennen", "detail": "Finde ein, zwei Wörter: gereizt, enttäuscht, besorgt, überfordert …", "icon": "stift", "seconds": 30 },
+        { "title": "Satz bilden", "detail": "Sag es leise oder schreib es auf: „Ich spüre gerade …“", "icon": "herz", "seconds": 30 }
       ],
       "why": {
         "from": "Wucht",
         "to": "Abstand",
-        "text": "Wenn du ein Gefühl in Worte fasst, arbeitet der denkende Teil des Gehirns mit. Hirnforschung deutet darauf hin, dass das die Alarmreaktion dämpfen kann. So entsteht etwas Abstand zum Gefühl."
+        "text": "Hirnforschung deutet darauf hin: Fasst du ein Gefühl in Worte, arbeitet der denkende Teil des Gehirns mit, und die Alarmreaktion kann leiser werden. So entsteht oft etwas Abstand zum Gefühl."
       },
       "source": "Lieberman u. a. 2007, „Putting feelings into words“",
       "further": null,
@@ -187,15 +187,15 @@
       "benefit": "Lenkt deinen Blick auf das, was heute gut war.",
       "guide": "schritte",
       "steps": [
-        { "title": "Erstes gutes Ding", "detail": "Was war heute schön oder gelungen? Auch Kleines zählt.", "icon": "stern", "seconds": 30 },
-        { "title": "Zweites gutes Ding", "detail": "Ein Moment, ein Mensch, ein Geschmack, ein Gedanke.", "icon": "herz", "seconds": 30 },
-        { "title": "Drittes gutes Ding", "detail": "Noch eins, ruhig auch etwas ganz Alltägliches.", "icon": "sonne", "seconds": 30 },
-        { "title": "Warum war es gut?", "detail": "Wie kam es dazu? Ein kurzer Gedanke je Ding reicht.", "icon": "frage", "seconds": 30 }
+        { "title": "Erstes gutes Ding", "detail": "Denk an etwas, das heute schön oder gelungen war. Auch Kleines zählt.", "icon": "stern", "seconds": 30 },
+        { "title": "Zweites gutes Ding", "detail": "Such weiter: ein Moment, ein Mensch, ein Geschmack, ein Gedanke.", "icon": "herz", "seconds": 30 },
+        { "title": "Drittes gutes Ding", "detail": "Nimm noch eins dazu, ruhig etwas ganz Alltägliches.", "icon": "sonne", "seconds": 30 },
+        { "title": "Warum war es gut?", "detail": "Frag dich bei jedem kurz: Wie kam es dazu?", "icon": "frage", "seconds": 30 }
       ],
       "why": {
         "from": "Grübeln",
         "to": "Dankbarkeit",
-        "text": "Das Gehirn merkt sich Ärger leichter als Gutes. Bewusst an Gelungenes zu denken, gleicht das ein wenig aus. Regelmäßig geübt, kann es die Stimmung heben."
+        "text": "Ärger bleibt oft leichter hängen als Gutes. Bewusst an Gelungenes zu denken, kann das ein wenig ausgleichen. Regelmäßig geübt, hebt es bei vielen die Stimmung."
       },
       "source": "Seligman u. a. 2005",
       "further": null,
@@ -208,17 +208,17 @@
       "title": "Kopf leeren",
       "area": "geist",
       "minutes": 3,
-      "benefit": "Bring alles Offene aufs Papier, damit dein Kopf wieder Platz hat.",
+      "benefit": "Bring alles Offene aufs Papier, oft wird dein Kopf dann freier.",
       "guide": "ring",
       "steps": [
-        { "title": "Alles aufschreiben", "detail": "Auf Papier: jede Aufgabe, jede Sorge, ungeordnet in Stichworten.", "icon": "stift" },
-        { "title": "Nächsten Schritt notieren", "detail": "Zu jedem Punkt: Was ist der erste kleine Schritt?", "icon": "pfeil" },
-        { "title": "Zettel weglegen", "detail": "Er hält jetzt alles fest, du musst es nicht mehr.", "icon": "ausatmen" }
+        { "title": "Alles aufschreiben", "detail": "Notier jede Aufgabe und jede Sorge, ungeordnet in Stichworten.", "icon": "stift" },
+        { "title": "Nächsten Schritt notieren", "detail": "Schreib zu jedem Punkt den ersten kleinen Schritt dazu.", "icon": "pfeil" },
+        { "title": "Zettel weglegen", "detail": "Leg den Zettel weg. Er hält jetzt alles für dich fest.", "icon": "ausatmen" }
       ],
       "why": {
         "from": "Gedankenchaos",
         "to": "Klarheit",
-        "text": "Unerledigtes meldet sich immer wieder und bindet Aufmerksamkeit. Forschung deutet darauf hin, dass schon ein konkreter Plan dafür diese Gedanken leiser machen kann. Das Aufschreiben ist der erste Schritt."
+        "text": "Unerledigtes meldet sich oft immer wieder und bindet Aufmerksamkeit. Forschung deutet darauf hin, dass schon ein konkreter Plan dafür diese Gedanken leiser machen kann. Das Aufschreiben ist der erste Schritt."
       },
       "source": "Masicampo & Baumeister 2011",
       "further": "Henry Hildebrandt, Brainhacks (2025)",
@@ -231,18 +231,18 @@
       "title": "Nächster kleiner Schritt",
       "area": "geist",
       "minutes": 2,
-      "benefit": "Ein klarer Wenn-dann-Satz bringt dich vom Grübeln ins Tun.",
+      "benefit": "Ein klarer Wenn-dann-Satz kann dich vom Grübeln ins Tun bringen.",
       "guide": "schritte",
       "steps": [
         { "title": "Eine Aufgabe wählen", "detail": "Woran hängst du gerade? Nimm genau eine Sache.", "icon": "frage", "seconds": 30 },
-        { "title": "Kleinsten Schritt finden", "detail": "Was kannst du in den nächsten fünf Minuten schaffen?", "icon": "kompass", "seconds": 30 },
-        { "title": "Wenn-dann-Satz bilden", "detail": "Zum Beispiel: „Wenn die Klangschale klingt, öffne ich die Datei.“", "icon": "stift", "seconds": 40 },
-        { "title": "Loslegen", "detail": "Klingt die Klangschale, setzt du deinen Satz sofort um.", "icon": "pfeil", "seconds": 20 }
+        { "title": "Kleinsten Schritt finden", "detail": "Frag dich: Was schaffe ich in den nächsten fünf Minuten?", "icon": "kompass", "seconds": 30 },
+        { "title": "Wenn-dann-Satz bilden", "detail": "Sag dir etwa: „Wenn ich das Handy weglege, öffne ich die Datei.“", "icon": "stift", "seconds": 40 },
+        { "title": "Jetzt loslegen", "detail": "Setz deinen Satz um: Mach jetzt gleich den ersten Handgriff.", "icon": "pfeil", "seconds": 20 }
       ],
       "why": {
         "from": "Zögern",
         "to": "Tun",
-        "text": "Ein Wenn-dann-Plan legt fest, wann und wie du anfängst. Dann muss dein Kopf im entscheidenden Moment nicht neu überlegen. In vielen Studien wurden Vorhaben so öfter umgesetzt."
+        "text": "Ein Wenn-dann-Plan legt fest, wann und wie du anfängst. Dann muss dein Kopf im entscheidenden Moment weniger überlegen. In vielen Studien wurden Vorhaben so öfter umgesetzt."
       },
       "source": "Gollwitzer 1999, Wenn-dann-Pläne",
       "further": "Henry Hildebrandt, Brainhacks (2025)",
@@ -255,17 +255,17 @@
       "title": "Ablenkung aus",
       "area": "geist",
       "minutes": 1,
-      "benefit": "In einer Minute räumst du Ablenkungen weg und bist ganz bei einer Sache.",
+      "benefit": "In einer Minute räumst du Ablenkungen weg, damit du bei einer Sache bleiben kannst.",
       "guide": "schritte",
       "steps": [
-        { "title": "Eine Sache wählen", "detail": "Woran arbeitest du jetzt? Nur das zählt bis zur nächsten Pause.", "icon": "stern", "seconds": 20 },
-        { "title": "Tabs schließen", "detail": "Alles zu, was nicht zu dieser einen Sache gehört.", "icon": "auge", "seconds": 20 },
-        { "title": "Handy weg", "detail": "Benachrichtigungen aus und das Handy außer Sichtweite legen.", "icon": "handy-weg", "seconds": 20 }
+        { "title": "Eine Sache wählen", "detail": "Leg fest, woran du jetzt arbeitest. Nur das zählt bis zur Pause.", "icon": "stern", "seconds": 20 },
+        { "title": "Tabs schließen", "detail": "Schließ alles, was nicht zu dieser einen Sache gehört.", "icon": "auge", "seconds": 20 },
+        { "title": "Handy weg", "detail": "Schalte Benachrichtigungen aus und leg das Handy außer Sichtweite.", "icon": "handy-weg", "seconds": 20 }
       ],
       "why": {
         "from": "Zerstreuung",
         "to": "Fokus",
-        "text": "Nach jedem Wechsel bleibt ein Teil der Aufmerksamkeit bei der vorigen Sache hängen. Die Forschung nennt das „Aufmerksamkeitsrest“. Weniger Reize bedeuten weniger Wechsel und oft mehr Klarheit."
+        "text": "Nach einem Wechsel bleibt oft ein Teil der Aufmerksamkeit bei der vorigen Sache hängen. Die Forschung nennt das „Aufmerksamkeitsrest“. Weniger Reize bedeuten weniger Wechsel und oft mehr Klarheit."
       },
       "source": "Leroy 2009, Aufmerksamkeitsrest",
       "further": "Henry Hildebrandt, Brainhacks (2025)",
@@ -282,13 +282,13 @@
       "guide": "ring",
       "steps": [
         { "title": "Weg vom Bildschirm", "detail": "Leg auch das Handy weg, die Klangschale holt dich zurück.", "icon": "handy-weg" },
-        { "title": "In die Ferne schauen", "detail": "Aus dem Fenster oder draußen: ein Punkt, mindestens sechs Meter entfernt.", "icon": "auge" },
-        { "title": "Blick weit werden lassen", "detail": "Nichts fixieren, das ganze Blickfeld wahrnehmen, ruhig blinzeln.", "icon": "stern" }
+        { "title": "In die Ferne schauen", "detail": "Such dir am Fenster oder draußen einen Punkt, mindestens sechs Meter entfernt.", "icon": "auge" },
+        { "title": "Blick weit werden lassen", "detail": "Fixier nichts, nimm das ganze Blickfeld wahr und blinzle ruhig.", "icon": "stern" }
       ],
       "why": {
         "from": "Tunnelblick",
         "to": "Weite",
-        "text": "Beim Blick auf nahe Bildschirme sind die Augenmuskeln dauernd angespannt. In der Ferne dürfen sie loslassen, und vielen wird dabei auch der Kopf freier. Augenärzte raten zur 20-20-20-Regel: alle 20 Minuten 20 Sekunden lang etwa sechs Meter weit schauen."
+        "text": "Beim Blick auf nahe Bildschirme bleiben die Augenmuskeln lange angespannt. In der Ferne können sie loslassen, und vielen wird dabei auch der Kopf freier. Augenärzte raten zur 20-20-20-Regel: alle 20 Minuten 20 Sekunden lang etwa sechs Meter weit schauen."
       },
       "source": "20-20-20-Regel der Augenärzte",
       "further": "Henry Hildebrandt, Brainhacks (2025)",
@@ -301,17 +301,17 @@
       "title": "Big Domino",
       "area": "sinn",
       "minutes": 3,
-      "benefit": "Finde die eine Sache, die heute alles andere leichter macht.",
+      "benefit": "Finde die eine Sache, die heute vieles andere leichter machen kann.",
       "guide": "schritte",
       "steps": [
-        { "title": "Offenes sammeln", "detail": "Was steht heute an? Kurz in Stichworten aufschreiben.", "icon": "stift", "seconds": 60 },
-        { "title": "Den Domino finden", "detail": "Welche Sache macht viele andere leichter oder sogar überflüssig?", "icon": "frage", "seconds": 60 },
+        { "title": "Offenes sammeln", "detail": "Schreib in Stichworten auf, was heute ansteht.", "icon": "stift", "seconds": 60 },
+        { "title": "Den Domino finden", "detail": "Frag dich: Welche Sache macht andere leichter oder sogar überflüssig?", "icon": "frage", "seconds": 60 },
         { "title": "Festlegen", "detail": "Markiere sie und plane eine feste Zeit dafür ein.", "icon": "stern", "seconds": 60 }
       ],
       "why": {
         "from": "Verzetteln",
         "to": "Richtung",
-        "text": "Oft bringt ein kleiner Teil der Aufgaben den Großteil der Wirkung. Die wichtigste stößt andere an wie der erste Stein einer Dominoreihe. Gehst du sie zuerst an, fühlt sich der Tag oft klarer und leichter an."
+        "text": "Oft bringt ein kleiner Teil der Aufgaben den Großteil der Wirkung. Die wichtigste kann andere anstoßen wie der erste Stein einer Dominoreihe. Gehst du sie zuerst an, fühlt sich der Tag oft klarer und leichter an."
       },
       "source": "angelehnt an Chris Surel",
       "further": null,
@@ -324,17 +324,17 @@
       "title": "Werte-Anker",
       "area": "sinn",
       "minutes": 2,
-      "benefit": "Verankert dich in dem, was dir wirklich wichtig ist.",
+      "benefit": "Hilft dir, dich in dem zu verankern, was dir wirklich wichtig ist.",
       "guide": "schritte",
       "steps": [
         { "title": "Einen Wert wählen", "detail": "Was ist dir im Leben wichtig? Wähle einen Wert.", "icon": "kompass", "seconds": 40 },
         { "title": "Warum er zählt", "detail": "Denk an einen Moment, in dem er dir Halt gegeben hat.", "icon": "herz", "seconds": 40 },
-        { "title": "Kleine Handlung planen", "detail": "Wie lebst du diesen Wert in der nächsten Stunde?", "icon": "pfeil", "seconds": 40 }
+        { "title": "Kleine Handlung planen", "detail": "Überleg dir, wie du ihn in der nächsten Stunde lebst.", "icon": "pfeil", "seconds": 40 }
       ],
       "why": {
         "from": "Unsicherheit",
         "to": "Halt",
-        "text": "Wenn du dich an das erinnerst, was dir wichtig ist, steht dein Selbstwert auf festerem Grund. Forschung zur Selbstbestätigung deutet darauf hin, dass das Druck und Selbstzweifel abfedern kann. Eine kleine Handlung macht den Wert im Alltag spürbar."
+        "text": "Wenn du dich an das erinnerst, was dir wichtig ist, kann dein Selbstwert auf festerem Grund stehen. Forschung zur Selbstbestätigung deutet darauf hin, dass das Druck und Selbstzweifel abfedern kann. Eine kleine Handlung bringt den Wert in deinen Alltag."
       },
       "source": "Cohen & Sherman 2014, Selbstbestätigung",
       "further": null,
@@ -350,14 +350,14 @@
       "benefit": "Macht sichtbar, was du heute schon vorangebracht hast.",
       "guide": "schritte",
       "steps": [
-        { "title": "Zurückschauen", "detail": "Woran hast du heute gearbeitet, beruflich oder privat?", "icon": "frage", "seconds": 40 },
-        { "title": "Fortschritt finden", "detail": "Was ist ein Stück weitergekommen? Auch ein kleiner Schritt zählt.", "icon": "pfeil", "seconds": 40 },
+        { "title": "Zurückschauen", "detail": "Schau zurück: Woran hast du heute gearbeitet, beruflich oder privat?", "icon": "frage", "seconds": 40 },
+        { "title": "Fortschritt finden", "detail": "Finde, was ein Stück weitergekommen ist. Auch Kleines zählt.", "icon": "pfeil", "seconds": 40 },
         { "title": "Festhalten", "detail": "Schreib ihn in einem Satz auf und gönn dir den Moment.", "icon": "stift", "seconds": 40 }
       ],
       "why": {
         "from": "Stillstand",
         "to": "Antrieb",
-        "text": "Schon kleine Fortschritte bei sinnvoller Arbeit können Stimmung und Antrieb heben. Amabile & Kramer nennen das „Progress Principle“. Im Alltag gehen solche Schritte leicht unter, darum hilft es, sie bewusst zu bemerken."
+        "text": "Schon kleine Fortschritte bei sinnvoller Arbeit können Stimmung und Antrieb heben. Amabile & Kramer nennen das „Progress Principle“. Im Alltag gehen solche Schritte leicht unter, darum kann es helfen, sie bewusst zu bemerken."
       },
       "source": "Amabile & Kramer 2011, „Progress Principle“",
       "further": null,
@@ -373,15 +373,15 @@
       "benefit": "Verbindet deine Aufgabe wieder mit dem, was dir wichtig ist.",
       "guide": "schritte",
       "steps": [
-        { "title": "Aufgabe vor Augen", "detail": "Woran arbeitest du gerade, oder was steht als Nächstes an?", "icon": "auge", "seconds": 30 },
-        { "title": "Nach dem Wofür fragen", "detail": "Wem nützt es? Was wird dadurch besser?", "icon": "frage", "seconds": 40 },
+        { "title": "Aufgabe vor Augen", "detail": "Denk an die Aufgabe, an der du gerade arbeitest.", "icon": "auge", "seconds": 30 },
+        { "title": "Nach dem Wofür fragen", "detail": "Frag dich: Wem nützt es? Was wird dadurch besser?", "icon": "frage", "seconds": 40 },
         { "title": "Tiefer fragen", "detail": "Frag bei deiner Antwort noch einmal: Und wofür ist das wichtig?", "icon": "kompass", "seconds": 30 },
         { "title": "Grund mitnehmen", "detail": "Halte ihn in einem Satz fest, bevor du weitermachst.", "icon": "stift", "seconds": 20 }
       ],
       "why": {
         "from": "Pflicht",
         "to": "Sinn",
-        "text": "Wenn du weißt, wofür du etwas tust, fühlt es sich weniger nach Pflicht an. Die Motivationspsychologie beschreibt, dass ein persönlicher Grund Ausdauer und Freude an der Arbeit stärken kann."
+        "text": "Wenn du weißt, wofür du etwas tust, fühlt es sich oft weniger nach Pflicht an. Die Motivationspsychologie beschreibt, dass ein persönlicher Grund Ausdauer und Freude an der Arbeit stärken kann."
       },
       "source": "Motivationspsychologie (Sinn und Ziele)",
       "further": null,
