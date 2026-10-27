@@ -1,7 +1,8 @@
 import { test, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import motive from '../../content/motive.json'
-import { MOTIV_IDS, motivUrl, soundMotiv, musicMotiv, backgroundMotiv, breathMotiv, themaMotiv, vorschlagMotiv } from '../../src/lib/content/motive'
+import { MOTIV_IDS, motivUrl, soundMotiv, musicMotiv, backgroundMotiv, breathMotiv, themaMotiv, vorschlagMotiv, areaMotiv, FOKUS_MOTIV } from '../../src/lib/content/motive'
+import { AREAS } from '../../src/lib/energy/areas'
 import type { Category } from '../../src/lib/content/catalog'
 import { CATEGORY_TITLE } from '../../src/lib/content/catalog'
 import { MUSIC, SOUNDS, assetUrl } from '../../src/lib/sounds/catalog'
@@ -14,9 +15,9 @@ const DIR = 'public/images/motive'
 const file = (id: string) => `${DIR}/${id}.webp`
 const sizeOf = (id: string) => readFileSync(file(id)).length
 
-test('MOTIV_IDS lists exactly the 43 motifs of content/motive.json', () => {
-  expect(MOTIV_IDS).toHaveLength(43)
-  expect(new Set(MOTIV_IDS).size).toBe(43)
+test('MOTIV_IDS lists exactly the 48 motifs of content/motive.json', () => {
+  expect(MOTIV_IDS).toHaveLength(48)
+  expect(new Set(MOTIV_IDS).size).toBe(48)
   expect([...MOTIV_IDS].sort()).toEqual(motive.motive.map((m) => m.id).sort())
 })
 
@@ -51,6 +52,13 @@ test('helpers name the motif of every sound, breath pattern, topic and time of d
   for (const id of [...music.map(musicMotiv), ...sounds.map(soundMotiv), ...patterns.map(breathMotiv), ...categories.map(themaMotiv), ...zeiten.map(vorschlagMotiv)]) {
     expect(MOTIV_IDS).toContain(id)
   }
+})
+
+test('energy motifs: one per area and one for the focus sprint', () => {
+  expect(AREAS.map(areaMotiv)).toEqual(['energie-koerper', 'energie-gefuehl', 'energie-geist', 'energie-sinn'])
+  expect(areaMotiv('geist')).toBe('energie-geist')
+  expect(FOKUS_MOTIV).toBe('fokus')
+  for (const id of [...AREAS.map(areaMotiv), FOKUS_MOTIV]) expect(MOTIV_IDS).toContain(id)
 })
 
 test('every motif id has a webp file with alpha', () => {

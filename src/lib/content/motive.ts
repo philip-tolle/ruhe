@@ -1,10 +1,11 @@
-// Katalog der 43 gemalten Motive (Spec M4 §3.2, dazu die Musik aus M5, die Ruhe-Karte aus M6, drei Themen aus M7 und die vier Lofi-Stücke). Die Dateien liegen in public/images/motive/<id>.webp,
+// Katalog der 48 gemalten Motive (Spec M4 §3.2, dazu die Musik aus M5, die Ruhe-Karte aus M6, drei Themen aus M7, die vier Lofi-Stücke und fünf Energie-Motive aus M9). Die Dateien liegen in public/images/motive/<id>.webp,
 // ihre Herkunft (Prompts, Ausschnitt, Größe) steht in content/motive.json. Motive sind Schmuck:
 // Wo sie erscheinen, bekommen sie `alt=""`; die Bedeutung trägt der Text daneben.
 import { assetUrl, backgroundById } from '../sounds/catalog'
 import type { BackgroundId, MusicId, SoundId } from '../sounds/catalog'
 import type { BreathPatternId } from '../breath/patterns'
 import type { Category } from './catalog'
+import type { EnergyArea } from '../energy/areas'
 import type { Tageszeit } from '../time/tageszeit'
 
 const IDS = [
@@ -24,6 +25,8 @@ const IDS = [
   'musik-kaffee-und-notizen', 'musik-regenfenster', 'musik-abendlicht', 'musik-alte-kassette',
   // Blütenblätter der Atem-Blüte: Einatmen, Halten, Ausatmen
   'blatt-ein', 'blatt-halten', 'blatt-aus',
+  // Energie: die vier Bereiche und der Fokus-Sprint
+  'energie-koerper', 'energie-gefuehl', 'energie-geist', 'energie-sinn', 'fokus',
 ] as const
 
 export type MotivId = (typeof IDS)[number]
@@ -61,3 +64,10 @@ export function themaMotiv(c: Category): MotivId {
 export function vorschlagMotiv(t: Tageszeit): MotivId {
   return `vorschlag-${t}`
 }
+
+export function areaMotiv(a: EnergyArea): MotivId {
+  return `energie-${a}`
+}
+
+/** Motiv des Fokus-Sprints. */
+export const FOKUS_MOTIV: MotivId = 'fokus'

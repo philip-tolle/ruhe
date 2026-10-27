@@ -562,6 +562,74 @@
         254
       ],
       "size": 480
+    },
+    {
+      "id": "energie-koerper",
+      "subject": "a gentle rising sun over a soft rounded hill",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "igNKiWV8i54bWVGMAa3u",
+      "crop": [
+        30,
+        153,
+        416,
+        362
+      ],
+      "size": 192,
+      "innen": 150,
+      "nahe": 70
+    },
+    {
+      "id": "energie-gefuehl",
+      "subject": "a watercolor heart holding a soft wave",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "igNKiWV8i54bWVGMAa3u",
+      "crop": [
+        456,
+        185,
+        378,
+        343
+      ],
+      "size": 192
+    },
+    {
+      "id": "energie-geist",
+      "subject": "a clear faceted crystal with fine light rays",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "igNKiWV8i54bWVGMAa3u",
+      "crop": [
+        886,
+        120,
+        351,
+        455
+      ],
+      "size": 192
+    },
+    {
+      "id": "energie-sinn",
+      "subject": "a compass with a small guiding star",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "P6yZUxJcHG8XKu7F4vyC",
+      "crop": [
+        54,
+        98,
+        357,
+        426
+      ],
+      "size": 192
+    },
+    {
+      "id": "fokus",
+      "subject": "an hourglass with fine flowing sand",
+      "flow": "hpIPO1XshlUy4o2EHrke",
+      "generation": "P6yZUxJcHG8XKu7F4vyC",
+      "crop": [
+        526,
+        135,
+        229,
+        379
+      ],
+      "size": 192,
+      "innen": 150
     }
   ]
 }
