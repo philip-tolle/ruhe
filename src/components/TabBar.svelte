@@ -22,6 +22,9 @@
       <path d="M7.5 15.5a4.5 4.5 0 0 1 9 0" />
       <path d="M3 19.5h18" />
       <path d="M12 6V4M5.6 9.1 4.2 7.7M18.4 9.1l1.4-1.4M3.2 15.5H2M22 15.5h-1.2" />
+    {:else if id === 'energie'}
+      <!-- Blitz -->
+      <path d="M13.4 3 6 13.6h5.3L10.3 21 18 10.4h-5.3L13.4 3Z" />
     {:else if id === 'meditieren'}
       <!-- Lotus -->
       <path d="M12 4.5c2.3 2.4 3.2 5.2 3.2 8 0 1.9-1.3 3.7-3.2 4.8-1.9-1.1-3.2-2.9-3.2-4.8 0-2.8.9-5.6 3.2-8Z" />
@@ -108,6 +111,21 @@
   button.active .icon {
     background: color-mix(in srgb, var(--accent) 14%, transparent);
     box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  /* Sechs Reiter teilen sich die Leiste: Auf einem 360 px breiten Handy ist ein Reiter nur gut 57 px breit,
+     „Meditieren“ in 12 px liefe über. Darunter bekommt die Beschriftung 11 px (Spec M9 §3.1). Wächst die Schrift mit
+     der Einstellung der Person (130 %), hielte der Reiter „Meditieren“ nicht mehr aus: Die Größe ist darum zusätzlich
+     an die Breite des Reiters gebunden (1 cqi = 1 % seiner Breite; „Meditieren“ braucht rund 4,9 × die Schriftgröße). */
+  @media (max-width: 379.98px) {
+    button {
+      container-type: inline-size;
+    }
+
+    .label {
+      font-size: min(0.6875rem, 19.5cqi);
+      letter-spacing: 0;
+    }
   }
 
   @media (prefers-reduced-motion: no-preference) {

@@ -117,6 +117,18 @@
      In allen Stimmungen gleich. */
   --gold-line: rgb(233 196 142 / 0.26);
   --gold-line-strong: rgb(233 196 142 / 0.7);
+  /* Die vier Energie-Bereiche (Spec M9 §2), in allen Stimmungen gleich. `--area-*` malt Formen (Akkus, Punkte, Ringe),
+     `--area-*-text` ist dieselbe Farbe als Schrift: Auf Karten über Himmel, Bergen und See erreichen die Töne der
+     Formen die 4,5:1 nicht überall (Körper bis 3,4:1), darum sind sie hier aufgehellt (Geist reicht unverändert).
+     Bedeutung trägt immer auch der Name, nie die Farbe allein. Geprüft in tests/unit/theme-contrast.test.ts. */
+  --area-koerper: #f0a58c;
+  --area-gefuehl: #f3b6c8;
+  --area-geist: #9fe0cf;
+  --area-sinn: #c7b8f5;
+  --area-koerper-text: #f6cabb;
+  --area-gefuehl-text: #f6c7d5;
+  --area-geist-text: #9fe0cf;
+  --area-sinn-text: #d8cdf8;
   /* Deckkraft der gemalten Waschung in der Ecke einer Karte (Waschung.svelte). Gilt für alle Stimmungen;
      eine Stimmung überschreibt sie nur, wenn sie sonst zu hell oder zu blass wirkt. */
   --wash-opacity: 0.35;

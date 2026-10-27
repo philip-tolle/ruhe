@@ -53,9 +53,9 @@ test('music is not precached, the breath sounds are', async ({ page, request }) 
   expect(music.headers()['content-type']).toBe('audio/ogg')
 })
 
-test('all 43 painted motifs are precached and available offline', async ({ page, context }) => {
+test('all 48 painted motifs are precached and available offline', async ({ page, context }) => {
   const ids = (JSON.parse(readFileSync('content/motive.json', 'utf8')).motive as { id: string }[]).map((m) => m.id)
-  expect(ids).toHaveLength(43)
+  expect(ids).toHaveLength(48)
   await page.goto('./')
   await page.evaluate(async () => { await navigator.serviceWorker.ready })
   await page.reload()

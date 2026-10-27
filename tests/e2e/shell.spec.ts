@@ -3,13 +3,62 @@ import { test, expect, type Page } from '@playwright/test'
 test('tab bar buttons are at least 48px tall and wide, and none is a toggle', async ({ page }) => {
   await page.goto('./')
   const buttons = page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button')
-  await expect(buttons).toHaveCount(5)
+  await expect(buttons).toHaveCount(6)
   for (const button of await buttons.all()) {
     const box = await button.boundingBox()
     expect(box!.height).toBeGreaterThanOrEqual(48)
     expect(box!.width).toBeGreaterThanOrEqual(48)
   }
   await expect(page.locator('button[aria-pressed]')).toHaveCount(0)
+})
+
+// Sechs Reiter auf der schmalsten Telefonbreite (Spec M9 §3.1): Unter 380 px sinken die Beschriftungen auf 11 px, und
+// keine ragt über ihren Reiter hinaus. Die Beschriftung ist ein Flex-Element, das sich auf die Breite ihres Textes
+// legt; `scrollWidth <= clientWidth` allein ginge also auch dann auf, wenn der Text den Reiter überragt. Darum zählt
+// zusätzlich, dass die Beschriftung im Kasten ihres Reiters liegt.
+test.describe('tab bar at 360px', () => {
+  test.use({ viewport: { width: 360, height: 640 } })
+
+  const labelsFit = (page: Page) =>
+    page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button').evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const label = button.querySelector<HTMLElement>('.label')!
+        const own = button.getBoundingClientRect()
+        const text = label.getBoundingClientRect()
+        return {
+          name: label.textContent,
+          fits: label.scrollWidth <= label.clientWidth,
+          inside: text.left >= own.left - 0.5 && text.right <= own.right + 0.5,
+          height: own.height,
+        }
+      }),
+    )
+
+  test('all six labels fit, every target is at least 48px tall, and the page does not scroll sideways', async ({ page }) => {
+    await page.goto('./')
+    await expect(page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button')).toHaveCount(6)
+    const fontSize = await page.locator('nav .label').first().evaluate((el) => getComputedStyle(el).fontSize)
+    expect(fontSize).toBe('11px')
+    for (const label of await labelsFit(page)) {
+      expect(label.fits, `${label.name} passt in seine Beschriftung`).toBe(true)
+      expect(label.inside, `${label.name} liegt in seinem Reiter`).toBe(true)
+      expect(label.height, `${label.name} ist mindestens 48 px hoch`).toBeGreaterThanOrEqual(48)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  })
+
+  // Auch bei 130 % Schrift ragt keine Beschriftung über ihren Reiter: Die Größe ist an die Breite des Reiters gebunden.
+  test('with 130% text size the labels still fit, the targets stay 48px tall and the page does not scroll sideways', async ({ page }) => {
+    await page.goto('./')
+    await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+    await expect(page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button')).toHaveCount(6)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    for (const label of await labelsFit(page)) {
+      expect(label.fits, `${label.name} passt in seine Beschriftung`).toBe(true)
+      expect(label.inside, `${label.name} liegt in seinem Reiter`).toBe(true)
+      expect(label.height, `${label.name} ist mindestens 48 px hoch`).toBeGreaterThanOrEqual(48)
+    }
+  })
 })
 
 test('animations run only without reduced-motion preference', async ({ page }) => {

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
+import { AREAS, AREA_INFO } from '../../src/lib/energy/areas'
 import type { Tageszeit } from '../../src/lib/time/tageszeit'
 
 // Liest die Farbwerte der drei Stimmungen direkt aus src/app.css und prüft den Kontrast nach WCAG 2.x.
@@ -44,6 +45,10 @@ const COLOR_TOKENS = [
   'lake-bottom',
   'glint',
 ] as const
+
+/** Die vier Bereichsfarben der Energie als Form (Akku, Punkt) und als Schrift; sie stehen nur in `:root` und gelten so in jeder Stimmung gleich. */
+const AREA_SHAPE_TOKENS = ['area-koerper', 'area-gefuehl', 'area-geist', 'area-sinn'] as const
+const AREA_TEXT_TOKENS = ['area-koerper-text', 'area-gefuehl-text', 'area-geist-text', 'area-sinn-text'] as const
 
 /** Farben mit Deckkraft, als `rgb(r g b / a)` (Schein über dem Horizont). */
 const GLOW_TOKENS = ['horizon-glow'] as const
@@ -126,6 +131,40 @@ describe('Kontrast je Stimmung (WCAG AA, 4,5:1)', () => {
         }
       })
 
+      // Die Bereichsfarben der Energie (Spec M9 §2) sind auch Schrift auf Karten: Name und Wert im Reset, Bereich der Hacks.
+      test('Bereichsfarben als Schrift auf der Karte über Himmel, Bergen und See', () => {
+        const block = blockOf(MOODS[mood])
+        for (const token of AREA_TEXT_TOKENS) {
+          for (const backdrop of BACKDROPS) {
+            for (const overlay of overlays()) {
+              const ratio = contrast(hex(blockOf(MOODS.abend), token), over(overlay, hex(block, backdrop)))
+              expect(ratio, `${mood}: --${token} auf Karte über --${backdrop} (Deckkraft ${overlay.alpha})`).toBeGreaterThanOrEqual(4.5)
+            }
+          }
+        }
+      })
+
+      // Als Form (Akku, Punkt, Ring) zählen sie als Bedienelement bzw. Bild: mindestens 3:1 (WCAG 1.4.11).
+      test('Bereichsfarben als Form auf der Karte über Himmel, Bergen und See', () => {
+        const block = blockOf(MOODS[mood])
+        for (const token of AREA_SHAPE_TOKENS) {
+          for (const backdrop of BACKDROPS) {
+            for (const overlay of overlays()) {
+              const ratio = contrast(hex(blockOf(MOODS.abend), token), over(overlay, hex(block, backdrop)))
+              expect(ratio, `${mood}: --${token} auf Karte über --${backdrop} (Deckkraft ${overlay.alpha})`).toBeGreaterThanOrEqual(3)
+            }
+          }
+        }
+      })
+
+      // Das Check-in-Blatt ist keine Karte, sondern ruht deckend auf `--sky-mid`; dort stehen die Namen in Schrift-Tönen.
+      test('Bereichsfarben als Schrift auf dem Blatt (deckend --sky-mid)', () => {
+        const block = blockOf(MOODS[mood])
+        for (const token of AREA_TEXT_TOKENS) {
+          expect(contrast(hex(blockOf(MOODS.abend), token), hex(block, 'sky-mid')), `${mood}: --${token} auf --sky-mid`).toBeGreaterThanOrEqual(4.5)
+        }
+      })
+
       test('--on-accent auf --accent', () => {
         const block = blockOf(MOODS[mood])
         expect(contrast(hex(block, 'on-accent'), hex(block, 'accent'))).toBeGreaterThanOrEqual(4.5)
@@ -167,6 +206,36 @@ describe('Farbwerte der drei Stimmungen', () => {
     expect(block).toMatch(/--horizon-glow:\s*rgb\(242 201 138 \/ 0\.16\);/)
     expect(block).toMatch(/--surface:\s*rgb\(238 240 250 \/ 0\.07\);/)
     expect(block).toMatch(/--surface-border:\s*rgb\(238 240 250 \/ 0\.12\);/)
+  })
+})
+
+describe('Bereichsfarben der Energie', () => {
+  test('stehen mit den Werten der Spec in :root', () => {
+    const root = blockOf(MOODS.abend)
+    expect(root).toMatch(/--area-koerper:\s*#f0a58c;/i)
+    expect(root).toMatch(/--area-gefuehl:\s*#f3b6c8;/i)
+    expect(root).toMatch(/--area-geist:\s*#9fe0cf;/i)
+    expect(root).toMatch(/--area-sinn:\s*#c7b8f5;/i)
+  })
+
+  test('stimmen mit AREA_INFO überein', () => {
+    const root = blockOf(MOODS.abend)
+    for (const area of AREAS) {
+      const [r, g, b] = hex(root, `area-${area}`)
+      const css = `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`
+      expect(css, area).toBe(AREA_INFO[area].color.toLowerCase())
+    }
+  })
+
+  test('die Schrift-Töne stehen als #RRGGBB in :root', () => {
+    const root = blockOf(MOODS.abend)
+    for (const token of AREA_TEXT_TOKENS) expect(() => hex(root, token), `--${token}`).not.toThrow()
+  })
+
+  test('sind in jeder Stimmung gleich: keine Stimmung überschreibt sie', () => {
+    for (const mood of ['morgen', 'tag'] as const) {
+      expect(blockOf(MOODS[mood]), `${mood} überschreibt eine Bereichsfarbe`).not.toMatch(/--area-/)
+    }
   })
 })
 

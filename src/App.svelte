@@ -3,16 +3,19 @@
   import Sky from './components/Sky.svelte'
   import TabBar from './components/TabBar.svelte'
   import UpdateToast from './components/UpdateToast.svelte'
+  import CheckInSheet from './components/energy/CheckInSheet.svelte'
   import BreathPlayer from './components/player/BreathPlayer.svelte'
   import GuidedPlayer from './components/player/GuidedPlayer.svelte'
   import TimerPlayer from './components/player/TimerPlayer.svelte'
   import Heute from './screens/Heute.svelte'
+  import Energie from './screens/Energie.svelte'
   import Meditieren from './screens/Meditieren.svelte'
   import Atmen from './screens/Atmen.svelte'
   import Klaenge from './screens/Klaenge.svelte'
   import Ich from './screens/Ich.svelte'
   import { audio } from './lib/audio/engine-store.svelte'
   import { pwa } from './lib/pwa/update.svelte'
+  import { closeCheckIn, closeHackCard, energyUi } from './lib/ui/energy-ui.svelte'
   import { anyPlayerOpen, playerOpen } from './lib/ui/player-state'
   import { sessionUi } from './lib/ui/session-ui.svelte'
   import type { TabId } from './lib/ui/tabs'
@@ -42,7 +45,10 @@
     pwa.needRefresh && audio.snap.state === 'idle' && program === null && sessionUi.done === null,
   )
 
+  // Ein Reiterwechsel schließt, was zum Reiter davor gehörte: das Check-in-Blatt und die Hack-Karte.
   function onNavigate(next: TabId) {
+    closeCheckIn()
+    closeHackCard()
     tab = next
     window.scrollTo(0, 0)
   }
@@ -54,6 +60,8 @@
   <main class:with-player-bar={playbackBarVisible}>
     {#if tab === 'heute'}
       <Heute {onNavigate} />
+    {:else if tab === 'energie'}
+      <Energie />
     {:else if tab === 'meditieren'}
       <Meditieren />
     {:else if tab === 'atmen'}
@@ -86,4 +94,10 @@
 
 {#if guidedPlayerVisible}
   <GuidedPlayer />
+{/if}
+
+<!-- An der Wurzel, nicht in `inert`: Das Blatt gehört keinem Reiter und lässt sich auch von „Heute“ und aus den
+     Playern öffnen. Nur bei offenem Blatt eingehängt, damit jedes Öffnen mit leeren Zeilen beginnt. -->
+{#if energyUi.checkInOpen}
+  <CheckInSheet />
 {/if}
