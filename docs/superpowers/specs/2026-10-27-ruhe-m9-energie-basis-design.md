@@ -237,7 +237,7 @@ Zwei neue Programmarten neben `timer` und `breath`; sie laufen wie diese über d
   - Hinweistöne zu den Schrittwechseln (nur bei `schritte`), Klangschale am Ende, kein Hintergrund.
   - Der Hinweiston ist ein kurzer, leiser Sinuston mit weicher Hüllkurve, in Web Audio erzeugt (keine neue Datei).
 - **`focus`:**
-  - `ref` = `focus`, Titel = „Fokus-Sprint · 50 Min“.
+  - `ref` = `focus-25` / `focus-50` / `focus-90`, Titel = „Fokus-Sprint · 50 Min“.
   - Kein Vorlauf, Klangschale am Ende, Hintergrund wie beim Timer.
 
 Das Ergebnis einer Sitzung trägt die Art mit. Die Verbindung zur Statistik leitet weiter:

@@ -67,6 +67,23 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
+## Handy-Checkliste Meilenstein 9
+
+1. „Energie“ öffnen und „Check-in“ antippen: Für Körper, Gefühl, Geist und Sinn je einen Punkt von 1 (leer) bis 5 (voll) wählen. „Speichern“ gilt erst mit allen vier Bereichen. Danach zeigt „Dein Akku“ vier Akkus in den Bereichsfarben, und die Kopfzeile nennt „Letzter Check-in vor 1 Min“. „Später“ und Tippen neben das Blatt schließen ohne Speichern.
+2. „Heute“: Die Karte „Dein Akku“ steht zwischen Begrüßung und „Vorschlag des Tages“. Mit frischem Check-in (höchstens 3 Std. alt) zeigt sie vier kleine Akkus und „Geist am niedrigsten · Jetzt-Reset“ (je nach Check-in ein anderer Bereich), ein Tipp führt zu „Energie“. Ohne frischen Check-in fragt sie „Wie voll ist dein Akku?“, und „Check-in“ öffnet das Blatt gleich auf „Heute“. Auf „Check-in“ doppelt tippen: Das Blatt bleibt offen, kein Punkt ist gewählt.
+3. „Jetzt-Reset“: Mit frischem Check-in nennt die Karte den niedrigsten Bereich und schlägt einen passenden Hack vor, „Anderer“ zeigt den nächsten. „Starten“ öffnet die Hack-Karte, dort „Starten · 1:00“ (bzw. die Dauer des Hacks): Zwei Tipps vom Reiter zum laufenden Hack. Ohne frischen Check-in fragt die Karte „Was braucht gerade Energie?“ mit den vier Bereichen als Knöpfen.
+4. Ein **Takt-Hack** („Physiologischer Seufzer“) **bei gesperrtem Bildschirm**: Er läuft weiter, die Klangschale am Ende kommt pünktlich, der Sperrbildschirm zeigt den Titel mit Pause und Weiter. Danach „Geschafft“ mit der Frage nach dem Bereich des Hacks („Gefühl jetzt?“). Liegt der Check-in höchstens 2 Stunden vor dem Start, bleibt es bei „jetzt“, sonst gibt es zwei Reihen, „vorher“ und „jetzt“. Antworten ist freiwillig; „Fertig“ schließt.
+5. Ein **Schritte-Hack** („Bewegungs-Snack“) bei gesperrtem Bildschirm: Zu jedem Schrittwechsel ist ein leiser Hinweiston zu hören, am Ende die Klangschale. „Noch einmal“ startet ihn von vorn.
+6. Ein **Ring-Hack** („Augen-Pause“ oder „Tageslicht tanken“) bei gesperrtem Bildschirm: Er läuft ohne Hinweistöne bis zur Klangschale durch.
+7. Einen Hack nach wenigen Sekunden mit „Beenden“ abbrechen: Unter 30 Sekunden schließt der Player ohne Ende-Ansicht, und nichts wird gespeichert. Ab 30 Sekunden kommt die Ende-Ansicht mit der Frage nach dem Bereich. Die Zurück-Geste fragt „Hack beenden?“, „Weiter üben“ setzt fort.
+8. **Fokus-Sprint mit Lofi:** Auf „Energie“ ein Vorhaben eintragen (z. B. „Unterlagen sortieren“), 25 Min und „Kaffee & Notizen“ als Hintergrund wählen, „Sprint starten“, Bildschirm sperren. Die Musik läuft an der Naht nach 5 Minuten ohne Bruch weiter, am Ende kommt die Klangschale, danach „Sprint geschafft“ mit „25 Min Fokus“ und „Pausen-Vorschlag“. Auf „Ich“ ändert sich nichts: Hacks und Sprints zählen nicht in Serie, Minuten und Kalender.
+9. **Wochenraster nach einigen Tagen:** „Deine Woche“ zeigt das Raster mit den letzten 7 Tagen × 4 Bereichen; Tage ohne Check-in haben einen gestrichelten Rahmen. Ab 7 Check-ins in 14 Tagen erscheint ein Satz zu deinem Muster. Nach mindestens 2 bewerteten Läufen eines Hacks (Antwort auf „vorher“ und „jetzt“ bzw. auf „jetzt“ nach einem frischen Check-in) steht „Was bei dir wirkt“ da, und der Reset schlägt solche Hacks zuerst vor.
+10. **360 px und große Schrift:** Mit großer Systemschrift (Android-Einstellung) passen „Energie“, Check-in-Blatt, Hack-Karte, beide Player und die Karte auf „Heute“ ohne seitliches Scrollen. „Speichern“ ist erreichbar, die sechs Reiter bleiben lesbar und gut zu treffen.
+11. **Backup:** Exportieren und auf einem anderen Gerät importieren: Check-ins, Läufe und Sprints sind da, und die Meldung nennt „Dazu … neue Energie-Einträge.“ Ein zweiter Import derselben Datei fügt nichts doppelt hinzu.
+12. **Erinnerungen über den Wecker:** Wie unter „Erinnerungen einrichten“ eine Erinnerung für den nächsten Termin anlegen (z. B. in fünf Minuten). Sie meldet sich, ein Tipp auf das Startbildschirm-Symbol öffnet Ruhe, und „Heute“ fragt „Wie voll ist dein Akku?“, sobald der letzte Check-in älter als 3 Stunden ist.
+
+> Hinweis: Check-ins, Läufe, Sprints und Vorhaben liegen nur auf dem Handy (und im Backup), nie im Repo. Die Hinweistöne der Schritte-Hacks sind kurze, leise Sinustöne, erzeugt in der App; es gibt keine neuen Audiodateien und noch keine Stimme.
+
 ## Handy-Checkliste Balance
 
 1. Eine geführte Meditation mit Hintergrund (z. B. „Regen“) starten und den Regler „Balance Stimme ↔ Hintergrund“ langsam von links nach rechts schieben: Ganz links ist fast nur die Stimme zu hören, jeder Schritt macht den Hintergrund hörbar lauter, ganz rechts sind beide etwa gleich laut.
@@ -121,6 +138,15 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 
 > Hinweis: Musik: ElevenLabs Music (4 Stücke, dazu die 4 Lofi-Stücke) und vom Nutzer mit Gemini erstellt (3 Stücke). Das Atemgeräusch ist eine echte Aufnahme (ElevenLabs).
 
+## Erinnerungen einrichten
+
+Ruhe schickt keine Benachrichtigungen: Dafür bräuchte es einen Server, und den gibt es nicht. Stattdessen fragt die App beim Öffnen. Die Karten „Dein Akku“ auf „Heute“ und auf „Energie“ zeigen die Frage „Wie voll ist dein Akku?“ mit „Check-in“, solange kein frischer Check-in (höchstens 3 Stunden alt) vorliegt; ein Pop-up gibt es nicht. Wann du dich erinnern lässt, richtest du am Handy ein.
+
+1. **Wecker:** In der Uhr-App den Reiter „Wecker“ öffnen, einen neuen Wecker anlegen, die Uhrzeit wählen, die Wochentage festlegen (täglich oder nur werktags) und als Bezeichnung z. B. „Akku-Check-in“ eintragen. Üblich sind drei Zeiten: **9, 13 und 17 Uhr** (nach dem Start in den Tag, nach dem Mittag und vor dem Feierabend), also drei Wecker. Wecker klingeln laut; wer es leiser mag, nimmt den Kalender.
+2. **Kalender:** Im Kalender (z. B. Google Kalender) einen Termin oder eine Erinnerung für 9 Uhr anlegen, **Wiederholung** auf „Jeden Tag“ oder „Jeden Werktag“, **Benachrichtigung** zum Zeitpunkt des Termins. Dasselbe für 13 und 17 Uhr, oder als einen Termin mit drei Benachrichtigungen, falls die App das zulässt. Die genauen Menüs unterscheiden sich je nach Hersteller und App-Version.
+3. **Ruhe schnell öffnen:** Wenn die Erinnerung kommt, öffnest du Ruhe über das **Startbildschirm-Symbol** (siehe „Auf dem Handy installieren“): ein Tipp, kein Browser. Am besten legst du das Symbol auf die erste Seite oder ins Dock, damit es mit einem Daumen zu erreichen ist.
+4. Dort „Check-in“ antippen, vier Punkte setzen, „Speichern“. Danach nennt dieselbe Karte den niedrigsten Bereich, und ein Tipp darauf führt zum „Jetzt-Reset“ auf „Energie“.
+
 ## Meditationen vertonen
 
 Die Texte stehen in `content/meditations/<id>.md`, die fertigen Dateien entstehen mit `scripts/meditations.mjs` (`npm run meditations <Befehl>`; braucht ffmpeg und ffprobe). Gesprochen wird in einer Claude-Sitzung über den ElevenLabs-Connector. Dafür ist kein API-Schlüssel nötig, und es wird keiner gespeichert.
@@ -135,6 +161,51 @@ Die Texte stehen in `content/meditations/<id>.md`, die fertigen Dateien entstehe
 
 Solange eine Meditation noch nicht vertont ist, spielt eine Platzhalter-Datei (leise Töne, in der App als „Vorabversion“ gekennzeichnet): `npm run meditations placeholders` legt sie für jede Meditation ohne echte Datei an und vermerkt sie in `audio-work/placeholders.json`; `assemble` nimmt die id dort wieder heraus. Echte Dateien überschreibt der Befehl nie. Veröffentlicht wird erst, wenn keine Meditation mehr Platzhalter ist: Der Test „no meditation is a placeholder any more“ ist bis dahin rot.
 
+## Brain Hacks schreiben
+
+Die Karten im Reiter „Energie“ stehen in `content/hacks.json` (derzeit 16, vier je Bereich). Eine neue Karte ist ein neuer Eintrag in der Liste `hacks`; Bibliothek, Reset und Player brauchen dafür keinen Code. `src/lib/energy/hacks.ts` liest die Datei, geprüft wird sie vom Test (`hackProblems`).
+
+```jsonc
+{
+  "id": "beispiel-karte",              // Kleinbuchstaben, Ziffern, Bindestrich; eindeutig
+  "title": "Beispiel-Karte",
+  "area": "sinn",                      // koerper | gefuehl | geist | sinn
+  "minutes": 2,                        // Nenndauer, ganze Zahl von 1 bis 10
+  "benefit": "Ein Satz Nutzen.",
+  "guide": "schritte",                 // takt | schritte | ring
+  "steps": [                           // Karte „So geht’s“, 2 bis 4 Schritte
+    { "title": "Erster Schritt", "detail": "kurz und konkret", "icon": "stift", "seconds": 60 },
+    { "title": "Zweiter Schritt", "detail": "kurz und konkret", "icon": "pfeil", "seconds": 60 }
+  ],
+  "why": { "from": "Alt", "to": "Neu", "text": "Zwei, drei Sätze, warum es wirken kann." },
+  "source": "Quelle oder Studie",
+  "further": null,                     // Leseempfehlung oder null
+  "caution": null,                     // Sicherheitshinweis oder null
+  "window": null,                      // { "from": 7, "to": 17 } (volle Stunden, Ortszeit) oder null
+  "link": null                         // { "kind": "breath", "id": "seufzer" } oder null
+}
+```
+
+- **Führung:**
+  - `schritte`: Jeder Schritt hat `seconds` (mindestens 10), zusammen ergeben sie `minutes × 60`.
+  - `ring`: Die Schritte sind nur eine Liste ohne `seconds`; die Dauer ist `minutes × 60`.
+  - `takt`: Die Schritte haben keine `seconds`, dafür gibt es `cycle`, einen Zyklus der Atemkurve aus Phasen `{ "phase": "ein" | "nach" | "aus" | "halten", "seconds": 0.5–30, "say": "Tief einatmen …" }`, mindestens zwei. Eine Gruppe `{ "repeat": n, "phases": [...] }` wiederholt mehrere Phasen. Die Laufzeit sind ganze Zyklen, gerundet auf `minutes × 60`, mindestens einer.
+- **Symbole:** `icon` ist eines aus `einatmen`, `nachatmen`, `ausatmen`, `halten`, `bewegung`, `gehen`, `sonne`, `wasser`, `liegen`, `stift`, `herz`, `auge`, `handy-weg`, `kompass`, `stern`, `pfeil`, `frage`.
+- **Fenster:** Mit `window` schlägt der Reset den Hack nur zwischen `from` (eingeschlossen) und `to` (ausgeschlossen) vor; die Bibliothek zeigt ihn immer.
+- **Verweis:** `link` zeigt auf eine feste Atemübung (`478`, `box`, `kohaerent`, `langes-ausatmen`, `seufzer` oder `wechselatmung`), sonst ist der Eintrag ungültig.
+- **Kürze:** Schritt-Titel höchstens 4 Wörter, Schritt-Texte höchstens 12, `why.from` und `why.to` höchstens 2. Typografische Zeichen: „…“ statt `"…"`, ’ statt `'`, … statt drei Punkten.
+
+**Freigabe:** Neue Karten gehen erst in die App, nachdem du sie freigegeben hast. Entwürfe entstehen in einer Claude-Sitzung, du liest sie gegen und gibst sie frei oder änderst sie; erst dann kommt der Eintrag in `content/hacks.json`.
+
+**Quellen:**
+- **Eigene Worte:** Keine Texte, Übungen im Wortlaut oder Gliederungen aus Büchern; das Repo ist öffentlich. Ideen und allgemeine Prinzipien werden mit eigenen Worten beschrieben.
+- **Eine Quelle je Karte:** `source` ist nie leer, z. B. eine Studie („Balban u. a., Cell Reports Medicine 2023“) oder „angelehnt an …“.
+- **Keine Versprechen:** Die Karte sagt, warum etwas wirken kann, nicht dass es heilt; wo etwas schiefgehen kann (Kälte, schnelles Atmen), steht ein `caution`.
+- **Hildebrandt:** Henry Hildebrandts „Brainhacks“ (2025) erscheint nur als Leseempfehlung, `further` mit dem Wortlaut „Henry Hildebrandt, Brainhacks (2025)“, und nur bei den vier Geist-Hacks, bis Buchnotizen von dir vorliegen.
+- **Nichts Persönliches:** Check-ins, Läufe und Sprints bleiben auf dem Handy; in Beispielen und Tests stehen nur ausgedachte Werte.
+
+**Prüfen:** `npm test` prüft jeden Eintrag nach diesen Regeln (`tests/unit/energy-hacks.test.ts`; eine Summe, die nicht zu `minutes` passt, meldet z. B. `steps: zusammen 100 s statt 120 s`). Dieselben Tests halten den Bestand fest: 16 Karten, je vier pro Bereich, Titel, Dauer und Führung, Hildebrandt nur bei Geist. Mit einer neuen Karte müssen diese Zahlen und die Tabelle im Test (und die 16 Kacheln in `tests/e2e/energie.spec.ts`) mitwachsen.
+
 ## Musik aufbereiten
 
 Die elf Stücke (sieben Meditationsmusik, vier Lofi) liegen als `public/audio/music/<id>.opus`, die beiden Atemgeräusche als `public/audio/breath/ein.ogg` und `aus.ogg`. Ihre Daten stehen in `content/sounds.json` (`music` und `breath`): Titel, Datei, Version, Länge, Größe und Herkunft (Prompt, Flow und Generierung im ElevenLabs-Connector bzw. der Gemini-Titel). Aufbereitet wird mit `scripts/musik.py`, einem Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit NumPy und ffmpeg (libopus, libvorbis) braucht.
@@ -146,7 +217,7 @@ Die elf Stücke (sieben Meditationsmusik, vier Lofi) liegen als `public/audio/mu
 
 ## Motive malen
 
-Die 43 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entstehen in einer Claude-Sitzung über den ElevenLabs-Connector; ein API-Schlüssel ist dafür nicht nötig, und es wird keiner gespeichert. Das Freistellen übernimmt `scripts/freistellen.py`, ein Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit Pillow und NumPy braucht.
+Die 48 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entstehen in einer Claude-Sitzung über den ElevenLabs-Connector; ein API-Schlüssel ist dafür nicht nötig, und es wird keiner gespeichert. Das Freistellen übernimmt `scripts/freistellen.py`, ein Entwicklungswerkzeug (nicht Teil der App, nicht in der CI), das Python 3 mit Pillow und NumPy braucht.
 
 1. **Prompt aufstellen:** `content/motive.json` hält das Schema. `prompt` beschreibt drei Motive nebeneinander (`Icon 1: … Icon 2: … Icon 3: …`); die `…` werden mit dem `subject` der drei Motive einer Gruppe gefüllt, `<style>` wird durch den Stiltext `style` ersetzt; dazu `model` und `background`. Je Motiv stehen `id`, `subject` (was gemalt ist), `flow` und `generation` (Quelle im Connector), `crop` (Ausschnitt) und `size`. So lässt sich ein Motiv später im selben Stil nachmalen.
 2. **Erzeugen:** In der Claude-Sitzung mit dem ElevenLabs-Connector, Modell `gpt-image-2.5-sunburst`, je Bild drei Motive einer Gruppe auf flacher Navy-Fläche `#1B2350`. Eine Variante kostet etwa 190 Credits (rund 4 US-Cent); jeder Aufruf zählt, wiederhole ihn also nicht ohne Grund.
@@ -154,11 +225,13 @@ Die 43 gemalten Motive liegen als `public/images/motive/<id>.webp`. Neue entsteh
 4. **Freistellen:** Das gewählte Bild als PNG speichern und dann ausführen:
 
    ```bash
-   python3 scripts/freistellen.py <quelle.png> public/images/motive/<id>.webp --crop x,y,b,h --size N
+   python3 scripts/freistellen.py <quelle.png> public/images/motive/<id>.webp --crop x,y,b,h --size N [--innen F] [--nahe D]
    ```
 
-   `--crop` ist der Ausschnitt im Quellbild (x, y, Breite, Höhe), `--size` die Kantenlänge des fertigen, quadratischen Bildes. Heraus kommt ein WebP mit Alpha.
-5. **Zielgrößen** (`--size`): Symbole 168, Themen 192, Vorschlag 288, Atem-Kacheln 240, Klang-Kacheln 480, Blütenblätter 360 px.
+   `--crop` ist der Ausschnitt im Quellbild (x, y, Breite, Höhe), `--size` die Kantenlänge des fertigen, quadratischen Bildes. Heraus kommt ein WebP mit Alpha. Zwei Optionen sind für schwierige Bilder gedacht:
+   - `--innen F`: Auch eingeschlossene Flächen nahe der Grundfarbe, die nicht am Rand hängen (etwa zwischen den Säulen einer Sanduhr), werden ab F Pixeln zum Hintergrund. Ohne die Option bleiben sie stehen, falls sie gewollt dunkel sind.
+   - `--nahe D`: Farbabstand zur Grundfarbe, bis zu dem ein Pixel als Hintergrund gilt (Standard 38). Ein größerer Wert nimmt auch einen zarten gemalten Schein um das Motiv weg.
+5. **Zielgrößen** (`--size`): Symbole 168, Themen 192, Energie 192, Vorschlag 288, Atem-Kacheln 240, Klang-Kacheln 480, Blütenblätter 360 px.
 6. **Budget:** höchstens 60 KB je Datei (Klang-Motive 90 KB), zusammen höchstens 1,5 MB. Der Test prüft das.
 7. **Eintragen:** Die neue ID kommt in `src/lib/content/motive.ts`, das Motiv mit Quelle, Ausschnitt und Größe in `content/motive.json`. `npm test` meldet eine fehlende, falsch große oder zu schwere Datei; `npm run check` meldet einen Klang, eine Atemübung, ein Thema oder eine Tageszeit ohne Motiv. Beim nächsten Build nimmt der Service Worker die Datei von selbst in den Precache auf.
 

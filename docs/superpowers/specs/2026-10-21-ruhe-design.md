@@ -33,6 +33,7 @@
 - Keine geführten Schlaf-Meditationen (Schlaf wird über Naturklänge + Sleep-Timer abgedeckt).
 - Keine ausführliche Statistik (Stimmungstagebuch, Diagramme).
   *Ergänzung vom 24.10.2026 (Meilenstein 6):* Der Ruhe-Check-in (nach einer Sitzung „Vorher“ und „Jetzt“ in fünf Stufen, unter „Ich“ zwei Sätze zu Wirkung und Verlauf) ist kein Stimmungstagebuch; es gibt weiter keine Diagramme und keine Liste. Siehe `docs/superpowers/specs/2026-10-24-ruhe-m6-ruhe-check-in-design.md`.
+  *Ergänzung vom 27.10.2026 (Meilenstein 9):* Das Wochenraster unter „Energie“ (die letzten 7 Tage × 4 Bereiche, ein Feld je Tag und Bereich aus den Energie-Check-ins) ist die einzige Verlaufsgrafik der App; Kurvendiagramme, Listen und ein Tagebuch bleiben Nicht-Ziel. Hacks und Sprints zählen nicht in die Meditationsstatistik. Siehe `docs/superpowers/specs/2026-10-27-ruhe-m9-energie-basis-design.md` §1 (Nicht-Ziele) und §6.4.
 - Kein iOS-/Desktop-Feinschliff: Ziel ist Chrome auf Android. Andere Browser dürfen funktionieren, werden aber nicht gezielt getestet.
 
 ### Rahmenbedingungen
@@ -353,6 +354,8 @@ type Session = {
 
 - Beim Laden wird die Struktur geprüft. Ist sie beschädigt, wird der Rohinhalt unter `ruhe.v1.corrupt` gesichert und die App startet mit leerem Stand, statt abzustürzen.
 
+*Ergänzung vom 27.10.2026 (Meilenstein 9):* Der Datenstand bekommt drei weitere optionale Listen (`version` bleibt 1): `energyCheckins` (Energie-Check-ins: `id`, `at`, `levels` mit Stufen 1–5 für Körper, Gefühl, Geist und Sinn), `hackRuns` (gelaufene Brain Hacks: `id`, `at`, `hack`, `area`, `seconds`, optional `before` und `after`) und `focusSprints` (Fokus-Sprints: `id`, `at`, `planned` mit 25, 50 oder 90 Minuten, `seconds`, optional `task` mit höchstens 80 Zeichen). Eine Liste fehlt, solange sie leer ist. Jeder Eintrag wird beim Laden und beim Import einzeln geprüft (ein ungültiger fällt weg, der Rest bleibt); das Backup enthält die drei Listen, und der Import fügt nur Einträge mit unbekannter `id` hinzu. Ein Hack-Lauf wird ab 30 s gespeichert, ein Sprint ab 5 Minuten, jeweils mit der tatsächlichen Zeit. Die Listen sind von `sessions` getrennt und zählen nicht in Statistik, Serie und Kalender. Typen und Regeln in `docs/superpowers/specs/2026-10-27-ruhe-m9-energie-basis-design.md` §6.1.
+
 ### 6.2 Statistik-Regeln
 
 - Gespeichert wird eine Sitzung (geführt, Timer, Atmen), sobald sie endet oder abgebrochen wird. Sie zählt, wenn **≥ 60 Sekunden** absolviert wurden; kürzere werden verworfen.
@@ -375,6 +378,8 @@ type Session = {
 - Vorlauf beim Timer: an/aus (Standard: an)
 
 *Ergänzung vom 21.10.2026 (Meilenstein 3):* Neue Einstellung `guidedSound` (Standard: keiner): der zuletzt gewählte Hintergrundklang der geführten Meditation. Er wird im Player gewählt und gilt beim nächsten Start wieder; der Klang unter „Ich“ gilt weiter nur für den Timer und heißt dort jetzt „Hintergrundklang beim Timer“. Die Balance (`voiceBalance`) wirkt im Player sofort und wird beim Loslassen des Reglers gespeichert.
+
+*Ergänzung vom 27.10.2026 (Meilenstein 9):* Neue Einstellung `settings.focus` = `{ minutes: 25 | 50 | 90, sound: BackgroundId | null }`, Standard `{ minutes: 50, sound: 'kaffee-und-notizen' }`: Länge und Hintergrund des Fokus-Sprints, wie beim letzten Start gewählt; sie gelten beim nächsten Sprint wieder. Der Wert hat immer eine Belegung: Fehlt er in alten Daten oder Backups oder ist er ungültig, gilt der Standard. Siehe `docs/superpowers/specs/2026-10-27-ruhe-m9-energie-basis-design.md` §6.1.
 
 ### 6.5 Offline (Service Worker)
 
