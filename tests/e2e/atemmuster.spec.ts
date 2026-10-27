@@ -121,6 +121,7 @@ test('leaving the editor discards the changes', async ({ page }) => {
   await section(page).getByRole('button', { name: 'Abendruhe bearbeiten' }).click()
   await expect(editor(page).getByRole('textbox', { name: 'Name' })).toHaveValue('Abendruhe')
   await editor(page).getByRole('textbox', { name: 'Name' }).fill('Anders')
+  await expect(page.locator('.backdrop')).toBeEnabled() // die Fläche nimmt Tipps erst kurz nach dem Einblenden an
   await page.mouse.click(20, 20) // die Fläche über dem Blatt
   await expect(editor(page)).toHaveCount(0)
   expect((await stored(page)).breathPatterns).toEqual([ABENDRUHE])

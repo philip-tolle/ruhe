@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { expectMotiv } from './motiv'
+import { doubleTap } from './taps'
 
 // Sitzungen und Zeiten tragen ihren Offset und der Browser läuft in Berlin; so hängt kein Test
 // von der Zeitzone des Rechners ab. „Heute“ ist der 21.10.2026, 20 Uhr; die Tests zum Vorschlag am
@@ -25,12 +26,20 @@ const THREE_DAYS = [
   session('s-21', '2026-10-21T07:30:00+02:00'),
 ]
 const SETTINGS = { vibration: true, voiceBalance: 0.5, timerSound: null, guidedSound: null, timerLead: true, timer: { minutes: 10, intervalMin: null } }
-const dataOf = (sessions: object[], lastUsed?: object, settings: object = SETTINGS) => ({
+const dataOf = (sessions: object[], lastUsed?: object, settings: object = SETTINGS, extra: object = {}) => ({
   version: 1,
   sessions,
   settings,
   ...(lastUsed ? { lastUsed } : {}),
+  ...extra,
 })
+// Ein Energie-Check-in (ausgedachte Werte) und die Daten, die ihn enthalten.
+const checkin = (id: string, at: string, levels: [number, number, number, number]) => ({
+  id,
+  at,
+  levels: { koerper: levels[0], gefuehl: levels[1], geist: levels[2], sinn: levels[3] },
+})
+const withCheckin = (at: string, levels: [number, number, number, number]) => dataOf([], undefined, SETTINGS, { energyCheckins: [checkin('c-1', at, levels)] })
 
 // addInitScript läuft bei jeder Navigation (auch Neuladen); ein Merker in sessionStorage lässt es nur
 // einmal je Test säen, damit Änderungen im Test ein Neuladen überstehen.
@@ -53,6 +62,10 @@ const cardOf = (page: Page, heading: string) =>
 const lastUsedCard = (page: Page) => cardOf(page, 'Zuletzt genutzt')
 const suggestionCard = (page: Page) => cardOf(page, 'Vorschlag des Tages')
 const activitiesCard = (page: Page) => cardOf(page, 'Aktivitäten')
+// „Dein Akku“ ohne frischen Check-in ist eine Karte mit Überschrift; mit frischem Check-in ein einziger Knopf (Spec M9 §3.7).
+const akkuCard = (page: Page) => cardOf(page, 'Dein Akku')
+const akkuButton = (page: Page) => page.getByRole('button', { name: /am niedrigsten · Jetzt-Reset/ })
+const checkInDialog = (page: Page) => page.getByRole('dialog', { name: 'Wie voll ist dein Akku?' })
 // Die Zeilen der Karte „Aktivitäten“; die Reiterleiste hat Knöpfe mit denselben Anfängen („Meditieren“, „Klänge“).
 const meditierenRow = (page: Page) => activitiesCard(page).getByRole('button', { name: /^Meditieren/ })
 const atemuebungRow = (page: Page) => activitiesCard(page).getByRole('button', { name: /^Atemübung/ })
@@ -96,8 +109,8 @@ test('streak and quick start', async ({ page }) => {
   await expect(last.getByText('4-7-8 · 1 Min', { exact: true })).toBeVisible()
   await expect(last.getByRole('button', { name: 'Erneut starten' })).toBeVisible()
 
-  // Reihenfolge: Vorschlag des Tages, Zuletzt genutzt, Aktivitäten.
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
+  // Reihenfolge: Dein Akku (ohne frischen Check-in), Vorschlag des Tages, Zuletzt genutzt, Aktivitäten.
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Dein Akku', 'Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
   await expect(atemuebungRow(page)).toContainText('3 Min kohärent atmen')
 
   await atemuebungRow(page).click()
@@ -126,10 +139,140 @@ test('empty state', async ({ page }) => {
   await expect(last.getByText(/^Ankommen im Atem · \d+ Min$/)).toBeVisible()
   await expect(last.getByRole('button', { name: 'Jetzt starten' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Erneut starten' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Dein Akku', 'Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
   await expect(meditierenRow(page)).toBeVisible()
   await expect(atemuebungRow(page)).toBeVisible()
   await expect(klaengeRow(page)).toBeVisible()
+})
+
+// ── Karte „Dein Akku“ (Spec M9 §3.7) ────────────────────────────────────────────────────────────────────────────
+
+// Die Karte steht zwischen Begrüßung und „Vorschlag des Tages“.
+async function expectBetweenGreetingAndSuggestion(page: Page, akku: Locator) {
+  const greeting = (await page.getByRole('heading', { level: 1 }).boundingBox())!
+  const box = (await akku.boundingBox())!
+  const suggestion = (await suggestionCard(page).boundingBox())!
+  expect(box.y).toBeGreaterThanOrEqual(greeting.y + greeting.height)
+  expect(box.y + box.height).toBeLessThanOrEqual(suggestion.y)
+}
+
+test('without a fresh check-in the battery card asks, sits above the suggestion and opens the sheet right on „Heute“', async ({ page }) => {
+  await open(page, null)
+  const akku = akkuCard(page)
+  await expect(akku.getByText('Wie voll ist dein Akku?', { exact: true })).toBeVisible()
+  await expectBetweenGreetingAndSuggestion(page, akku)
+  // Die übrigen Karten bleiben, jede einmal.
+  for (const heading of ['Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten']) await expect(cardOf(page, heading)).toHaveCount(1)
+  await expect(akku.getByRole('listitem')).toHaveCount(0)
+
+  await akku.getByRole('button', { name: 'Check-in', exact: true }).click()
+  await expect(checkInDialog(page)).toBeVisible()
+  // Das Blatt öffnet sich auf „Heute“; der Reiter wechselt nicht.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Abend')
+  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Heute' })).toHaveAttribute('aria-current', 'page')
+  // „Später“ schließt, und die Karte ist unverändert.
+  await expect(checkInDialog(page).getByRole('button', { name: 'Später' })).toBeEnabled()
+  await checkInDialog(page).getByRole('button', { name: 'Später' }).click()
+  await expect(checkInDialog(page)).toHaveCount(0)
+  await expect(akku.getByText('Wie voll ist dein Akku?', { exact: true })).toBeVisible()
+})
+
+test('with a fresh check-in the battery card is one button with four batteries, names the weakest area and opens „Energie“', async ({ page }) => {
+  // Eine Stunde alt: Geist ist am niedrigsten.
+  await open(page, withCheckin('2026-10-21T19:00:00+02:00', [4, 3, 2, 4]))
+  const button = akkuButton(page)
+  await expect(button).toHaveCount(1)
+  await expect(button).toContainText('Geist am niedrigsten · Jetzt-Reset')
+  await expect(button.locator('.battery.mini')).toHaveCount(4)
+  await expect(button.locator('.cell.on')).toHaveCount(4 + 3 + 2 + 4)
+  // Die Stufen stehen für Hilfstechnik im Namen des Knopfs.
+  await expect(button).toHaveAccessibleName(/Körper 4 von 5, Gefühl 3 von 5, Geist 2 von 5, Sinn 4 von 5/)
+  await expectBetweenGreetingAndSuggestion(page, button)
+  // Die schmale Karte ersetzt die Frage: weder „Check-in“ noch eine Überschrift „Dein Akku“.
+  await expect(page.getByRole('button', { name: 'Check-in', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
+
+  await button.click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Energie')
+  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('button', { name: 'Energie' })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('heading', { level: 2, name: 'Jetzt-Reset', exact: true })).toBeVisible()
+})
+
+test('a check-in older than three hours does not count: the card asks again', async ({ page }) => {
+  await open(page, withCheckin('2026-10-21T16:30:00+02:00', [1, 1, 1, 1])) // 3,5 Std. alt
+  await expect(akkuButton(page)).toHaveCount(0)
+  await expect(akkuCard(page).getByText('Wie voll ist dein Akku?', { exact: true })).toBeVisible()
+})
+
+test('a saved check-in turns the card into the compact one without leaving „Heute“', async ({ page }) => {
+  await open(page, null)
+  await akkuCard(page).getByRole('button', { name: 'Check-in', exact: true }).click()
+  await expect(checkInDialog(page).getByRole('button', { name: 'Später' })).toBeEnabled()
+  for (const [area, n, word] of [['Körper', 4, 'gut'], ['Gefühl', 3, 'mittel'], ['Geist', 5, 'voll'], ['Sinn', 1, 'leer']] as const) {
+    await checkInDialog(page).getByRole('radio', { name: `${area}: ${n} von 5, ${word}`, exact: true }).click()
+  }
+  await checkInDialog(page).getByRole('button', { name: 'Speichern' }).click()
+  await expect(checkInDialog(page)).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Abend')
+  await expect(akkuButton(page)).toContainText('Sinn am niedrigsten · Jetzt-Reset')
+})
+
+// Auf „Heute“ liegt „Check-in“ nicht im Blatt, sondern kann ÜBER ihm liegen: Der zweite Tipp eines Doppeltipps trifft dann die
+// Fläche daneben, die das Blatt schließt. Das Blatt muss offen bleiben und darf keinen Punkt gewählt haben (Ruling R14).
+// Auf 360 × 640 und 412 × 839 deckt das Blatt den Knopf noch ab (dort trifft der zweite Tipp einen Punkt); ab etwa 1000 px
+// Höhe, auf Tablets und Falthandys, liegt der Knopf darüber. `above`: Der Test prüft, dass es so ist.
+const SIZES = [
+  { name: 'at 360 × 640', viewport: { width: 360, height: 640 }, above: false },
+  { name: 'at the default size', viewport: null, above: false },
+  { name: 'on a tall screen (412 × 1100)', viewport: { width: 412, height: 1100 }, above: true },
+] as const
+for (const { name, viewport, above } of SIZES) {
+  test.describe(name, () => {
+    if (viewport) test.use({ viewport })
+
+    test('a double tap on „Check-in“ leaves the sheet open with no dot checked', async ({ page }) => {
+      await open(page, null)
+      const trigger = akkuCard(page).getByRole('button', { name: 'Check-in', exact: true })
+      const triggerBox = (await trigger.boundingBox())!
+      await doubleTap(page, trigger, 0.5)
+      await expect(checkInDialog(page)).toBeVisible()
+      await expect(checkInDialog(page).locator('[role="radio"][aria-checked="true"]')).toHaveCount(0)
+      if (above) expect(triggerBox.y + triggerBox.height).toBeLessThan((await checkInDialog(page).boundingBox())!.y)
+      // Kurz danach nehmen die Punkte Tipps an.
+      await expect(checkInDialog(page).getByRole('button', { name: 'Später' })).toBeEnabled()
+      await checkInDialog(page).getByRole('radio', { name: 'Körper: 4 von 5, gut', exact: true }).click()
+      await expect(checkInDialog(page).getByRole('radio', { name: 'Körper: 4 von 5, gut', exact: true })).toHaveAttribute('aria-checked', 'true')
+    })
+  })
+}
+
+test.describe('the battery card on a small phone', () => {
+  test.use({ viewport: { width: 360, height: 640 } })
+
+  for (const [name, data] of [
+    ['asking', null],
+    ['compact', withCheckin('2026-10-21T19:00:00+02:00', [2, 3, 4, 5])],
+  ] as const) {
+    test(`${name}: the button is at least 44 px, and nothing scrolls sideways, even with 130% text`, async ({ page }) => {
+      await open(page, data)
+      const target = name === 'asking' ? akkuCard(page).getByRole('button', { name: 'Check-in', exact: true }) : akkuButton(page)
+      const box = (await target.boundingBox())!
+      expect(box.height).toBeGreaterThanOrEqual(44)
+      expect(box.width).toBeGreaterThanOrEqual(44)
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(360)
+      const scrollsSideways = () => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+      expect(await scrollsSideways()).toBe(false)
+      await page.evaluate(() => (document.documentElement.style.fontSize = '130%'))
+      expect(await scrollsSideways()).toBe(false)
+      // Nur die Karte selbst: Die gemalten Waschungen der anderen Karten ragen aus ihrem Rahmen und werden dort abgeschnitten.
+      const card = name === 'asking' ? akkuCard(page) : akkuButton(page)
+      const sticksOut = await card.evaluate((root) =>
+        [root, ...root.querySelectorAll('*')].filter((e) => e.getBoundingClientRect().right > innerWidth + 0.5 || e.getBoundingClientRect().left < -0.5).length,
+      )
+      expect(sticksOut).toBe(0)
+    })
+  }
 })
 
 test('the two quick-start cards of before are gone', async ({ page }) => {

@@ -160,8 +160,9 @@ test('"Später", the back gesture, Escape and a tap beside the sheet close it wi
   await expect(dialog(page)).toHaveCount(0)
   await unsaved()
 
-  // Tippen daneben (oberhalb des Blatts)
+  // Tippen daneben (oberhalb des Blatts); die Fläche nimmt Tipps erst kurz nach dem Einblenden an
   await openSheet(page)
+  await expect(page.locator('.backdrop')).toBeEnabled()
   await page.mouse.click(8, 8)
   await expect(dialog(page)).toHaveCount(0)
   await unsaved()
@@ -618,8 +619,9 @@ test('the hack card closes with Escape, the back gesture and a tap beside it, an
   await expect(hackDialog(page)).toHaveCount(0)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Energie')
 
-  // Tippen daneben (oberhalb des Blatts)
+  // Tippen daneben (oberhalb des Blatts); die Fläche nimmt Tipps erst kurz nach dem Einblenden an
   await openCard(page, 'Big Domino')
+  await expect(page.locator('.backdrop')).toBeEnabled()
   await page.mouse.click(8, 8)
   await expect(hackDialog(page)).toHaveCount(0)
 

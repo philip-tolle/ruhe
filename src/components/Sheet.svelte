@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte'
+  import { tapArming } from '../lib/ui/arming.svelte'
   import { openLayer } from '../lib/ui/layers.svelte'
 
   // `kicker`: Der Titel ist eine kleine Überschrift in Versalien über dem eigentlichen Titel im Inhalt (die Hack-Karte:
@@ -7,6 +8,11 @@
   let { title, kicker = false, onClose, children }: { title: string; kicker?: boolean; onClose: () => void; children: Snippet } = $props()
 
   const headingId = $props.id()
+  // Ein Doppeltipp auf den Knopf, der ein Blatt öffnet, träfe mit dem zweiten Tipp die Fläche daneben, wenn der Knopf über
+  // dem Blatt liegt (die Karte „Dein Akku“ auf „Heute“ bei hohem Bildschirm): Das Blatt ginge sofort wieder zu. Das Tippen
+  // daneben nimmt deshalb erst nach kurzer Zeit an (siehe `tapArming`). Nur dieser Knopf: Escape und die Zurück-Geste
+  // rufen `onClose` ohne Sperre.
+  const arming = tapArming()
   let heading = $state<HTMLElement>()
 
   // Das Sheet ist eine Ebene: Die Zurück-Geste ruft onClose; beim Entfernen gibt die zurückgegebene
@@ -30,7 +36,7 @@
      macht ihn zum Bezugsrahmen für `fixed`. Ebenen über der Reiterleiste (10): Sheet 20, Dialog 30. -->
 <div class="layer">
   <!-- Tippen daneben schließt. Für Tastatur und Hilfstechnik gibt es Escape und die Zurück-Geste. -->
-  <button type="button" class="backdrop" tabindex="-1" aria-hidden="true" onclick={() => onClose()}></button>
+  <button type="button" class="backdrop" tabindex="-1" aria-hidden="true" disabled={!arming.armed} onclick={() => onClose()}></button>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby={headingId} tabindex="-1" onkeydown={onKeydown}>
     <h2 id={headingId} class:kicker tabindex="-1" bind:this={heading}>{title}</h2>
     <div class="body">

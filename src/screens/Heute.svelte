@@ -3,6 +3,7 @@
   import Motiv from '../components/Motiv.svelte'
   import OfflineMark from '../components/OfflineMark.svelte'
   import Waschung from '../components/Waschung.svelte'
+  import AkkuCard from '../components/energy/AkkuCard.svelte'
   import { breathProgram } from '../lib/audio/program'
   import { durationLabel, suggestionFor, type Meditation } from '../lib/content/catalog'
   import { vorschlagMotiv, type MotivId } from '../lib/content/motive'
@@ -109,6 +110,10 @@
     <h1>{greeting}</h1>
     <p class="lead" class:streak={days > 0}>{streakLine(days)}</p>
   </header>
+
+  <!-- Dein Akku (Spec M9 §3.7): ohne frischen Check-in die Frage und „Check-in“ (das Blatt öffnet sich hier, am App-Wurzel),
+       mit frischem eine schmale Karte, die zum Reiter „Energie“ führt. -->
+  <AkkuCard compact onOpen={() => onNavigate('energie')} />
 
   <!-- Waschung in der Farbe der Tageszeit oben rechts, um das Motiv; Überschrift, Titel und Beschreibung liegen links
        davon bzw. darunter. Der volle Knopf ist der einzige auf dem Bildschirm. -->

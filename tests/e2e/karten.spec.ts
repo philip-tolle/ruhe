@@ -720,7 +720,7 @@ test.describe('Heute', () => {
       await expect.poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth > 0))).toBe(true)
       const heights = () => page.locator('.card').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
       const withImages = await heights()
-      expect(withImages).toHaveLength(3)
+      expect(withImages).toHaveLength(4) // „Dein Akku“, Vorschlag, Zuletzt genutzt, Aktivitäten
 
       await page.route('**/images/waschungen/**', (route) => route.fulfill({ status: 404 }))
       await openHeute(page)
@@ -1150,9 +1150,9 @@ test.describe('card headings', () => {
     }
   }
 
-  test('Heute: „Zuletzt genutzt“ and „Aktivitäten“', async ({ page }) => {
+  test('Heute: „Dein Akku“, „Zuletzt genutzt“ and „Aktivitäten“', async ({ page }) => {
     await openHeute(page)
-    await expectCardHeadings(page, 2)
+    await expectCardHeadings(page, 3)
   })
 
   test('Meditieren: the timer card', async ({ page }) => {
