@@ -230,17 +230,41 @@ export function taktShape(h: Hack): { phase: TaktPhase; seconds: number; from: n
   })
 }
 
+/** Weicher Übergang von 0 nach 1 im Lauf einer Phase (`t` von 0 bis 1): 0,5 − cos(π·t)/2. */
+export function taktEase(t: number): number {
+  return 0.5 - Math.cos(Math.PI * t) / 2
+}
+
+interface TaktPlan {
+  phases: TaktPhaseDef[]
+  shape: ReturnType<typeof taktShape>
+  cycle: number
+  rounds: number
+}
+
+// Der Player fragt `taktAt` in jedem Bild; Phasen, Pegel und Rundenzahl eines Hacks ändern sich nicht, also
+// werden sie je Hack nur einmal gebaut.
+const taktPlans = new WeakMap<Hack, TaktPlan>()
+
+function taktPlan(h: Hack): TaktPlan {
+  let plan = taktPlans.get(h)
+  if (!plan) {
+    const phases = taktPhases(h)
+    if (phases.length === 0) throw new Error(`Kein Takt-Hack: ${h.id}`)
+    const cycle = cycleSeconds(phases)
+    plan = { phases, shape: taktShape(h), cycle, rounds: taktRounds(h, cycle) }
+    taktPlans.set(h, plan)
+  }
+  return plan
+}
+
 /**
  * Stand eines Takt-Hacks zur Zeit `elapsed`: Phase, Anweisung, Runde (ab 1), Fortschritt im Zyklus (0…1) und Pegel
- * mit weichem Übergang (0,5 − cos(π·t)/2). Eine Zeit genau auf der Grenze gehört zur nächsten Phase; ab dem Ende
+ * mit weichem Übergang (`taktEase`). Eine Zeit genau auf der Grenze gehört zur nächsten Phase; ab dem Ende
  * steht der Hack am Schluss der letzten Phase.
  */
 export function taktAt(h: Hack, elapsed: number): { phase: TaktPhase; say: string; round: number; rounds: number; cycleProgress: number; level: number } {
-  const phases = taktPhases(h)
-  if (phases.length === 0) throw new Error(`Kein Takt-Hack: ${h.id}`)
-  const shape = taktShape(h)
-  const cycle = cycleSeconds(phases)
-  const rounds = taktRounds(h, cycle)
+  const { phases, shape, cycle, rounds } = taktPlan(h)
   // `elapsed > 0` fängt auch NaN ab; die Position im Zyklus per Modulo, damit sich keine Rundungsfehler anhäufen.
   const t = elapsed > 0 ? elapsed : 0
   const done = t >= rounds * cycle
@@ -260,7 +284,7 @@ export function taktAt(h: Hack, elapsed: number): { phase: TaktPhase; say: strin
     round,
     rounds,
     cycleProgress: pos / cycle,
-    level: from + (to - from) * (0.5 - Math.cos(Math.PI * progress) / 2),
+    level: from + (to - from) * taktEase(progress),
   }
 }
 

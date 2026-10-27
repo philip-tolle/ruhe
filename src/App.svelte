@@ -4,8 +4,10 @@
   import TabBar from './components/TabBar.svelte'
   import UpdateToast from './components/UpdateToast.svelte'
   import CheckInSheet from './components/energy/CheckInSheet.svelte'
+  import HackCard from './components/energy/HackCard.svelte'
   import BreathPlayer from './components/player/BreathPlayer.svelte'
   import GuidedPlayer from './components/player/GuidedPlayer.svelte'
+  import HackPlayer from './components/player/HackPlayer.svelte'
   import TimerPlayer from './components/player/TimerPlayer.svelte'
   import Heute from './screens/Heute.svelte'
   import Energie from './screens/Energie.svelte'
@@ -14,6 +16,7 @@
   import Klaenge from './screens/Klaenge.svelte'
   import Ich from './screens/Ich.svelte'
   import { audio } from './lib/audio/engine-store.svelte'
+  import { hackById } from './lib/energy/hacks'
   import { pwa } from './lib/pwa/update.svelte'
   import { closeCheckIn, closeHackCard, energyUi } from './lib/ui/energy-ui.svelte'
   import { anyPlayerOpen, playerOpen } from './lib/ui/player-state'
@@ -24,13 +27,17 @@
 
   const program = $derived(audio.snap.program)
 
-  // Vollbild-Player von Timer, Atemübung und geführter Meditation: Laufansicht, solange die Sitzung
-  // läuft; danach ihr Abschluss, solange er offen ist (die End-Schalen klingen dabei noch aus).
+  // Vollbild-Player von Timer, Atemübung, Brain Hack und geführter Meditation: Laufansicht, solange die
+  // Sitzung läuft; danach ihr Abschluss, solange er offen ist (die End-Schalen klingen dabei noch aus).
   // Darunter ist die App unerreichbar.
   const timerPlayerVisible = $derived(playerOpen('timer'))
   const breathPlayerVisible = $derived(playerOpen('breath'))
+  const hackPlayerVisible = $derived(playerOpen('hack'))
   const guidedPlayerVisible = $derived(playerOpen('guided'))
   const appInert = $derived(anyPlayerOpen())
+
+  // Der Hack, dessen Karte offen ist; eine unbekannte Kennung zeigt keine.
+  const cardHack = $derived(energyUi.hackCard ? hackById(energyUi.hackCard) : null)
 
   // Solange Klänge laufen oder pausiert sind, liegt über der Reiterleiste eine Wiedergabeleiste:
   // im Klänge-Reiter dessen eigene Steuerung, sonst der Mini-Player (nur ohne Programm; ein Programm
@@ -92,6 +99,10 @@
   <BreathPlayer />
 {/if}
 
+{#if hackPlayerVisible}
+  <HackPlayer />
+{/if}
+
 {#if guidedPlayerVisible}
   <GuidedPlayer />
 {/if}
@@ -100,4 +111,9 @@
      Playern öffnen. Nur bei offenem Blatt eingehängt, damit jedes Öffnen mit leeren Zeilen beginnt. -->
 {#if energyUi.checkInOpen}
   <CheckInSheet />
+{/if}
+
+<!-- Ebenso die Hack-Karte: Sie öffnet sich von „Energie“ aus (Jetzt-Reset, Bibliothek) und schließt beim Reiterwechsel. -->
+{#if cardHack}
+  <HackCard hack={cardHack} {onNavigate} />
 {/if}

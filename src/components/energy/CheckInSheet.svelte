@@ -4,7 +4,7 @@
   import { AREAS, AREA_INFO, LEVEL_WORD, type EnergyArea, type EnergyLevel } from '../../lib/energy/areas'
   import { saveCheckin } from '../../lib/stats/store.svelte'
   import { tapArming } from '../../lib/ui/arming.svelte'
-  import { closeCheckIn } from '../../lib/ui/energy-ui.svelte'
+  import { closeCheckIn, energyUi } from '../../lib/ui/energy-ui.svelte'
 
   // Energie-Check-in als Blatt von unten (Spec M9 §3.3). Jede Zeile beginnt leer: Das Blatt wird nur bei
   // offenem Blatt eingehängt (App.svelte), also fängt jedes Öffnen von vorn an. „Speichern“ gilt erst mit
@@ -25,6 +25,8 @@
   function save() {
     if (!levels) return
     saveCheckin(levels)
+    // Ein neuer Check-in ist eine neue Grundlage des Jetzt-Resets: Die Vorschläge fangen von vorn an.
+    energyUi.resetSkip = 0
     closeCheckIn()
   }
 </script>

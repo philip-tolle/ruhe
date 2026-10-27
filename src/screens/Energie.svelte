@@ -1,5 +1,7 @@
 <script lang="ts">
   import AkkuCard from '../components/energy/AkkuCard.svelte'
+  import HackLibrary from '../components/energy/HackLibrary.svelte'
+  import ResetCard from '../components/energy/ResetCard.svelte'
   import { headerLine } from '../lib/energy/insights'
   import { stats } from '../lib/stats/store.svelte'
 
@@ -14,4 +16,6 @@
   </header>
 
   <AkkuCard />
+  <ResetCard />
+  <HackLibrary />
 </section>

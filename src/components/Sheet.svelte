@@ -2,7 +2,9 @@
   import { onMount, type Snippet } from 'svelte'
   import { openLayer } from '../lib/ui/layers.svelte'
 
-  let { title, onClose, children }: { title: string; onClose: () => void; children: Snippet } = $props()
+  // `kicker`: Der Titel ist eine kleine Überschrift in Versalien über dem eigentlichen Titel im Inhalt (die Hack-Karte:
+  // „Brain Hack“ über dem Namen des Hacks). Er bleibt der Name des Dialogs; nur die Schrift ist leiser.
+  let { title, kicker = false, onClose, children }: { title: string; kicker?: boolean; onClose: () => void; children: Snippet } = $props()
 
   const headingId = $props.id()
   let heading = $state<HTMLElement>()
@@ -30,7 +32,7 @@
   <!-- Tippen daneben schließt. Für Tastatur und Hilfstechnik gibt es Escape und die Zurück-Geste. -->
   <button type="button" class="backdrop" tabindex="-1" aria-hidden="true" onclick={() => onClose()}></button>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby={headingId} tabindex="-1" onkeydown={onKeydown}>
-    <h2 id={headingId} tabindex="-1" bind:this={heading}>{title}</h2>
+    <h2 id={headingId} class:kicker tabindex="-1" bind:this={heading}>{title}</h2>
     <div class="body">
       {@render children()}
     </div>
@@ -93,6 +95,19 @@
   h2 {
     align-self: flex-start;
     padding: 0 8px;
+  }
+
+  /* Wie die Kleinüberschrift der Karten auf „Heute“: Nunito, Versalien, weit gesetzt, gedämpft. */
+  h2.kicker {
+    color: var(--text-muted);
+    font-family: var(--font-body), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    /* rückt an den Titel im Inhalt heran: Der Abstand der Spalte (20 px) schrumpft hier auf 8 px */
+    margin-bottom: -12px;
   }
 
   .body {

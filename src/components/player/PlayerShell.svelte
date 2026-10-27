@@ -23,6 +23,7 @@
     continueLabel,
     children,
     footer,
+    doneView,
   }: {
     /** Name des Dialogs für Screenreader. */
     label: string
@@ -37,6 +38,8 @@
     children: Snippet
     /** Weitere Bedienelemente unter Pause/Beenden, nur in der Laufansicht. */
     footer?: Snippet
+    /** Der Abschluss dieser Art statt `SessionDone` (der Brain Hack fragt nach der Wirkung); ohne ihn gilt `SessionDone`. */
+    doneView?: Snippet
   } = $props()
 
   const running = $derived(run !== null)
@@ -63,8 +66,9 @@
     }
   }
 
-  // Ein Doppeltipp auf „Starten“ soll nicht auf „Pause“ oder „Beenden“ landen (siehe `tapArming`).
-  const arming = tapArming()
+  // Ein Doppeltipp auf „Starten“ soll nicht auf „Pause“ oder „Beenden“ landen (siehe `tapArming`). Der Rahmen bleibt
+  // vom Abschluss bis zu „Noch einmal“ stehen; auch dann beginnt die Sperre mit der Laufansicht neu.
+  const arming = tapArming(() => running)
 
   onMount(() => {
     title?.focus()
@@ -99,6 +103,8 @@
     </div>
 
     {@render footer?.()}
+  {:else if done && doneView}
+    {@render doneView()}
   {:else if done && isSessionKind(done.kind)}
     <SessionDone kind={done.kind} seconds={done.seconds} counted={done.counted} sessionId={done.sessionId} onDone={clearDone} />
   {/if}
