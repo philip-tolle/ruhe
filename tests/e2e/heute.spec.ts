@@ -217,6 +217,40 @@ test('a saved check-in turns the card into the compact one without leaving „He
   await expect(akkuButton(page)).toContainText('Sinn am niedrigsten · Jetzt-Reset')
 })
 
+// Die Zeit „jetzt“ steht still, solange die App im Speicher bleibt (Ruling R15): Beim Zurückkehren aus dem Hintergrund
+// (`visibilitychange`, ohne Neuladen) rechnet die Karte mit der neuen Uhrzeit. Sonst bliebe der Check-in ewig „frisch“ und
+// die Frage, die einzige Erinnerung (Spec M9 §6.8), käme nie.
+test('returning to the app after hours asks again: a check-in that has become old is no longer fresh', async ({ page }) => {
+  await open(page, withCheckin('2026-10-21T19:00:00+02:00', [4, 3, 2, 4])) // 1 Std. alt
+  await expect(akkuButton(page)).toContainText('Geist am niedrigsten · Jetzt-Reset')
+  await page.evaluate(() => ((window as unknown as { ruheMarker: boolean }).ruheMarker = true)) // übersteht nur ohne Neuladen
+
+  // Vier Stunden später, ohne dass ein Timer gefeuert hat (wie nach dem Entsperren): 5 Std. alt.
+  await page.clock.setFixedTime(new Date('2026-10-21T23:00:00+02:00'))
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+
+  await expect(akkuCard(page).getByText('Wie voll ist dein Akku?', { exact: true })).toBeVisible({ timeout: 2000 })
+  await expect(akkuButton(page)).toHaveCount(0)
+  await expect(akkuCard(page).getByRole('button', { name: 'Check-in', exact: true })).toBeVisible()
+  expect(await page.evaluate(() => (window as unknown as { ruheMarker?: boolean }).ruheMarker)).toBe(true)
+})
+
+// „Jetzt“ der Karte darf nie hinter dem Zeitpunkt eines Check-ins zurückliegen, den die Person gerade gespeichert hat:
+// Der Takt der App kennt nur die volle Minute, der Check-in trägt die genaue Zeit. Die Uhr rückt hier um 30 s vor, ohne
+// dass ein Takt gefeuert hat; der neue Check-in muss trotzdem sofort zählen.
+test('a check-in saved between two ticks of the clock counts at once', async ({ page }) => {
+  await open(page, null)
+  await page.clock.setFixedTime(new Date('2026-10-21T20:00:30+02:00'))
+  await akkuCard(page).getByRole('button', { name: 'Check-in', exact: true }).click()
+  await expect(checkInDialog(page).getByRole('button', { name: 'Später' })).toBeEnabled()
+  for (const [area, n, word] of [['Körper', 4, 'gut'], ['Gefühl', 3, 'mittel'], ['Geist', 2, 'schwach'], ['Sinn', 4, 'gut']] as const) {
+    await checkInDialog(page).getByRole('radio', { name: `${area}: ${n} von 5, ${word}`, exact: true }).click()
+  }
+  await checkInDialog(page).getByRole('button', { name: 'Speichern' }).click()
+  await expect(checkInDialog(page)).toHaveCount(0)
+  await expect(akkuButton(page)).toContainText('Geist am niedrigsten · Jetzt-Reset')
+})
+
 // Auf „Heute“ liegt „Check-in“ nicht im Blatt, sondern kann ÜBER ihm liegen: Der zweite Tipp eines Doppeltipps trifft dann die
 // Fläche daneben, die das Blatt schließt. Das Blatt muss offen bleiben und darf keinen Punkt gewählt haben (Ruling R14).
 // Auf 360 × 640 und 412 × 839 deckt das Blatt den Knopf noch ab (dort trifft der zweite Tipp einen Punkt); ab etwa 1000 px

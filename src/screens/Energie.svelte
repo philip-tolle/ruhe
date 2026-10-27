@@ -6,9 +6,11 @@
   import WeekCard from '../components/energy/WeekCard.svelte'
   import { headerLine } from '../lib/energy/insights'
   import { stats } from '../lib/stats/store.svelte'
+  import { appNow } from '../lib/ui/tageszeit.svelte'
 
-  // Kopfzeile wie die Karte: die Zeit beim Berechnen, neu bei jeder Änderung der Daten (wie auf „Heute“ und „Ich“).
-  const line = $derived(headerLine(stats.data.energyCheckins ?? [], new Date()))
+  // Kopfzeile wie die Karte: die Zeit der App (`appNow`), neu bei jeder Änderung der Daten, mit jeder vollen Minute
+  // und bei der Rückkehr in die App.
+  const line = $derived(headerLine(stats.data.energyCheckins ?? [], appNow()))
 </script>
 
 <section class="screen">

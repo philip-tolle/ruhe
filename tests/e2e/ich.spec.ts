@@ -677,7 +677,7 @@ test('import merges new sessions, skips known ones and takes over the settings',
   // Der Hinweis sagt vorher, dass die Einstellungen aus der Datei kommen.
   await expect(
     page.getByText(
-      'Sichere deine Sitzungen und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen dazu, die Einstellungen werden aus der Datei übernommen.',
+      'Sichere deine Sitzungen, Energie-Einträge und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen dazu, die Einstellungen werden aus der Datei übernommen.',
     ),
   ).toBeVisible()
   const status = backupStatus(page)
@@ -715,6 +715,55 @@ test('import merges new sessions, skips known ones and takes over the settings',
   await chooseFile(page, { name: 'mehr.json', content: JSON.stringify(more) })
   await expect(status).toHaveText('2 neue Sitzungen importiert.')
   await expect(value(page, 'Sitzungen')).toHaveText('7')
+})
+
+// Energie-Daten im Backup (Spec M9 §6.1, §9): Alles ausgedacht. Der Import fügt nur Einträge mit unbekannter Kennung hinzu und
+// nennt sie an der Meldung („Dazu … neue Energie-Einträge.“); dieselbe Datei noch einmal bringt nichts Neues, und ein altes
+// Backup ohne Energie-Felder lässt die Energie-Daten des Geräts, wie sie sind.
+test('import adds new energy entries once, names them in the message and leaves the energy data alone for an old backup', async ({ page }) => {
+  await open(page)
+  const status = backupStatus(page)
+  const checkin = (id: string, at: string, levels: number[]) => ({
+    id,
+    at,
+    levels: { koerper: levels[0], gefuehl: levels[1], geist: levels[2], sinn: levels[3] },
+  })
+  const energy = {
+    energyCheckins: [checkin('e-1', '2026-10-20T09:00:00+02:00', [4, 3, 2, 4]), checkin('e-2', '2026-10-21T13:00:00+02:00', [3, 3, 3, 3])],
+    hackRuns: [{ id: 'h-1', at: '2026-10-20T09:10:00+02:00', hack: 'seufzer', area: 'gefuehl', seconds: 60, before: 2, after: 3 }],
+    focusSprints: [{ id: 'f-1', at: '2026-10-20T10:00:00+02:00', planned: 25, seconds: 1500, task: 'Beispielaufgabe' }],
+  }
+  const withEnergy = { ...backupOf(SESSIONS), ...energy }
+
+  // Vier neue Energie-Einträge (zwei Check-ins, ein Lauf, ein Sprint), keine neue Sitzung.
+  await chooseFile(page, { name: 'mit-energie.json', content: JSON.stringify(withEnergy) })
+  await expect(status).toHaveText('0 neue Sitzungen importiert. Dazu 4 neue Energie-Einträge.')
+  let data = await stored(page)
+  expect(data.energyCheckins.map((c: { id: string }) => c.id)).toEqual(['e-1', 'e-2'])
+  expect(data.hackRuns.map((r: { id: string }) => r.id)).toEqual(['h-1'])
+  expect(data.focusSprints.map((f: { id: string }) => f.id)).toEqual(['f-1'])
+
+  // Dieselbe Datei noch einmal: nichts Neues, keine Meldung zu Energie, nichts doppelt.
+  await chooseFile(page, { name: 'mit-energie.json', content: JSON.stringify(withEnergy) })
+  await expect(status).toHaveText('0 neue Sitzungen importiert.')
+  data = await stored(page)
+  expect(data.energyCheckins).toHaveLength(2)
+  expect(data.hackRuns).toHaveLength(1)
+  expect(data.focusSprints).toHaveLength(1)
+
+  // Ein einzelner neuer Eintrag steht im Singular; die bekannten bleiben unverändert.
+  const more = { ...withEnergy, energyCheckins: [...energy.energyCheckins, checkin('e-3', '2026-10-21T18:00:00+02:00', [5, 5, 5, 5])] }
+  await chooseFile(page, { name: 'ein-neuer.json', content: JSON.stringify(more) })
+  await expect(status).toHaveText('0 neue Sitzungen importiert. Dazu 1 neuer Energie-Eintrag.')
+  data = await stored(page)
+  expect(data.energyCheckins.map((c: { id: string }) => c.id)).toEqual(['e-1', 'e-2', 'e-3'])
+
+  // Ein altes Backup ohne Energie-Felder lässt die Energie-Daten des Geräts unverändert.
+  const before = { energyCheckins: data.energyCheckins, hackRuns: data.hackRuns, focusSprints: data.focusSprints }
+  await chooseFile(page, { name: 'alt.json', content: JSON.stringify(backupOf(SESSIONS)) })
+  await expect(status).toHaveText('0 neue Sitzungen importiert.')
+  data = await stored(page)
+  expect({ energyCheckins: data.energyCheckins, hackRuns: data.hackRuns, focusSprints: data.focusSprints }).toEqual(before)
 })
 
 test('an invalid file explains itself and changes nothing', async ({ page }) => {

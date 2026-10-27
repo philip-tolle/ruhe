@@ -3,14 +3,16 @@
   import { freshCheckin, weakestArea } from '../../lib/energy/insights'
   import { stats } from '../../lib/stats/store.svelte'
   import { openCheckIn } from '../../lib/ui/energy-ui.svelte'
+  import { appNow } from '../../lib/ui/tageszeit.svelte'
 
   // „Dein Akku“ (Spec M9 §3.2, §3.7): mit frischem Check-in (höchstens 3 Std.) die vier Akkus in den Bereichsfarben,
   // gefüllt nach Stufe; sonst die Frage und „Check-in“. `compact` ist die schmale Karte auf „Heute“: Sie zeigt die
   // Akkus klein, nennt den niedrigsten Bereich und ist als Ganzes ein Knopf (`onOpen`, dort der Reiter „Energie“).
-  // Ohne frischen Check-in gleicht sie der vollen Karte. „Jetzt“ ist wie auf „Heute“ und „Ich“ die Zeit beim Berechnen.
+  // Ohne frischen Check-in gleicht sie der vollen Karte. „Jetzt“ ist die Zeit der App (`appNow`): neu bei jeder
+  // Änderung der Daten und mit jeder vollen Minute bzw. der Rückkehr in die App.
   let { compact = false, onOpen }: { compact?: boolean; onOpen?: () => void } = $props()
 
-  const fresh = $derived(freshCheckin(stats.data.energyCheckins ?? [], new Date()))
+  const fresh = $derived(freshCheckin(stats.data.energyCheckins ?? [], appNow()))
 </script>
 
 <!-- Ein Akku: fünf Felder von unten, bis zur Stufe in der Bereichsfarbe. Schmuck; Name und Stufe stehen als Text daneben. -->

@@ -213,8 +213,8 @@
   <div class="card">
     <h2>Backup</h2>
     <p class="hint">
-      Sichere deine Sitzungen und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen dazu, die
-      Einstellungen werden aus der Datei übernommen.
+      Sichere deine Sitzungen, Energie-Einträge und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen
+      dazu, die Einstellungen werden aus der Datei übernommen.
     </p>
     <div class="actions">
       <button type="button" class="button secondary" onclick={exportBackup}>Backup exportieren</button>

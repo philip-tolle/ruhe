@@ -1222,3 +1222,32 @@ test.describe('on a 360px phone with 130% text, sprint and week', () => {
     await expect(sprintDialog(page)).toHaveCount(0)
   })
 })
+
+// ── Die Zeit steht nicht still (Ruling R15) ──────────────────────────────────────────────────────────────────────
+
+// Bleibt die App im Speicher und kommt aus dem Hintergrund zurück (`visibilitychange`, kein Neuladen), rechnen Kopfzeile,
+// Akku, Reset und Woche mit der neuen Uhrzeit: Ein Check-in, der alt geworden ist, gilt nicht mehr als frisch, und das
+// Raster rückt mit dem Kalendertag weiter.
+test('returning to the app after hours moves the header, the battery, the reset and the week on without a reload', async ({ page }) => {
+  await open(page, { checkins: [checkin('c-1', '2026-10-21T13:00:00+02:00', [4, 3, 2, 4])] }) // NOW ist 14 Uhr
+  await expect(page.getByText('Letzter Check-in vor 1 Std.')).toBeVisible()
+  await expect(akkuCard(page).getByRole('button', { name: 'Neuer Check-in' })).toBeVisible()
+  await expect(resetCard(page).getByText('Dein Geist ist gerade am niedrigsten.')).toBeVisible()
+  await expect(weekCard(page).getByRole('img').first()).toHaveAccessibleName('Körper, Donnerstag: kein Check-in')
+  await page.evaluate(() => ((window as unknown as { ruheMarker: boolean }).ruheMarker = true)) // übersteht nur ohne Neuladen
+
+  // Fünf Stunden später (18 Uhr): 5 Std. alt, nicht mehr frisch.
+  await page.clock.setFixedTime(new Date('2026-10-21T18:00:00+02:00'))
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await expect(page.getByText('Letzter Check-in vor 5 Std.')).toBeVisible({ timeout: 2000 })
+  await expect(akkuCard(page).getByText('Wie voll ist dein Akku?')).toBeVisible()
+  await expect(akkuCard(page).getByRole('button', { name: 'Check-in', exact: true })).toBeVisible()
+  await expect(resetCard(page).getByText('Was braucht gerade Energie?')).toBeVisible()
+
+  // Einen Tag später (Donnerstag): Der Check-in ist von gestern, das Raster beginnt am Freitag.
+  await page.clock.setFixedTime(new Date('2026-10-22T14:00:00+02:00'))
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await expect(page.getByText('Noch kein Check-in heute')).toBeVisible({ timeout: 2000 })
+  await expect(weekCard(page).getByRole('img').first()).toHaveAccessibleName('Körper, Freitag: kein Check-in')
+  expect(await page.evaluate(() => (window as unknown as { ruheMarker?: boolean }).ruheMarker)).toBe(true)
+})

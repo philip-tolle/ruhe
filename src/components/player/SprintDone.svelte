@@ -123,9 +123,10 @@
     text-align: left;
   }
 
-  /* Kleine Überschrift in Versalien wie „Jetzt-Reset“ auf der Karte; die Größe setzt sie selbst. */
+  /* Kleine Überschrift in Versalien wie „Jetzt-Reset“ auf der Karte; Schrift und Größe setzt sie selbst (ein h3 erbt sonst Fraunces). */
   .kicker {
     color: var(--accent);
+    font-family: var(--font-body), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.14em;

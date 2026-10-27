@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 // Die echten Farbwerte samt 1,5-s-Überblendung: theme-color muss trotzdem sofort den Zielwert tragen.
 import '../../src/app.css'
-import { followTageszeit, tageszeitUi } from '../../src/lib/ui/tageszeit.svelte'
+import { appNow, followTageszeit, tageszeitUi } from '../../src/lib/ui/tageszeit.svelte'
 
 const root = document.documentElement
 
@@ -110,6 +110,39 @@ test('switches immediately on visibilitychange', () => {
   expect(root.dataset.tageszeit).toBe('abend')
   expect(tageszeitUi.current).toBe('abend')
   expect(meta.content).toBe(settledSkyTop())
+})
+
+test('tageszeitUi.now follows the clock: at the start, with each minute and on visibilitychange', () => {
+  setClock(10, 59, 30)
+  stop = followTageszeit(now)
+  expect(tageszeitUi.now).toBe(clock.getTime())
+
+  advance(30_000) // 11:00:00, der Takt
+  expect(tageszeitUi.now).toBe(clock.getTime())
+
+  // Stunden später zurück in die App: kein Takt, aber sofort die neue Zeit.
+  clock = new Date(2026, 9, 22, 15, 20, 10)
+  document.dispatchEvent(new Event('visibilitychange'))
+  expect(tageszeitUi.now).toBe(clock.getTime())
+
+  // Eine versteckte Seite rechnet nicht.
+  const before = tageszeitUi.now
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  clock = new Date(2026, 9, 22, 18, 0, 0)
+  document.dispatchEvent(new Event('visibilitychange'))
+  expect(tageszeitUi.now).toBe(before)
+})
+
+test('appNow is never behind the real clock, even between two ticks', () => {
+  vi.setSystemTime(new Date(2026, 9, 22, 12, 0, 0))
+  setClock(12, 0, 0)
+  stop = followTageszeit(now)
+  expect(appNow().getTime()).toBe(tageszeitUi.now)
+
+  // 30 s nach dem letzten Takt: Die Uhr ist weiter, der Wert des Takts nicht.
+  vi.setSystemTime(new Date(2026, 9, 22, 12, 0, 30))
+  expect(tageszeitUi.now).toBe(new Date(2026, 9, 22, 12, 0, 0).getTime())
+  expect(appNow().getTime()).toBe(new Date(2026, 9, 22, 12, 0, 30).getTime())
 })
 
 test('a hidden page does not switch on visibilitychange', () => {

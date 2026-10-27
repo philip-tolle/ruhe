@@ -8,6 +8,7 @@
   import { resetSequence } from '../../lib/energy/reset'
   import { stats } from '../../lib/stats/store.svelte'
   import { energyUi, openHackCard } from '../../lib/ui/energy-ui.svelte'
+  import { appNow } from '../../lib/ui/tageszeit.svelte'
 
   // Jetzt-Reset (Spec M9 §3.2, §6.7): ein Vorschlag, was dem schwächsten Bereich jetzt hilft. Mit frischem Check-in ist
   // das der niedrigste Bereich („Dein Geist ist gerade am niedrigsten.“); sonst wählt die Person den Bereich. „Anderer“
@@ -15,10 +16,10 @@
   // ist, nicht, woher der Vorschlag kommt. „Starten“ öffnet die Hack-Karte; gestartet wird erst dort.
   const id = $props.id()
 
-  // „Jetzt“ ist wie auf „Heute“ und „Ich“ die Zeit beim Berechnen: neu bei jeder Änderung der Daten und beim Öffnen des
-  // Reiters (Zeitfenster der Hacks, Frische des Check-ins), keine tickende Uhr.
+  // „Jetzt“ ist die Zeit der App (`appNow`): neu bei jeder Änderung der Daten, mit jeder vollen Minute und bei der
+  // Rückkehr in die App (Zeitfenster der Hacks, Frische des Check-ins).
   const view = $derived.by(() => {
-    const now = new Date()
+    const now = appNow()
     const fresh = freshCheckin(stats.data.energyCheckins ?? [], now)
     const levels = fresh?.levels ?? null
     const start = energyUi.resetStart

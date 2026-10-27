@@ -22,7 +22,9 @@
 
   const title = $derived(AREA_INFO[area].title)
 
-  // Pfeiltasten, Pos1 und Ende wählen wie in einer Radiogruppe und nehmen den Fokus mit (wie `CalmCheckIn`).
+  // Pfeiltasten, Pos1 und Ende wählen wie in einer Radiogruppe und nehmen den Fokus mit (wie `CalmCheckIn`). Zeigt die Taste auf
+  // die Stufe, die schon gewählt ist, bewegt sie nur den Fokus: Wer die Punkte einsetzt, darf dieselbe Stufe noch einmal als
+  // „zurücknehmen“ deuten (der Brain Hack), und eine Taste soll nichts zurücknehmen.
   function onKeydown(event: KeyboardEvent & { currentTarget: HTMLElement }, index: number) {
     const last = LEVELS.length - 1
     let next: number
@@ -45,7 +47,7 @@
         return
     }
     event.preventDefault()
-    onPick(LEVELS[next])
+    if (LEVELS[next] !== value) onPick(LEVELS[next])
     event.currentTarget.parentElement!.querySelectorAll<HTMLElement>('[role="radio"]')[next].focus()
   }
 </script>

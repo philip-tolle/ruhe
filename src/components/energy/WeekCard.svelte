@@ -13,14 +13,15 @@
     WHAT_WORKS_HINT,
   } from '../../lib/energy/insights'
   import { stats } from '../../lib/stats/store.svelte'
+  import { appNow } from '../../lib/ui/tageszeit.svelte'
 
   // „Deine Woche“ (Spec M9 §3.2 Punkt 6, §6.3–§6.6): das Raster der letzten 7 Tage mit den vier Bereichen, darunter die
-  // Muster-Sätze (oder der Hinweis, wann sie kommen), die Fokus-Zeile und „Was bei dir wirkt“. „Jetzt“ ist wie auf „Heute“
-  // und „Ich“ die Zeit beim Berechnen: neu bei jeder Änderung der Daten und beim Öffnen des Reiters, keine tickende Uhr.
+  // Muster-Sätze (oder der Hinweis, wann sie kommen), die Fokus-Zeile und „Was bei dir wirkt“. „Jetzt“ ist die Zeit der App
+  // (`appNow`): neu bei jeder Änderung der Daten, mit jeder vollen Minute und bei der Rückkehr in die App.
   const id = $props.id()
 
   const view = $derived.by(() => {
-    const now = new Date()
+    const now = appNow()
     const checkins = stats.data.energyCheckins ?? []
     const patterns = hasPatternData(checkins, now)
     return {

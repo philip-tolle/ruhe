@@ -3,6 +3,8 @@
 // Oberfläche braucht; die Engine ist gemockt. Die Pause selbst (ein Hack-Lauf) prüft der Test hier statt in Playwright:
 // Ein dritter 5-Minuten-Sprint im Browser wäre zu teuer.
 import { afterEach, beforeEach, expect, test, vi, type MockInstance } from 'vitest'
+// Die echten Schriften und Überschriften-Stile: Der Test zur Schrift des Pausen-Vorschlags braucht sie.
+import '../../src/app.css'
 import { flushSync, mount, unmount } from 'svelte'
 import SprintDone from '../../src/components/player/SprintDone.svelte'
 import { engine } from '../../src/lib/audio/engine'
@@ -63,6 +65,15 @@ test('it says what was done and suggests the eye break after a 25 minute sprint 
   expect(button('Starten')).toBeTruthy()
   expect(button('Check-in')).toBeTruthy()
   expect(button('Fertig')).toBeTruthy()
+})
+
+test('the small heading "Pausen-Vorschlag" is set in the body font like "Jetzt-Reset", not in the display font of h3', () => {
+  show(25)
+  const kicker = [...target!.querySelectorAll('h3')].find((h) => h.textContent === 'Pausen-Vorschlag')!
+  const style = getComputedStyle(kicker)
+  expect(style.fontFamily).toContain('Nunito Sans Variable')
+  expect(style.fontFamily).not.toContain('Fraunces')
+  expect(style.textTransform).toBe('uppercase')
 })
 
 test('the minutes are the real time, rounded down', () => {

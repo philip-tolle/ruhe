@@ -3,6 +3,9 @@ import { tageszeit, type Tageszeit } from '../time/tageszeit'
 // Die Stimmung der App (morgen/tag/abend) folgt der Uhr: `data-tageszeit` am <html> trägt die Farben
 // (src/app.css), `tageszeitUi.current` die Bildschirme (Begrüßung, Vorschlag). Den ersten Wert setzt
 // schon das Inline-Skript in index.html vor dem ersten Zeichnen; von hier an hält ihn `followTageszeit`.
+// `tageszeitUi.now` ist „jetzt“ in Millisekunden, mit demselben Takt (volle Minute und Rückkehr in die App). Wer „jetzt“
+// zum Rechnen braucht (Frische eines Check-ins, Zeitfenster, Wochenraster), liest es über `appNow()` in seinem `$derived`,
+// damit eine App, die im Speicher blieb, nach Stunden neu rechnet, statt bei der Zeit des letzten Datenstands zu stehen.
 
 const MOODS: readonly string[] = ['morgen', 'tag', 'abend'] satisfies Tageszeit[]
 
@@ -11,7 +14,16 @@ function initial(): Tageszeit {
   return preset && MOODS.includes(preset) ? (preset as Tageszeit) : tageszeit(new Date())
 }
 
-export const tageszeitUi: { current: Tageszeit } = $state({ current: initial() })
+export const tageszeitUi: { current: Tageszeit; now: number } = $state({ current: initial(), now: Date.now() })
+
+/**
+ * „Jetzt“ für Anzeigen, die damit rechnen. Im `$derived` gelesen, rechnet die Anzeige mit jedem Takt neu (volle Minute,
+ * Rückkehr in die App). Der Takt kennt nur die volle Minute; die Uhr selbst geht weiter: Ein Check-in, der eben gespeichert
+ * wurde, trägt die genaue Zeit und läge sonst bis zu einer Minute „in der Zukunft“ und zählte nicht als frisch.
+ */
+export function appNow(): Date {
+  return new Date(Math.max(tageszeitUi.now, Date.now()))
+}
 
 /**
  * Wert einer Stimmungsfarbe, bei dem `root` ankommt. Läuft die Überblendung (1,5 s, nur ohne
@@ -37,7 +49,9 @@ export function followTageszeit(now: () => Date = () => new Date()): () => void 
 
   function apply() {
     // Stimmung und Attribut zuerst: Sie tragen die Oberfläche und dürfen an der Statusleiste nicht scheitern.
-    const mood = tageszeit(now())
+    const at = now()
+    tageszeitUi.now = at.getTime()
+    const mood = tageszeit(at)
     tageszeitUi.current = mood
     if (root.dataset.tageszeit !== mood) root.dataset.tageszeit = mood
     // Die Statusleiste (Android) bekommt die Farbe oben am Himmel. Lässt sie sich nicht bestimmen, bleibt
