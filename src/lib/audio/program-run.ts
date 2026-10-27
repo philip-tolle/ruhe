@@ -11,7 +11,7 @@ const START_DELAY = 0.05
 
 // Laufende Sitzung für die Oberfläche; Zeiten in Sekunden ab Programmstart bzw. Dateianfang.
 export interface ProgramSnapshot {
-  kind: 'timer' | 'breath' | 'guided'
+  kind: 'timer' | 'breath' | 'hack' | 'focus' | 'guided'
   ref: string
   title: string
   lead: number
@@ -19,7 +19,7 @@ export interface ProgramSnapshot {
   finish: number
   elapsed: number // auf der Audio-Uhr (Pausen zählen nicht); geführt: Position in der Datei
   ended: boolean // gezählte Zeit vorbei und Ergebnis gemeldet; es klingt noch aus
-  noBowl: boolean // ein Timer, dessen Klangschale nicht geladen werden konnte: Er läuft still
+  noBowl: boolean // ein Programm mit Klangschale (Timer, Hack, Sprint), die nicht geladen werden konnte: Es läuft still
   error: boolean // eine geführte Meditation, deren Datei nicht lädt; bei Programmen nie
 }
 
@@ -73,8 +73,8 @@ export class ProgramRun implements SessionRun {
     gain.gain.value = 1
     gain.connect(sink)
     this.start = { t0, date: new Date() }
-    // Nur der Timer spielt die Klangschale; eine Atemübung braucht sie nie.
-    this.noBowl = spec.kind === 'timer' && assets.strike === null
+    // Nur wer die Klangschale verlangt, vermisst sie; eine Atemübung braucht sie nie.
+    this.noBowl = spec.assets.includes('strike') && assets.strike === null
     this.sound = { gain, sink, stop: spec.schedule(ctx, gain, t0, assets) }
     // Am Ende zählt genau die geplante Dauer: Kommt eine Marke verzögert an (gedrosselter
     // Hintergrund), ändert das nichts. Ausgeklungen heißt, die gezählte Zeit ist sicher vorbei.
@@ -138,7 +138,7 @@ export class ProgramRun implements SessionRun {
   private complete(seconds: number): void {
     if (this.hasReported || !this.start) return
     this.hasReported = true
-    const { kind, ref } = this.spec
-    this.report({ kind, ref, start: this.start.date, seconds })
+    const { kind, ref, note } = this.spec
+    this.report({ kind, ref, start: this.start.date, seconds, ...(note === undefined ? {} : { note }) })
   }
 }

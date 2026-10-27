@@ -28,20 +28,9 @@ function commit(data: AppData): void {
 }
 
 /**
- * Die ID der neuen Sitzung, wenn sie zählt (ab 60 s) – auch dann, wenn das Speichern scheitert
- * (sie steht im Speicher der App); sonst `null`.
- */
-export function recordSession(result: SessionResult): string | null {
-  const id = crypto.randomUUID()
-  const next = withSession(stats.data, result, id)
-  if (!next) return null
-  commit(next)
-  return id
-}
-
-/**
- * Leitet ein Ergebnis nach seiner Art weiter: Hack-Lauf, Fokus-Sprint oder Sitzung (wie `recordSession`). Gibt die ID
- * des neuen Eintrags zurück, wenn er zählt (auch bei fehlgeschlagenem Speichern), sonst `null`.
+ * Leitet ein Ergebnis nach seiner Art weiter: Hack-Lauf (ab 30 s), Fokus-Sprint (ab 5 min) oder Sitzung (ab 60 s).
+ * Gibt die ID des neuen Eintrags zurück, wenn er zählt (auch bei fehlgeschlagenem Speichern – er steht dann im
+ * Speicher der App), sonst `null`.
  */
 export function recordResult(r: SessionResult): string | null {
   const id = crypto.randomUUID()

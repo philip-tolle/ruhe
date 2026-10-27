@@ -1,13 +1,15 @@
 // Abschluss-Anzeige: die zuletzt beendete Sitzung, bis die Person „Fertig“ tippt oder zurückgeht.
 // Gesetzt wird sie in main.ts über `connectSessions`; die Player zeigen solange ihren Abschluss.
 import { engine } from '../audio/engine'
-import type { ProgramSpec } from '../audio/program'
+import { focusProgram, hackProgram, type ProgramSpec } from '../audio/program'
 import type { Meditation } from '../content/catalog'
+import { hackById } from '../energy/hacks'
 import { absoluteAudioUrl, guidedLevels } from '../meditation/guided-view'
 import { saveForOffline } from '../offline/status.svelte'
+import type { BackgroundId } from '../sounds/catalog'
 import { saveBackgroundForOffline } from './offline-ui.svelte'
-import type { ResultKind } from '../stats/schema'
-import { setLastUsed, stats } from '../stats/store.svelte'
+import type { FocusMinutes, ResultKind } from '../stats/schema'
+import { setLastUsed, stats, updateSettings } from '../stats/store.svelte'
 
 export interface SessionDoneInfo {
   kind: ResultKind
@@ -17,6 +19,10 @@ export interface SessionDoneInfo {
   /** Die gespeicherte Sitzung (für den Ruhe-Check-in); `null`, wenn sie nicht zählt. */
   sessionId: string | null
 }
+
+// Die reine Abbildung Ergebnis → Abschluss liegt in session-wiring.ts (ohne Runen, damit sie sich ohne
+// Oberfläche testen lässt); die Oberfläche greift hier darauf zu.
+export { doneInfoFor } from '../session-wiring'
 
 export const sessionUi: { done: SessionDoneInfo | null } = $state({ done: null })
 
@@ -33,6 +39,24 @@ export function startSession(spec: ProgramSpec): void {
   clearDone()
   engine.startProgram(spec).catch(() => {})
   saveBackgroundForOffline(spec.background)
+}
+
+/**
+ * Startet einen Brain Hack aus der Oberfläche (im Tipp, wie `startSession`). Eine unbekannte Kennung
+ * tut nichts. „Zuletzt genutzt“ bleibt: Es kennt nur Meditationen, Timer und Atemübungen.
+ */
+export function startHack(id: string): void {
+  const hack = hackById(id)
+  if (hack) startSession(hackProgram(hack))
+}
+
+/**
+ * Startet einen Fokus-Sprint aus der Oberfläche (im Tipp, wie `startSession`). Dauer und Hintergrund
+ * gelten beim nächsten Mal wieder (`settings.focus`); die Aufgabe nur für diesen Sprint.
+ */
+export function startSprint(minutes: FocusMinutes, task: string, sound: BackgroundId | null): void {
+  updateSettings({ focus: { minutes, sound } })
+  startSession(focusProgram(minutes, sound, task))
 }
 
 /**

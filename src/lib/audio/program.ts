@@ -1,11 +1,14 @@
-// Programme: Meditations-Timer und Atemübungen als Folge eingeplanter Klänge. Ein Programm sagt
-// nur, was wann erklingt (Sekunden ab Programmstart); die Engine legt den Start auf der Audio-Uhr
-// fest, lässt `schedule` alles auf einmal einplanen und meldet am Ende das Sitzungsergebnis.
-// So hängt nichts Hörbares an JS-Timern, die Android im Hintergrund drosselt.
+// Programme: Meditations-Timer, Atemübungen, Brain Hacks und Fokus-Sprints als Folge eingeplanter
+// Klänge. Ein Programm sagt nur, was wann erklingt (Sekunden ab Programmstart); die Engine legt den
+// Start auf der Audio-Uhr fest, lässt `schedule` alles auf einmal einplanen und meldet am Ende das
+// Ergebnis. So hängt nichts Hörbares an JS-Timern, die Android im Hintergrund drosselt.
 import { breathPlan, patternOf, type BreathPattern, type BreathPatternId } from '../breath/patterns'
-import { timerPlan, type TimerSettings } from '../meditation/timer-plan'
+import { hackLength, stepBoundaries, type Hack } from '../energy/hacks'
+import { END_STRIKES, TIMER_TAIL, timerPlan, type TimerSettings } from '../meditation/timer-plan'
 import type { BackgroundId } from '../sounds/catalog'
+import type { FocusMinutes } from '../stats/schema'
 import { scheduleBreath, type BreathBuffers } from './breath-sound'
+import { scheduleCue } from './cue'
 import { scheduleStrike } from './strike'
 
 export interface ProgramAssets {
@@ -14,9 +17,12 @@ export interface ProgramAssets {
 }
 
 export interface ProgramSpec {
-  kind: 'timer' | 'breath'
-  ref: string // 'timer' bzw. Kennung des Atemmusters (fest oder eigen)
+  kind: 'timer' | 'breath' | 'hack' | 'focus'
+  // 'timer', Kennung des Atemmusters (fest oder eigen), des Hacks bzw. 'focus-<Minuten>'
+  ref: string
   title: string // Media-Session-Titel
+  // Wird dem Ergebnis mitgegeben: beim Fokus-Sprint die Aufgabe.
+  note?: string
   // Sekunden ab Programmstart: Vorlauf, gezählte Dauer danach, Ende nach dem Ausklingen.
   lead: number
   length: number
@@ -34,6 +40,14 @@ export interface ProgramSpec {
 interface Scheduled {
   node: AudioScheduledSourceNode
   at: number // Einsatz auf der Audio-Uhr
+}
+
+// Plant je eine Klangschale zu den Zeiten `offsets` (Sekunden ab `t0`).
+function strikesAt(ctx: BaseAudioContext, destination: AudioNode, strike: AudioBuffer, t0: number, offsets: readonly number[]): Scheduled[] {
+  return offsets.map((offset) => {
+    const at = t0 + offset
+    return { node: scheduleStrike(ctx, destination, strike, at), at }
+  })
 }
 
 // Was bis jetzt nicht eingesetzt hat, stoppt sofort: Unter dem Ausblenden des Programms begänne
@@ -68,11 +82,7 @@ export function timerProgram(s: TimerSettings): ProgramSpec {
     assets: ['strike'],
     schedule(ctx, destination, t0, { strike }) {
       if (!strike) return () => {}
-      const scheduled = plan.strikes.map((offset) => {
-        const at = t0 + offset
-        return { node: scheduleStrike(ctx, destination, strike, at), at }
-      })
-      return stopper(ctx, scheduled)
+      return stopper(ctx, strikesAt(ctx, destination, strike, t0, plan.strikes))
     },
   }
 }
@@ -114,6 +124,56 @@ export function breathProgram(of: BreathPattern | BreathPatternId, minutes: numb
         if (node) scheduled.push({ node, at })
       })
       return stopper(ctx, scheduled)
+    },
+  }
+}
+
+// Nach der Schale am Ende eines Hacks bleiben 8 s zum Ausklingen, bevor das Programm endet.
+export const HACK_TAIL = 8
+
+// Brain Hack: ein Hinweiston an jedem Schrittwechsel (nur „schritte“) und eine Klangschale am Ende.
+// Ohne Hintergrund. Die Hinweistöne sind Oszillatoren und brauchen die Aufnahme nicht; fehlt die
+// Klangschale, erklingen sie trotzdem, und das Ende bleibt still.
+export function hackProgram(h: Hack): ProgramSpec {
+  const length = hackLength(h)
+  const cues = stepBoundaries(h)
+  return {
+    kind: 'hack',
+    ref: h.id,
+    title: h.title,
+    lead: 0,
+    length,
+    finish: length + HACK_TAIL,
+    background: null,
+    assets: ['strike'],
+    schedule(ctx, destination, t0, { strike }) {
+      const scheduled: Scheduled[] = cues.map((offset) => {
+        const at = t0 + offset
+        return { node: scheduleCue(ctx, destination, at), at }
+      })
+      if (strike) scheduled.push(...strikesAt(ctx, destination, strike, t0, [length]))
+      return stopper(ctx, scheduled)
+    },
+  }
+}
+
+// Fokus-Sprint: still bis zum Ende, auf Wunsch mit Hintergrund; dann die Endschalen des Timers.
+// `task` (die Aufgabe) geht als Notiz ins Ergebnis. Ohne geladene Klangschale läuft er still.
+export function focusProgram(minutes: FocusMinutes, sound: BackgroundId | null, task: string): ProgramSpec {
+  const length = minutes * 60
+  return {
+    kind: 'focus',
+    ref: `focus-${minutes}`,
+    title: `Fokus-Sprint · ${minutes} Min`,
+    note: task,
+    lead: 0,
+    length,
+    finish: length + TIMER_TAIL,
+    background: sound,
+    assets: ['strike'],
+    schedule(ctx, destination, t0, { strike }) {
+      if (!strike) return () => {}
+      return stopper(ctx, strikesAt(ctx, destination, strike, t0, END_STRIKES.map((offset) => length + offset)))
     },
   }
 }

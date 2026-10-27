@@ -1,9 +1,11 @@
 import { test, expect, afterEach, vi } from 'vitest'
 import { AudioEngine } from '../../src/lib/audio/engine'
 import { createOutput, type Output } from '../../src/lib/audio/output'
-import { BREATH_BACKGROUND_VOLUME, breathProgram, timerProgram, type ProgramSpec } from '../../src/lib/audio/program'
+import { BREATH_BACKGROUND_VOLUME, HACK_TAIL, breathProgram, focusProgram, hackProgram, timerProgram, type ProgramSpec } from '../../src/lib/audio/program'
 import { scheduleBreath, type BreathBuffers } from '../../src/lib/audio/breath-sound'
+import { scheduleCue } from '../../src/lib/audio/cue'
 import { customToPattern } from '../../src/lib/breath/custom'
+import { hackById } from '../../src/lib/energy/hacks'
 import { assetUrl } from '../../src/lib/sounds/catalog'
 import type { SessionResult } from '../../src/lib/stats/schema'
 
@@ -327,7 +329,7 @@ test('a timer whose bowl fails to load says so and still runs to its end; a brea
   expect(e.snapshot()).toMatchObject({ state: 'playing', program: { kind: 'timer', noBowl: true } })
   await expect.poll(() => seen.length, { timeout: 4000 }).toBe(1)
   expect(seen[0].seconds).toBe(1)
-  await e.startProgram(spec({ kind: 'breath', ref: '478' }))
+  await e.startProgram(spec({ kind: 'breath', ref: '478', assets: [] })) // eine Atemübung verlangt die Schale nie
   expect(e.snapshot().program).toMatchObject({ kind: 'breath', noBowl: false })
 })
 
@@ -541,4 +543,136 @@ test('breathProgram with an own pattern: its id as ref, its name in the title, w
   const pattern = customToPattern({ id: 'eigen-0123abcd', name: 'Abendruhe', inhale: 4, holdIn: 2, exhale: 6, holdOut: 0 })
   const p = breathProgram(pattern, 1, { sound: true, background: null })
   expect([p.kind, p.ref, p.title, p.length, p.finish]).toEqual(['breath', 'eigen-0123abcd', 'Atmen · Abendruhe', 60, 61])
+})
+
+// Brain Hacks und Fokus-Sprints: Hinweistöne (Oszillator) und Klangschalen (Aufnahme) lassen sich
+// über ihre Quellen auseinanderhalten.
+const hack = (id: string) => hackById(id)!
+
+test('scheduleCue plays a short quiet sine at 660 Hz and is silent before and after', async () => {
+  const rate = 8000
+  const ctx = new OfflineAudioContext(1, rate, rate)
+  const node = scheduleCue(ctx, ctx.destination, 0.2)
+  expect(node).toBeInstanceOf(OscillatorNode)
+  expect(node.type).toBe('sine')
+  expect(node.frequency.value).toBe(660)
+  const peak = peakOf((await ctx.startRendering()).getChannelData(0), rate)
+  expect(peak(0, 0.2)).toBe(0)
+  expect(peak(0.2, 0.2 + 0.25)).toBeGreaterThan(0.06)
+  expect(peak(0.2, 0.2 + 0.25)).toBeLessThanOrEqual(0.08)
+  expect(peak(0.2, 0.2 + 0.002)).toBeLessThan(0.01)     // 20 ms Anstieg: kein Knacken zu Beginn
+  expect(peak(0.2 + 0.26, 1)).toBe(0)
+})
+
+test('hackProgram plays a cue at every step change and a bowl at the end', () => {
+  const ctx = new OfflineAudioContext(1, 44100, 44100)
+  const cues = vi.spyOn(OscillatorNode.prototype, 'start')
+  const bowls = vi.spyOn(AudioBufferSourceNode.prototype, 'start')
+  try {
+    const p = hackProgram(hack('bewegungs-snack'))
+    expect(p).toMatchObject({ kind: 'hack', ref: 'bewegungs-snack', title: 'Bewegungs-Snack', lead: 0, length: 120, finish: 128, background: null, assets: ['strike'] })
+    expect(HACK_TAIL).toBe(8)
+    expect(p.note).toBeUndefined()
+    p.schedule(ctx, ctx.destination, 2, { strike: ctx.createBuffer(1, 4410, 44100), breath: null })
+    expect(cues.mock.calls.map(c => c[0])).toEqual([32, 62, 92])
+    expect(bowls.mock.calls.map(c => c[0])).toEqual([122])
+  } finally {
+    cues.mockRestore()
+    bowls.mockRestore()
+  }
+})
+
+test('hackProgram of a breathing hack has no cues, only the bowl, and whole cycles as length', () => {
+  const ctx = new OfflineAudioContext(1, 44100, 44100)
+  const cues = vi.spyOn(OscillatorNode.prototype, 'start')
+  const bowls = vi.spyOn(AudioBufferSourceNode.prototype, 'start')
+  try {
+    const p = hackProgram(hack('seufzer'))
+    expect(p).toMatchObject({ kind: 'hack', ref: 'seufzer', length: 64, finish: 72 })
+    p.schedule(ctx, ctx.destination, 0, { strike: ctx.createBuffer(1, 4410, 44100), breath: null })
+    expect(cues).not.toHaveBeenCalled()
+    expect(bowls.mock.calls.map(c => c[0])).toEqual([64])
+  } finally {
+    cues.mockRestore()
+    bowls.mockRestore()
+  }
+})
+
+test('hackProgram still plays its cues when the bowl is missing', () => {
+  const ctx = new OfflineAudioContext(1, 44100, 44100)
+  const cues = vi.spyOn(OscillatorNode.prototype, 'start')
+  const bowls = vi.spyOn(AudioBufferSourceNode.prototype, 'start')
+  try {
+    hackProgram(hack('bewegungs-snack')).schedule(ctx, ctx.destination, 0, { strike: null, breath: null })()
+    expect(cues.mock.calls.map(c => c[0])).toEqual([30, 60, 90])
+    expect(bowls).not.toHaveBeenCalled()
+  } finally {
+    cues.mockRestore()
+    bowls.mockRestore()
+  }
+})
+
+test('stopping a hack program drops the cues still to come', async () => {
+  const rate = 8000
+  const ctx = new OfflineAudioContext(1, rate * 100, rate)
+  const stop = hackProgram(hack('bewegungs-snack')).schedule(ctx, ctx.destination, 0, { strike: null, breath: null })
+  // Hinweistöne bei 30, 60 und 90 s. Bei 45 s endet das Programm: Der bei 60 s und der bei 90 s entfallen.
+  void ctx.suspend(45).then(() => { stop(46); return ctx.resume() })
+  const peak = peakOf((await ctx.startRendering()).getChannelData(0), rate)
+  expect(peak(30, 30.3)).toBeGreaterThan(0.06)
+  expect(peak(60, 100)).toBe(0)
+})
+
+test('focusProgram carries sprint length, note and bowls at the end', () => {
+  const ctx = new OfflineAudioContext(1, 44100, 44100)
+  const bowls = vi.spyOn(AudioBufferSourceNode.prototype, 'start')
+  const cues = vi.spyOn(OscillatorNode.prototype, 'start')
+  try {
+    const p = focusProgram(25, 'regen', 'X')
+    expect(p).toMatchObject({ kind: 'focus', ref: 'focus-25', title: 'Fokus-Sprint · 25 Min', lead: 0, length: 1500, finish: 1515, background: 'regen', assets: ['strike'], note: 'X' })
+    expect(p.backgroundVolume).toBeUndefined()
+    p.schedule(ctx, ctx.destination, 2, { strike: ctx.createBuffer(1, 4410, 44100), breath: null })
+    expect(bowls.mock.calls.map(c => c[0])).toEqual([1502, 1505, 1508])
+    expect(cues).not.toHaveBeenCalled()
+    bowls.mockClear()
+    p.schedule(ctx, ctx.destination, 0, { strike: null, breath: null })()
+    expect(bowls).not.toHaveBeenCalled()     // ohne Klangschale läuft der Sprint still
+    expect(focusProgram(90, null, 'Konzept')).toMatchObject({ ref: 'focus-90', title: 'Fokus-Sprint · 90 Min', length: 5400, finish: 5415, background: null, note: 'Konzept' })
+  } finally {
+    bowls.mockRestore()
+    cues.mockRestore()
+  }
+})
+
+test('an early ended sprint reports its kind, ref and note; other programs carry no note', async () => {
+  const e = make()
+  const seen = results(e)
+  await e.startProgram(focusProgram(25, 'regen', 'X'))
+  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { kind: 'focus', title: 'Fokus-Sprint · 25 Min', noBowl: false }, volumes: { regen: 0.7 } })
+  await wait(200)
+  await e.endProgram()
+  expect(seen).toHaveLength(1)
+  expect(seen[0]).toMatchObject({ kind: 'focus', ref: 'focus-25', note: 'X' })
+  expect(seen[0].seconds).toBeGreaterThan(0)
+  expect(seen[0].seconds).toBeLessThan(25 * 60)
+  await e.startProgram(spec())
+  await e.endProgram()
+  expect(seen).toHaveLength(2)
+  expect(seen[1]).toMatchObject({ kind: 'timer', ref: 'timer' })
+  expect('note' in seen[1]).toBe(false)
+})
+
+test('a hack and a sprint whose bowl fails to load say so and still run', async () => {
+  const bowl = assetUrl('audio/sounds/klangschale.ogg')
+  const e = make(async (ctx, url) => {
+    if (url === bowl) throw new Error('Konnte nicht geladen werden: ' + url)
+    return synthetic(ctx, url)
+  })
+  await e.startProgram(hackProgram(hack('bewegungs-snack')))
+  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { kind: 'hack', ref: 'bewegungs-snack', noBowl: true } })
+  await e.startProgram(focusProgram(50, null, ''))
+  expect(e.snapshot()).toMatchObject({ state: 'playing', program: { kind: 'focus', noBowl: true } })
+  const ok = make()
+  await ok.startProgram(hackProgram(hack('seufzer')))
+  expect(ok.snapshot().program).toMatchObject({ kind: 'hack', noBowl: false })
 })

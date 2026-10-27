@@ -6,8 +6,8 @@ import App from './App.svelte'
 import { engine } from './lib/audio/engine'
 import { initPwa } from './lib/pwa/update.svelte'
 import { connectSessions } from './lib/session-wiring'
-import { recordSession } from './lib/stats/store.svelte'
-import { sessionUi } from './lib/ui/session-ui.svelte'
+import { recordResult } from './lib/stats/store.svelte'
+import { doneInfoFor, sessionUi } from './lib/ui/session-ui.svelte'
 import { followTageszeit } from './lib/ui/tageszeit.svelte'
 
 // Die Stimmung folgt der Uhr (volle Minute, Rückkehr in die App). Vor dem Einhängen, damit die
@@ -16,10 +16,12 @@ followTageszeit()
 
 mount(App, { target: document.getElementById('app')! })
 
-// Jede beendete Sitzung wird erfasst (ab 60 s) und danach im Player als Abschluss gezeigt.
+// Jedes beendete Ergebnis wird nach seiner Art erfasst (Sitzung ab 60 s, Hack ab 30 s, Sprint ab 5 min)
+// und danach im Player als Abschluss gezeigt; ein Hack oder Sprint, der nicht zählt, zeigt keinen.
 // Einmal für die ganze Lebensdauer der App, darum nie getrennt.
-connectSessions(engine, recordSession, (r, sessionId) => {
-  sessionUi.done = { kind: r.kind, ref: r.ref, seconds: r.seconds, counted: sessionId !== null, sessionId }
+connectSessions(engine, recordResult, (r, id) => {
+  const info = doneInfoFor(r, id)
+  if (info) sessionUi.done = info
 })
 
 initPwa()

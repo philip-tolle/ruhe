@@ -1,6 +1,6 @@
-// Welche Sitzung ein Vollbild-Player (Timer, Atemübung, geführte Meditation) zeigt: die Laufansicht,
-// solange die Sitzung seiner Art läuft, danach den Abschluss, solange er offen ist. Liest nur
-// reaktiven Zustand; aufgerufen aus `$derived`, bleibt das Ergebnis aktuell.
+// Welche Sitzung ein Vollbild-Player (Timer, Atemübung, Brain Hack, Fokus-Sprint, geführte Meditation)
+// zeigt: die Laufansicht, solange die Sitzung seiner Art läuft, danach den Abschluss, solange er offen
+// ist. Liest nur reaktiven Zustand; aufgerufen aus `$derived`, bleibt das Ergebnis aktuell.
 import { audio } from '../audio/engine-store.svelte'
 import type { ProgramSnapshot } from '../audio/engine'
 import { sessionUi, type SessionDoneInfo } from './session-ui.svelte'
@@ -23,7 +23,7 @@ export function playerOpen(kind: PlayerKind): boolean {
   return runningProgram(kind) !== null || doneOf(kind) !== null
 }
 
-const KINDS: readonly PlayerKind[] = ['timer', 'breath', 'guided']
+const KINDS: readonly PlayerKind[] = ['timer', 'breath', 'hack', 'focus', 'guided']
 
 /** Ist irgendein Vollbild-Player offen? Dann ist die App darunter unerreichbar. */
 export function anyPlayerOpen(): boolean {

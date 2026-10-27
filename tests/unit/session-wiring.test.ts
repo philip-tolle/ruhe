@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { connectSessions } from '../../src/lib/session-wiring'
+import { connectSessions, doneInfoFor } from '../../src/lib/session-wiring'
 import type { SessionResult } from '../../src/lib/stats/schema'
 
 test('results are recorded and shown', () => {
@@ -28,4 +28,25 @@ test('the returned function disconnects from the source', () => {
   const stop = connectSessions({ onSessionEnd: () => () => { unsubscribed++ } }, () => 'id', () => {})
   stop()
   expect(unsubscribed).toBe(1)
+})
+
+const start = new Date('2026-10-27T09:00:00.000Z')
+
+test('a hack or sprint that does not count shows no done view', () => {
+  expect(doneInfoFor({ kind: 'hack', ref: 'seufzer', start, seconds: 12 }, null)).toBeNull()
+  expect(doneInfoFor({ kind: 'focus', ref: 'focus-25', start, seconds: 200, note: 'X' }, null)).toBeNull()
+})
+
+test('a counted hack or sprint shows its done view with the stored id', () => {
+  expect(doneInfoFor({ kind: 'hack', ref: 'seufzer', start, seconds: 64 }, 'run-1'))
+    .toEqual({ kind: 'hack', ref: 'seufzer', seconds: 64, counted: true, sessionId: 'run-1' })
+  expect(doneInfoFor({ kind: 'focus', ref: 'focus-50', start, seconds: 3000, note: 'X' }, 'sprint-1'))
+    .toEqual({ kind: 'focus', ref: 'focus-50', seconds: 3000, counted: true, sessionId: 'sprint-1' })
+})
+
+test('a timer or breath session always shows its done view, counted or not', () => {
+  expect(doneInfoFor({ kind: 'timer', ref: 'timer', start, seconds: 30 }, null))
+    .toEqual({ kind: 'timer', ref: 'timer', seconds: 30, counted: false, sessionId: null })
+  expect(doneInfoFor({ kind: 'breath', ref: '478', start, seconds: 76 }, 'id'))
+    .toEqual({ kind: 'breath', ref: '478', seconds: 76, counted: true, sessionId: 'id' })
 })
