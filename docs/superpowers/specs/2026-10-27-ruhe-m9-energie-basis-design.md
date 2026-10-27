@@ -178,6 +178,7 @@ Größen: Hack-Karte 96 px, Reset-Karte und Sprint-Karte 72 px, Kacheln 40 px. S
 | `kleiner-fortschritt` | Kleiner Fortschritt | Sinn | 2 | Schritte | einen Fortschritt von heute bemerken und festhalten | Amabile & Kramer 2011, „Progress Principle“ | – |
 | `wofuer` | Wofür? | Sinn | 2 | Schritte | Warum ist dir wichtig, woran du gerade arbeitest? | Motivationspsychologie (Sinn und Ziele) | – |
 
+- „Physiologischer Seufzer“ verweist für längeres Üben auf die vorhandene Atemübung `seufzer` unter „Atmen“ („Passt dazu“).
 - Die vollständigen Karten-Texte (Nutzen-Satz, Schritte, „Warum es wirkt“, Hinweise) schreibt Claude in eigenen Worten; der Nutzer gibt sie vor dem Einbau frei (Plan, eigener Schritt). Bis zur Freigabe ist ein Hack nicht eingebaut.
 - Quellenangaben werden beim Schreiben der Texte noch einmal geprüft; eine Angabe, die sich nicht bestätigen lässt, wird allgemeiner formuliert statt erfunden.
 
