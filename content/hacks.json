@@ -96,7 +96,7 @@
       "why": {
         "from": "Erschöpfung",
         "to": "Erholung",
-        "text": "Ein kurzes Nickerchen bleibt meist im leichten Schlaf, darum fällt vielen das Aufwachen danach leichter. In einer Schlafstudie wirkte ein Nickerchen dieser Länge besonders schnell erholsam. Auch wenn du nicht einschläfst, kann die Ruhe guttun."
+        "text": "Ein kurzes Nickerchen bleibt meist im leichten Schlaf, darum fällt vielen das Aufwachen danach leichter. In einer Schlafstudie wirkte ein so kurzes Nickerchen besonders schnell erholsam. Auch wenn du nicht einschläfst, kann die Ruhe guttun."
       },
       "source": "Brooks & Lack 2006, 10-Minuten-Nickerchen",
       "further": null,
@@ -164,7 +164,7 @@
       "guide": "schritte",
       "steps": [
         { "title": "Innehalten", "detail": "Halte kurz an und spür, was gerade in dir los ist.", "icon": "halten", "seconds": 30 },
-        { "title": "Im Körper suchen", "detail": "Spür nach, wo es sitzt: Enge, Druck, Wärme, Unruhe?", "icon": "frage", "seconds": 30 },
+        { "title": "Im Körper suchen", "detail": "Spür nach, wo und wie es sich zeigt: Enge, Druck, Wärme, Unruhe.", "icon": "frage", "seconds": 30 },
         { "title": "Genau benennen", "detail": "Finde ein, zwei Wörter: gereizt, enttäuscht, besorgt, überfordert …", "icon": "stift", "seconds": 30 },
         { "title": "Satz bilden", "detail": "Sag es leise oder schreib es auf: „Ich spüre gerade …“", "icon": "herz", "seconds": 30 }
       ],
@@ -208,7 +208,7 @@
       "title": "Kopf leeren",
       "area": "geist",
       "minutes": 3,
-      "benefit": "Bring alles Offene aufs Papier, oft wird dein Kopf dann freier.",
+      "benefit": "Bring alles Offene aufs Papier: Dann wird dein Kopf oft freier.",
       "guide": "ring",
       "steps": [
         { "title": "Alles aufschreiben", "detail": "Notier jede Aufgabe und jede Sorge, ungeordnet in Stichworten.", "icon": "stift" },
@@ -218,7 +218,7 @@
       "why": {
         "from": "Gedankenchaos",
         "to": "Klarheit",
-        "text": "Unerledigtes meldet sich oft immer wieder und bindet Aufmerksamkeit. Forschung deutet darauf hin, dass schon ein konkreter Plan dafür diese Gedanken leiser machen kann. Das Aufschreiben ist der erste Schritt."
+        "text": "Unerledigtes meldet sich oft wieder und bindet Aufmerksamkeit. Forschung deutet darauf hin, dass schon ein konkreter Plan dafür diese Gedanken leiser machen kann. Das Aufschreiben ist der erste Schritt."
       },
       "source": "Masicampo & Baumeister 2011",
       "further": "Henry Hildebrandt, Brainhacks (2025)",
@@ -324,7 +324,7 @@
       "title": "Werte-Anker",
       "area": "sinn",
       "minutes": 2,
-      "benefit": "Hilft dir, dich in dem zu verankern, was dir wirklich wichtig ist.",
+      "benefit": "Kann dir helfen, dich in dem zu verankern, was dir wirklich wichtig ist.",
       "guide": "schritte",
       "steps": [
         { "title": "Einen Wert wählen", "detail": "Was ist dir im Leben wichtig? Wähle einen Wert.", "icon": "kompass", "seconds": 40 },
@@ -334,7 +334,7 @@
       "why": {
         "from": "Unsicherheit",
         "to": "Halt",
-        "text": "Wenn du dich an das erinnerst, was dir wichtig ist, kann dein Selbstwert auf festerem Grund stehen. Forschung zur Selbstbestätigung deutet darauf hin, dass das Druck und Selbstzweifel abfedern kann. Eine kleine Handlung bringt den Wert in deinen Alltag."
+        "text": "Wenn du dich an das erinnerst, was dir wichtig ist, kann dein Selbstwert auf festerem Grund stehen. Forschung zur Selbstbestätigung deutet darauf hin, dass das Druck und Selbstzweifel abfedern kann. Mit einer kleinen Handlung wird der Wert im Alltag oft spürbarer."
       },
       "source": "Cohen & Sherman 2014, Selbstbestätigung",
       "further": null,
