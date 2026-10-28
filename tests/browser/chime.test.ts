@@ -18,12 +18,13 @@ afterEach(() => {
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Ein Ersatz-Kontext, der aufzeichnet, was mit ihm geschieht. */
-function fakeContext(decode: () => Promise<unknown> = async () => ({ fake: 'buffer' })) {
+function fakeContext(decode: () => Promise<unknown> = async () => ({ fake: 'buffer' }), state: AudioContextState = 'running') {
   const gain = { gain: { value: 1 }, connect: vi.fn() }
   const source = { buffer: null as unknown, connect: vi.fn(), start: vi.fn() }
   const ctx = {
-    state: 'running',
+    state,
     destination: { fake: 'destination' },
+    resume: vi.fn(async () => {}),
     decodeAudioData: vi.fn(decode),
     createBufferSource: vi.fn(() => source),
     createGain: vi.fn(() => gain),
@@ -33,7 +34,10 @@ function fakeContext(decode: () => Promise<unknown> = async () => ({ fake: 'buff
 
 test('playChime lädt die Klangschale, dekodiert sie und spielt einen Anschlag mit Lautstärke 0,8', async () => {
   const { ctx, raw, source, gain } = fakeContext()
-  playChime(() => ctx)
+  const make = vi.fn(() => ctx)
+  playChime(make)
+  // Der Kontext entsteht noch im Aufruf, vor jedem `await`: nur dort gilt die Geste des Tipps (Autoplay-Regel).
+  expect(make).toHaveBeenCalledTimes(1)
   await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
   expect(raw.decodeAudioData).toHaveBeenCalledTimes(1)
   expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -94,4 +98,25 @@ test('kann der Audio-Kontext nicht erzeugt werden, bleibt es still', async () =>
   expect(() => playChime(make)).not.toThrow()
   await wait(30)
   expect(fetchMock).not.toHaveBeenCalled()
+})
+
+test('ein vom System angehaltener Kontext wird fortgesetzt, und der Anschlag klingt trotzdem', async () => {
+  const { ctx, raw, source } = fakeContext(undefined, 'suspended')
+  playChime(() => ctx)
+  expect(raw.resume).toHaveBeenCalledTimes(1) // noch im Aufruf, in der Geste
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+})
+
+test('ein laufender Kontext wird nicht angefasst; scheitert das Fortsetzen, bleibt es still', async () => {
+  const running = fakeContext()
+  playChime(() => running.ctx)
+  await vi.waitFor(() => expect(running.source.start).toHaveBeenCalledTimes(1))
+  expect(running.raw.resume).not.toHaveBeenCalled()
+
+  resetChimeForTests()
+  const suspended = fakeContext(undefined, 'suspended')
+  suspended.raw.resume.mockRejectedValueOnce(new DOMException('abgelehnt', 'NotAllowedError'))
+  expect(() => playChime(() => suspended.ctx)).not.toThrow()
+  await vi.waitFor(() => expect(suspended.source.start).toHaveBeenCalledTimes(1))
+  await wait(30) // Ein unbehandelter Fehler käme hier zum Vorschein.
 })

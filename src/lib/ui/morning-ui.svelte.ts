@@ -10,6 +10,7 @@ import { morningSteps, type MorningStep } from '../morning/steps'
 import { MORNING_EXERCISES, type MorningExerciseId } from '../morning/words'
 import type { MorningInput, MorningVariant, ResultKind } from '../stats/schema'
 import { saveMorning } from '../stats/store.svelte'
+import { playerOpen } from './player-state'
 import { clearDone, startGuidedSession, startHack } from './session-ui.svelte'
 import { appNow } from './tageszeit.svelte'
 
@@ -51,6 +52,17 @@ export const morningUi: MorningState = $state({
   confirming: false,
 })
 
+// Hat der Hack, auf den der Ablauf wartet, gezählt? Dann steht seine Ende-Ansicht (mit „Weiter“), und schließt sie jemand
+// anders als „Weiter“ (Zurück-Geste, Escape: `PlayerShell` ruft dort `clearDone` selbst), gilt das wie „Weiter“. Keine
+// reaktive Größe, die Oberfläche liest sie nie; sie fällt mit jedem Zurücksetzen des Wartens und mit jedem neuen Start.
+let hackCounted = false
+
+/** Der Ablauf wartet auf einen Player (`kind`) oder nicht mehr (`null`); beides vergisst, ob der letzte Hack gezählt hat. */
+function setAwaiting(kind: MorningState['awaiting']): void {
+  hackCounted = false
+  morningUi.awaiting = kind
+}
+
 /** Öffnet den Ablauf von vorn: alles zurückgesetzt, Schritt „Check-in“, Übung des Tages. */
 export function openMorning(variant: MorningVariant): void {
   morningUi.open = true
@@ -60,7 +72,7 @@ export function openMorning(variant: MorningVariant): void {
   morningUi.checkin = null
   // An Ort und Stelle statt eines neuen Objekts: Wer den Entwurf schon in der Hand hält (Eingabefelder), sieht den Neustart.
   Object.assign(morningUi.draft, emptyDraft())
-  morningUi.awaiting = null
+  setAwaiting(null)
   morningUi.confirming = false
 }
 
@@ -120,7 +132,7 @@ export function skipStep(): void {
 /** Beendet den Ablauf ohne Morgen-Eintrag; was der Ablauf schon gespeichert hat (Check-in, Läufe), bleibt. */
 export function closeMorning(): void {
   morningUi.open = false
-  morningUi.awaiting = null
+  setAwaiting(null)
   morningUi.confirming = false
 }
 
@@ -135,7 +147,7 @@ export function swapExercise(): void {
 /** „Starten“ bei „Aktivieren“: spielt die Übung im Hack-Player. Eine unbekannte Kennung tut nichts (kein Warten). */
 export function startExercise(id: string): void {
   if (!hackById(id)) return
-  morningUi.awaiting = 'hack'
+  setAwaiting('hack')
   startHack(id)
 }
 
@@ -143,7 +155,7 @@ export function startExercise(id: string): void {
 export function startMorningMeditation(): void {
   const meditation = meditationById('guten-morgen')
   if (!meditation) return
-  morningUi.awaiting = 'guided'
+  setAwaiting('guided')
   startGuidedSession(meditation)
 }
 
@@ -154,23 +166,52 @@ export function startMorningMeditation(): void {
  * - Meditation, auf die der Ablauf wartet: Sie ist erfasst (zählt oder nicht, wie sonst), ihr Abschluss entfällt,
  *   der Ablauf geht weiter.
  * - Hack, der nicht zählt (unter 30 s): Er hat keine Ende-Ansicht, der Ablauf bleibt bei seinem Schritt.
- * - Hack, der zählt: Das Warten bleibt; `HackEffect` zeigt die Wirkungsfrage mit „Weiter“.
+ * - Hack, der zählt: Das Warten bleibt; `HackEffect` zeigt die Wirkungsfrage mit „Weiter“. Wird sie anders geschlossen,
+ *   führt `morningPlayerClosed` den Ablauf weiter.
  */
 export function morningSessionEnded(kind: ResultKind, counted: boolean): boolean {
   if (!morningUi.open) return false
   if (kind === 'guided' && morningUi.awaiting === 'guided') {
-    morningUi.awaiting = null
+    setAwaiting(null)
     clearDone()
     nextStep()
     return true
   }
-  if (kind === 'hack' && morningUi.awaiting === 'hack' && !counted) morningUi.awaiting = null
+  if (kind === 'hack' && morningUi.awaiting === 'hack') {
+    if (counted) hackCounted = true
+    else setAwaiting(null)
+  }
   return false
 }
 
 /** „Weiter“ im Ende-Bild des Hacks: schließt es und geht im Ablauf zum nächsten Schritt. */
 export function morningContinueAfterHack(): void {
+  if (!morningUi.open || morningUi.awaiting !== 'hack') return
   clearDone()
-  morningUi.awaiting = null
+  setAwaiting(null)
   nextStep()
+}
+
+/** Ist der Ablauf verborgen, weil ein Player, auf den er wartet, offen ist? */
+export function morningHidden(): boolean {
+  return morningUi.awaiting !== null && (playerOpen('hack') || playerOpen('guided'))
+}
+
+/**
+ * Der Player, auf den der Ablauf wartet, ist zu (die Oberfläche ruft es aus einem `$effect`, sobald
+ * `morningUi.awaiting !== null` und kein Hack- oder Meditations-Player mehr offen ist). Ohne das bliebe der Ablauf
+ * für immer verborgen:
+ *
+ * - Ein Hack hat gezählt und seine Ende-Ansicht wurde ohne „Weiter“ geschlossen (Zurück-Geste, Escape; `clearDone`
+ *   ist dabei schon geschehen): Der Ablauf geht weiter, wie bei „Weiter“.
+ * - Sonst (der Start kam nie bis zu einem Player, oder der Lauf ist anders zu Ende): Das Warten endet, der Ablauf
+ *   bleibt bei seinem Schritt.
+ *
+ * Ohne Warten oder bei geschlossenem Ablauf tut es nichts.
+ */
+export function morningPlayerClosed(): void {
+  if (!morningUi.open || morningUi.awaiting === null) return
+  const advance = morningUi.awaiting === 'hack' && hackCounted
+  setAwaiting(null)
+  if (advance) nextStep()
 }

@@ -11,6 +11,8 @@ vi.mock('../../src/lib/ui/session-ui.svelte', () => ({
 vi.mock('../../src/lib/audio/chime', () => ({ playChime: vi.fn() }))
 
 import { playChime } from '../../src/lib/audio/chime'
+import type { ProgramSnapshot } from '../../src/lib/audio/engine'
+import { audio } from '../../src/lib/audio/engine-store.svelte'
 import { meditationById } from '../../src/lib/content/catalog'
 import { exerciseOfDay } from '../../src/lib/morning/logic'
 import { MORNING_EXERCISES } from '../../src/lib/morning/words'
@@ -19,6 +21,8 @@ import { stats } from '../../src/lib/stats/store.svelte'
 import {
   closeMorning,
   morningContinueAfterHack,
+  morningHidden,
+  morningPlayerClosed,
   morningSessionEnded,
   morningUi,
   nextStep,
@@ -28,7 +32,7 @@ import {
   startMorningMeditation,
   swapExercise,
 } from '../../src/lib/ui/morning-ui.svelte'
-import { clearDone, startGuidedSession, startHack } from '../../src/lib/ui/session-ui.svelte'
+import { clearDone, sessionUi, startGuidedSession, startHack, type SessionDoneInfo } from '../../src/lib/ui/session-ui.svelte'
 import { appNow } from '../../src/lib/ui/tageszeit.svelte'
 
 beforeEach(() => {
@@ -37,6 +41,7 @@ beforeEach(() => {
   stats.saveFailed = false
   vi.clearAllMocks()
   closeMorning()
+  sessionUi.done = null
 })
 
 // Erfundene Eingaben, nur für den Test.
@@ -297,4 +302,150 @@ test('morningSessionEnded ohne offenen Ablauf gibt für jede Art false und ände
     }
   }
   expect(stats.data.mornings).toBeUndefined()
+})
+
+// ── Der Player, auf den der Ablauf wartet, ist zu (Zurück-Geste, Escape, gescheiterter Start) ───────────────────────
+
+test('ein Hack hat gezählt und seine Ende-Ansicht wird ohne „Weiter“ geschlossen: der Ablauf geht weiter, wie bei „Weiter“', () => {
+  openMorning('kurz')
+  morningUi.step = 'aktivieren'
+  startExercise('strecken')
+  expect(morningSessionEnded('hack', true)).toBe(false)
+  expect(morningUi).toMatchObject({ step: 'aktivieren', awaiting: 'hack' })
+  // `PlayerShell` hat den Abschluss selbst geschlossen (`clearDone`); der Ablauf ruft es nicht noch einmal.
+  vi.mocked(clearDone).mockClear()
+
+  morningPlayerClosed()
+  expect(morningUi.step).toBe('intention')
+  expect(morningUi.awaiting).toBeNull()
+  expect(clearDone).not.toHaveBeenCalled()
+  // Noch nichts gespeichert, kein Abschluss; ein zweiter Aufruf rückt nicht noch einen Schritt vor.
+  expect(stats.data.mornings).toBeUndefined()
+  expect(playChime).not.toHaveBeenCalled()
+  morningPlayerClosed()
+  expect(morningUi.step).toBe('intention')
+})
+
+test('ein Hack, der nicht zählt, oder gar kein Ende: der Ablauf bleibt beim Schritt, das Warten endet', () => {
+  openMorning('lang')
+  morningUi.step = 'aktivieren'
+  startExercise('strecken')
+  expect(morningSessionEnded('hack', false)).toBe(false)
+  expect(morningUi.awaiting).toBeNull()
+  morningPlayerClosed()
+  expect(morningUi).toMatchObject({ step: 'aktivieren', awaiting: null })
+
+  // Der Start kam nie bis zu einem Player: kein Ende gemeldet.
+  startExercise('strecken')
+  expect(morningUi.awaiting).toBe('hack')
+  morningPlayerClosed()
+  expect(morningUi).toMatchObject({ step: 'aktivieren', awaiting: null })
+
+  // Dasselbe bei der Meditation.
+  morningUi.step = 'vertiefen'
+  startMorningMeditation()
+  morningPlayerClosed()
+  expect(morningUi).toMatchObject({ step: 'vertiefen', awaiting: null })
+})
+
+test('bei geschlossenem Ablauf oder ohne Warten tut morningPlayerClosed nichts', () => {
+  openMorning('kurz')
+  morningUi.step = 'aktivieren'
+  morningPlayerClosed() // ohne Warten
+  expect(morningUi).toMatchObject({ open: true, step: 'aktivieren', awaiting: null })
+
+  startExercise('strecken')
+  morningSessionEnded('hack', true)
+  closeMorning()
+  morningPlayerClosed() // geschlossen
+  expect(morningUi).toMatchObject({ open: false, step: 'aktivieren', awaiting: null })
+
+  // Auch ein Rest des Wartens bei geschlossenem Ablauf löst nichts aus.
+  morningUi.awaiting = 'hack'
+  morningPlayerClosed()
+  expect(morningUi).toMatchObject({ open: false, step: 'aktivieren', awaiting: 'hack' })
+  expect(stats.data.mornings).toBeUndefined()
+})
+
+test('nach „Weiter“ rückt morningPlayerClosed nicht noch einmal vor: genau ein Schritt', () => {
+  openMorning('kurz')
+  morningUi.step = 'aktivieren'
+  startExercise('strecken')
+  morningSessionEnded('hack', true)
+  morningContinueAfterHack()
+  expect(morningUi.step).toBe('intention')
+  // Der `$effect` der Oberfläche läuft danach, wenn der Player zu ist.
+  morningPlayerClosed()
+  expect(morningUi.step).toBe('intention')
+})
+
+test('ein neuer Start und jedes Zurücksetzen vergessen, dass der letzte Hack gezählt hat', () => {
+  openMorning('kurz')
+  morningUi.step = 'aktivieren'
+  startExercise('strecken')
+  morningSessionEnded('hack', true)
+  // Ein neuer Start (hier eine andere Übung): Er hat noch nicht gezählt.
+  swapExercise()
+  startExercise('wasser-licht')
+  morningPlayerClosed()
+  expect(morningUi.step).toBe('aktivieren')
+
+  // Beenden und neu Öffnen: der Rest des alten Ablaufs gilt nicht.
+  startExercise('strecken')
+  morningSessionEnded('hack', true)
+  closeMorning()
+  openMorning('kurz')
+  morningUi.step = 'aktivieren'
+  morningUi.awaiting = 'hack'
+  morningPlayerClosed()
+  expect(morningUi.step).toBe('aktivieren')
+})
+
+test('morningContinueAfterHack tut nichts, solange der Ablauf nicht auf einen Hack wartet oder geschlossen ist', () => {
+  openMorning('kurz')
+  morningUi.step = 'aktivieren'
+  morningContinueAfterHack() // wartet auf nichts
+  expect(morningUi.step).toBe('aktivieren')
+
+  morningUi.awaiting = 'guided'
+  morningContinueAfterHack() // wartet auf die Meditation
+  expect(morningUi).toMatchObject({ step: 'aktivieren', awaiting: 'guided' })
+
+  morningUi.awaiting = 'hack'
+  closeMorning()
+  morningUi.awaiting = 'hack' // Rest bei geschlossenem Ablauf
+  morningContinueAfterHack()
+  expect(morningUi).toMatchObject({ open: false, step: 'aktivieren', awaiting: 'hack' })
+  expect(clearDone).not.toHaveBeenCalled()
+})
+
+test('morningHidden: der Ablauf ist nur verborgen, wenn er wartet und der Player offen ist', () => {
+  const done = (kind: 'hack' | 'guided'): SessionDoneInfo => ({ kind, ref: 'x', seconds: 64, counted: true, sessionId: 's-1' })
+  const program = (kind: ProgramSnapshot['kind']) => ({ kind, ref: 'x', ended: false }) as ProgramSnapshot
+  const before = audio.snap
+  try {
+    openMorning('lang')
+    // Er wartet auf nichts: nie verborgen, auch wenn ein Player offen ist.
+    sessionUi.done = done('hack')
+    expect(morningHidden()).toBe(false)
+    sessionUi.done = null
+
+    morningUi.awaiting = 'hack'
+    expect(morningHidden()).toBe(false) // kein Player offen
+    sessionUi.done = done('hack') // Ende-Ansicht des Hacks
+    expect(morningHidden()).toBe(true)
+    sessionUi.done = null
+    audio.snap = { ...before, program: program('hack') } // Laufansicht des Hacks
+    expect(morningHidden()).toBe(true)
+    audio.snap = { ...before, program: program('timer') } // ein fremder Player ändert nichts
+    expect(morningHidden()).toBe(false)
+
+    morningUi.awaiting = 'guided'
+    audio.snap = { ...before, program: program('guided') }
+    expect(morningHidden()).toBe(true)
+    audio.snap = before
+    expect(morningHidden()).toBe(false)
+  } finally {
+    audio.snap = before
+  }
 })
