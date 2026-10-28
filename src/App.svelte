@@ -5,6 +5,7 @@
   import UpdateToast from './components/UpdateToast.svelte'
   import CheckInSheet from './components/energy/CheckInSheet.svelte'
   import HackCard from './components/energy/HackCard.svelte'
+  import MorningFlow from './components/morning/MorningFlow.svelte'
   import BreathPlayer from './components/player/BreathPlayer.svelte'
   import GuidedPlayer from './components/player/GuidedPlayer.svelte'
   import HackPlayer from './components/player/HackPlayer.svelte'
@@ -20,6 +21,7 @@
   import { hackById } from './lib/energy/hacks'
   import { pwa } from './lib/pwa/update.svelte'
   import { closeCheckIn, closeHackCard, energyUi } from './lib/ui/energy-ui.svelte'
+  import { morningUi } from './lib/ui/morning-ui.svelte'
   import { anyPlayerOpen, playerOpen } from './lib/ui/player-state'
   import { sessionUi } from './lib/ui/session-ui.svelte'
   import type { TabId } from './lib/ui/tabs'
@@ -30,13 +32,13 @@
 
   // Vollbild-Player von Timer, Atemübung, Brain Hack, Fokus-Sprint und geführter Meditation: Laufansicht, solange die
   // Sitzung läuft; danach ihr Abschluss, solange er offen ist (die End-Schalen klingen dabei noch aus).
-  // Darunter ist die App unerreichbar.
+  // Darunter ist die App unerreichbar; ebenso unter dem Morgen-Start, der selbst an der Wurzel hängt (s. u.).
   const timerPlayerVisible = $derived(playerOpen('timer'))
   const breathPlayerVisible = $derived(playerOpen('breath'))
   const hackPlayerVisible = $derived(playerOpen('hack'))
   const sprintPlayerVisible = $derived(playerOpen('focus'))
   const guidedPlayerVisible = $derived(playerOpen('guided'))
-  const appInert = $derived(anyPlayerOpen())
+  const appInert = $derived(anyPlayerOpen() || morningUi.open)
 
   // Der Hack, dessen Karte offen ist; eine unbekannte Kennung zeigt keine.
   const cardHack = $derived(energyUi.hackCard ? hackById(energyUi.hackCard) : null)
@@ -92,6 +94,13 @@
 
   <TabBar {tab} {onNavigate} />
 </div>
+
+<!-- Der Morgen-Start (Vollbild) steht vor den Playern im Dokument: Übung und Meditation des Ablaufs öffnen ihren Player
+     auf derselben Ebene, und der liegt dann darüber. Der Ablauf bleibt dabei eingehängt, nur verborgen (`hidden`, `inert`):
+     So liegt seine Ebene im Stapel der Zurück-Geste unter der des Players. Außerhalb von `inert`, wie die Player. -->
+{#if morningUi.open}
+  <MorningFlow />
+{/if}
 
 {#if timerPlayerVisible}
   <TimerPlayer />

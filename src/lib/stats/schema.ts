@@ -179,8 +179,10 @@ export function isMorningVariant(v: unknown): v is MorningVariant {
   return v === 'kurz' || v === 'lang'
 }
 
-// Gezählt werden Unicode-Zeichen (Codepunkte), damit kein Ersatzpaar zerreißt.
-function clipChars(text: string, max: number): string {
+// Gezählt werden Unicode-Zeichen (Codepunkte), damit kein Ersatzpaar zerreißt. Der Morgen-Start kürzt damit auch beim
+// Tippen (ohne zu trimmen, ein Leerzeichen zwischen zwei Wörtern muss sich tippen lassen), damit Feld und Speicher
+// dieselbe Grenze haben; `maxlength` zählte UTF-16-Einheiten und schnitte ein Emoji nach der Hälfte der Zeichen ab.
+export function clipChars(text: string, max: number): string {
   const chars = Array.from(text)
   return chars.length > max ? chars.slice(0, max).join('') : text
 }

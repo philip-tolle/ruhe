@@ -949,9 +949,9 @@ const sprintDialog = (page: Page) => page.getByRole('dialog', { name: 'Fokus-Spr
 const sprintField = (page: Page) => sprintCard(page).getByLabel('Woran arbeitest du?')
 const startSprintButton = (page: Page) => sprintCard(page).getByRole('button', { name: 'Sprint starten', exact: true })
 
-test('the cards come in this order: battery, reset, sprint, hacks, week', async ({ page }) => {
+test('the cards come in this order: morning start, battery, reset, sprint, hacks, week', async ({ page }) => {
   await open(page)
-  await expect(page.locator('.screen').getByRole('heading', { level: 2 })).toHaveText(['Dein Akku', 'Jetzt-Reset', 'Fokus-Sprint', 'Brain Hacks', 'Deine Woche'])
+  await expect(page.locator('.screen').getByRole('heading', { level: 2 })).toHaveText(['Morgen-Start', 'Dein Akku', 'Jetzt-Reset', 'Fokus-Sprint', 'Brain Hacks', 'Deine Woche'])
 })
 
 test('the sprint card shows the motif, a free field of at most 80 characters, the three lengths and the background', async ({ page }) => {

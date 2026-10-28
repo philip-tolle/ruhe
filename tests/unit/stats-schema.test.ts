@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { parseData, emptyData, isSessionKind, isMorningVariant, clipText, clipTask, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
+import { parseData, emptyData, isSessionKind, isMorningVariant, clipChars, clipText, clipTask, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
 import { MUSIC, SOUNDS } from '../../src/lib/sounds/catalog'
 import { BREATH_MINUTES, BREATH_PATTERNS } from '../../src/lib/breath/patterns'
 
@@ -375,6 +375,14 @@ test('clipText trimmt und kürzt nach Zeichen, nicht nach UTF-16-Einheiten', () 
   expect(clipText('x'.repeat(40), 40)).toBe('x'.repeat(40))
   // Endet der Schnitt auf einem Leerzeichen, bleibt der Text getrimmt.
   expect(clipText(`${'x'.repeat(39)} y`, 40)).toBe('x'.repeat(39))
+})
+test('clipChars kürzt nach Zeichen und trimmt nicht (das Feld des Morgen-Starts braucht das Leerzeichen zwischen zwei Wörtern)', () => {
+  expect(clipChars('klar ', 40)).toBe('klar ')
+  expect(clipChars(' x', 40)).toBe(' x')
+  expect(clipChars('x'.repeat(60), 40)).toBe('x'.repeat(40))
+  expect(clipChars('😀'.repeat(40), 40)).toBe('😀'.repeat(40)) // 80 UTF-16-Einheiten, 40 Zeichen: passt
+  expect(clipChars('😀'.repeat(41), 40)).toBe('😀'.repeat(40))
+  expect(clipChars('', 40)).toBe('')
 })
 test('clipTask bleibt, wie es war: kürzt auf 80 Zeichen, trimmt nicht', () => {
   expect(clipTask('x'.repeat(120))).toBe('x'.repeat(80))
