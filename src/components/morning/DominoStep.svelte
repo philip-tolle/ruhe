@@ -1,5 +1,6 @@
 <script lang="ts">
   import { clipChars } from '../../lib/stats/schema'
+  import { limitedInput } from '../../lib/morning/limited-input'
   import { openDomino } from '../../lib/morning/logic'
   import { DOMINO_MAX } from '../../lib/morning/words'
   import { stats } from '../../lib/stats/store.svelte'
@@ -9,8 +10,8 @@
 
   // „Big Domino“ (Spec M10 §2.3): die eine Sache des Tages, höchstens 80 Zeichen, mit Zähler. Liegt von den letzten drei
   // Tagen ein offener Big Domino vor, bietet der Kasten „Von gestern offen“ ihn zum Übernehmen an, solange das Feld leer
-  // ist. Gezählt und gekürzt wird nach Unicode-Zeichen (siehe `clipChars`); ein Zeilenumbruch wird zum Leerzeichen, und
-  // „Return“ schließt nur die Tastatur. Dies ist der letzte Eingabeschritt: Mit „Weiter“ wird der Eintrag gespeichert,
+  // ist. Gezählt und gekürzt wird nach Unicode-Zeichen; ein Zeilenumbruch wird zum Leerzeichen, und „Return“ schließt nur die
+  // Tastatur (das alles tut `limitedInput`). Dies ist der letzte Eingabeschritt: Mit „Weiter“ wird der Eintrag gespeichert,
   // und der Abschluss legt „Fertig“ an die Stelle dieses Knopfs (siehe `tapArming`).
   const id = $props.id()
   const arming = tapArming()
@@ -19,18 +20,6 @@
 
   const open = $derived(openDomino(stats.data.mornings ?? [], appNow()))
   const count = $derived(Array.from(morningUi.draft.domino).length)
-
-  function onInput(event: Event & { currentTarget: HTMLTextAreaElement }) {
-    const clipped = clipChars(event.currentTarget.value.replace(/\s*[\r\n]+\s*/g, ' '), DOMINO_MAX)
-    if (clipped !== event.currentTarget.value) event.currentTarget.value = clipped
-    morningUi.draft.domino = clipped
-  }
-
-  function onKeydown(event: KeyboardEvent & { currentTarget: HTMLTextAreaElement }) {
-    if (event.key !== 'Enter' || event.isComposing) return
-    event.preventDefault()
-    event.currentTarget.blur()
-  }
 
   // Der Kasten verschwindet mit der Übernahme und nimmt den Fokus des Knopfs mit: Er geht ins Feld.
   function adopt() {
@@ -70,8 +59,7 @@
         aria-describedby="{id}-count"
         bind:this={area}
         value={morningUi.draft.domino}
-        oninput={onInput}
-        onkeydown={onKeydown}
+        use:limitedInput={{ max: DOMINO_MAX, onChange: (value) => (morningUi.draft.domino = value) }}
       ></textarea>
       <p class="count" id="{id}-count">{count} / {DOMINO_MAX}</p>
     </div>

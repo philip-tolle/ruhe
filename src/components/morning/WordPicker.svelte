@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { clipChars } from '../../lib/stats/schema'
+  import { limitedInput } from '../../lib/morning/limited-input'
 
   // Die Wahl eines Worts im Morgen-Start (Spec M10 §2.3): eine Radiogruppe aus Vorschlägen, darunter „Deine Wörter“ (die
   // eigenen aus früheren Durchgängen, nur wenn es welche gibt) und ein freies Feld. Es gilt genau ein Wort, und das steht
@@ -51,13 +51,11 @@
     onChange(word === picked ? '' : word)
   }
 
-  // Zeilenumbrüche (eingefügter Text) werden zu Leerzeichen; dann auf `max` Zeichen gekürzt, ohne zu trimmen: Das Leerzeichen
-  // zwischen zwei Wörtern muss sich tippen lassen. Getrimmt wird beim Speichern.
-  function onInput(event: Event & { currentTarget: HTMLInputElement }) {
-    const clipped = clipChars(event.currentTarget.value.replace(/\s*[\r\n]+\s*/g, ' '), max)
-    if (clipped !== event.currentTarget.value) event.currentTarget.value = clipped
-    typed = clipped
-    onChange(clipped)
+  // Das Feld: `limitedInput` macht aus Zeilenumbrüchen (eingefügter Text) Leerzeichen und kürzt auf `max` Zeichen, ohne zu
+  // trimmen (das Leerzeichen zwischen zwei Wörtern muss sich tippen lassen; getrimmt wird beim Speichern). Das Wort im Feld gilt.
+  function type(text: string) {
+    typed = text
+    onChange(text)
   }
 
   // Pfeiltasten, Pos1 und Ende wählen wie in einer Radiogruppe und nehmen den Fokus mit (wie `LevelDots`). Zeigt die Taste auf
@@ -128,7 +126,7 @@
       enterkeyhint="done"
       {placeholder}
       value={typed}
-      oninput={onInput}
+      use:limitedInput={{ max, onChange: type }}
     />
   </div>
 </div>
