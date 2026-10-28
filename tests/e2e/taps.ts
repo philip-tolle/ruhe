@@ -23,3 +23,31 @@ export async function expectStillRunning(page: Page) {
   await expect(page.getByRole('button', { name: 'Fertig' })).toHaveCount(0)
   expect(await page.evaluate(() => navigator.mediaSession.playbackState)).toBe('playing')
 }
+
+// Stellt die Höhe des Bildschirms so ein, dass `button` (fest am Bildschirm, etwa mittig in einem Dialog) senkrecht auf der Höhe
+// von `under` liegt, einem Knopf der Seite darunter. Schließt der erste Tipp auf `button` den Dialog, trifft der zweite eines
+// Doppeltipps an derselben Stelle `under`. Die Höhe folgt der Lage von `button` bei zwei Höhen (mittig wandert er mit der
+// halben, unten mit der ganzen Änderung der Höhe). Gibt den Bruchteil der Breite von `button` zurück, an dem die Mitte
+// von `under` liegt: der Wert für `doubleTap`. Prüft zuletzt, dass sich die beiden wirklich überdecken.
+export async function putOver(page: Page, button: Locator, under: Locator): Promise<number> {
+  const centerY = async (target: Locator) => {
+    const box = (await target.boundingBox())!
+    return box.y + box.height / 2
+  }
+  const { width, height } = page.viewportSize()!
+  const before = await centerY(button)
+  await page.setViewportSize({ width, height: height - 100 })
+  const smaller = await centerY(button)
+  const slope = (before - smaller) / 100 // 0,5 mittig, 1 unten
+  expect(slope, 'der Knopf ist fest am Bildschirm').toBeGreaterThan(0)
+  const wanted = Math.round(height - 100 + ((await centerY(under)) - smaller) / slope)
+  await page.setViewportSize({ width, height: wanted })
+
+  const [b, u] = [(await button.boundingBox())!, (await under.boundingBox())!]
+  const [x, y] = [u.x + u.width / 2, u.y + u.height / 2]
+  expect(x, 'Mitte des unteren Knopfs liegt waagrecht im oberen').toBeGreaterThanOrEqual(b.x)
+  expect(x).toBeLessThanOrEqual(b.x + b.width)
+  expect(y, 'Mitte des unteren Knopfs liegt senkrecht im oberen').toBeGreaterThanOrEqual(b.y)
+  expect(y).toBeLessThanOrEqual(b.y + b.height)
+  return (x - b.x) / b.width
+}

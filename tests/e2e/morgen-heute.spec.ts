@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { expectMotiv } from './motiv'
+import { doubleTap, putOver } from './taps'
 
 // Die Morgen-Karten auf „Heute“ („Guten Morgen“ und „Dein Tag“, Spec M10 §2.1) und die Zeile in „Deine Woche“ (§2.2).
 // Der Browser läuft in Berlin; fast alle Tests setzen nur die Uhrzeit (`setFixedTime`), kein Programm läuft dabei (R1).
@@ -121,6 +122,31 @@ test('„Guten Morgen“ at 7:00 sits above „Dein Akku“ with both buttons, a
 test('„Lang · 15 Min“ opens the long flow', async ({ page }) => {
   await open(page, at('07:00:00'))
   await morgenKarte(page).getByRole('button', { name: 'Lang · 15 Min', exact: true }).click()
+  await expect(flow(page).getByRole('img', { name: 'Schritt 1 von 6', exact: true })).toBeVisible()
+})
+
+// Auf einem niedrigen Bildschirm (kleines Telefon, Tastatur) liegt „Beenden“ in der Rückfrage über „Lang · 15 Min“ der Karte
+// (rechts, wie „Beenden“; „Kurz“ liegt unter „Weiter machen“, das den Ablauf nicht schließt): Der zweite Tipp eines
+// Doppeltipps träfe nach dem Schließen „Lang“ und öffnete den Ablauf gleich wieder.
+test('a double tap on „Beenden“ in the dialog does not reach „Lang · 15 Min“ of the card below, and the flow stays closed', async ({ page }) => {
+  await open(page, at('07:00:00'))
+  const c = morgenKarte(page)
+  await c.getByRole('button', { name: 'Kurz · 5 Min', exact: true }).click()
+  await expect(flow(page)).toBeVisible()
+  await flow(page).getByRole('button', { name: 'Morgen-Start beenden', exact: true }).click()
+  const confirm = page.getByRole('alertdialog', { name: 'Morgen-Start beenden?', exact: true })
+  await expect(confirm).toBeVisible()
+
+  const ending = confirm.getByRole('button', { name: 'Beenden', exact: true })
+  const lang = c.getByRole('button', { name: 'Lang · 15 Min', exact: true })
+  const x = await putOver(page, ending, lang)
+  await doubleTap(page, ending, x)
+
+  await expect(flow(page)).toHaveCount(0)
+  await expect(confirm).toHaveCount(0)
+  // Die Karte steht und nimmt danach Tipps wieder an: ein einzelner Tipp öffnet den Ablauf.
+  await expect(lang).toBeEnabled()
+  await lang.click()
   await expect(flow(page).getByRole('img', { name: 'Schritt 1 von 6', exact: true })).toBeVisible()
 })
 

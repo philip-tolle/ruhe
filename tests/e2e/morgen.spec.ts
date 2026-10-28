@@ -1,6 +1,6 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { expectMotiv } from './motiv'
-import { doubleTap } from './taps'
+import { doubleTap, putOver } from './taps'
 
 // Der Morgen-Start (Spec M10 §2.2, §2.3): die Karte im Reiter „Energie“ und der Ablauf im Vollbild. Der Browser läuft in
 // Berlin; die meisten Tests setzen nur die Uhrzeit (`setFixedTime`), kein Programm läuft dabei (R1). Die zwei Tests mit
@@ -471,6 +471,97 @@ test('the fields count characters and not UTF-16 units', async ({ page }) => {
   expect(Array.from(entry.domino)).toHaveLength(80)
 })
 
+// Wie das native `maxlength`: Passt eine Einfügung nicht, wird nur die eingefügte Stelle gekürzt; der Text davor und dahinter
+// bleibt, der Cursor steht hinter dem Eingefügten. `insertText` fügt am Cursor ein, wie ein Einfügen aus der Zwischenablage.
+const caret = (target: Locator) => target.evaluate((el) => [(el as HTMLTextAreaElement).selectionStart, (el as HTMLTextAreaElement).selectionEnd])
+const select = (target: Locator, from: number, to = from) => target.evaluate((el, [a, b]) => (el as HTMLTextAreaElement).setSelectionRange(a, b), [from, to])
+
+test('pasting into the middle of a full big domino (80 / 80) leaves the end standing', async ({ page }) => {
+  await open(page, { now: SEVEN })
+  await start(page, 'Kurz · 5 Min')
+  await skipTo(page, DOMINO)
+  const area = field(page, 'Dein Big Domino')
+  const full = 'A'.repeat(40) + 'B'.repeat(40)
+  await area.fill(full)
+  await expect(flow(page).getByText('80 / 80', { exact: true })).toBeVisible()
+
+  await select(area, 40)
+  await page.keyboard.insertText('EINGEFÜGT')
+  // Kein Platz: nichts geht verloren, nichts kommt dazu, der Cursor bleibt.
+  await expect(area).toHaveValue(full)
+  expect(await caret(area)).toEqual([40, 40])
+  await expect(flow(page).getByText('80 / 80', { exact: true })).toBeVisible()
+
+  // Tippen am Ende bleibt ebenso ohne Wirkung.
+  await select(area, 80)
+  await page.keyboard.type('x')
+  await expect(area).toHaveValue(full)
+  expect(await caret(area)).toEqual([80, 80])
+
+  // Der Eintrag trägt den ganzen Text.
+  await next(page).click()
+  await expect(title(page, DONE)).toBeFocused()
+  expect((await stored(page)).mornings[0].domino).toBe(full)
+})
+
+test('a paste that only partly fits is cut where it was inserted: the text on both sides stays, the caret sits behind it', async ({ page }) => {
+  await open(page, { now: SEVEN })
+  await start(page, 'Kurz · 5 Min')
+  await skipTo(page, DOMINO)
+  const area = field(page, 'Dein Big Domino')
+  await area.fill('A'.repeat(40) + 'B'.repeat(40))
+  // Zehn Zeichen aus der Mitte löschen: 70 / 80, Platz für zehn.
+  await select(area, 35, 45)
+  await page.keyboard.press('Backspace')
+  await expect(area).toHaveValue('A'.repeat(35) + 'B'.repeat(35))
+  await expect(flow(page).getByText('70 / 80', { exact: true })).toBeVisible()
+
+  await page.keyboard.insertText('1234567890abcdef') // 16 Zeichen, zehn passen
+  await expect(area).toHaveValue('A'.repeat(35) + '1234567890' + 'B'.repeat(35))
+  expect(await caret(area)).toEqual([45, 45])
+  await expect(flow(page).getByText('80 / 80', { exact: true })).toBeVisible()
+
+  // Eine Auswahl ersetzen: Ihr Platz steht dem neuen Text zur Verfügung.
+  await select(area, 0, 5)
+  await page.keyboard.insertText('123456789')
+  await expect(area).toHaveValue('12345' + 'A'.repeat(30) + '1234567890' + 'B'.repeat(35))
+  expect(await caret(area)).toEqual([5, 5])
+})
+
+test('the same holds for the word of the intention and for emoji, and a pasted line break becomes a space', async ({ page }) => {
+  await open(page, { now: SEVEN })
+  await start(page, 'Kurz · 5 Min')
+  await skipTo(page, INTENTION)
+  const word = field(page, 'Eigenes Wort')
+  await word.fill('😀'.repeat(20) + '😁'.repeat(20)) // 40 / 40
+  await select(word, 40) // hinter den ersten 20 Emoji (zwei Einheiten je Emoji)
+  await page.keyboard.insertText('🙂🙂🙂')
+  await expect(word).toHaveValue('😀'.repeat(20) + '😁'.repeat(20))
+  expect(await caret(word)).toEqual([40, 40])
+  // Zwei Zeichen weniger, dann passen von drei neuen zwei.
+  await select(word, 0, 2)
+  await page.keyboard.press('Backspace')
+  await select(word, 0, 2)
+  await page.keyboard.press('Backspace')
+  expect(Array.from(await word.inputValue())).toHaveLength(38)
+  await select(word, 36) // nach 18 Emoji
+  await page.keyboard.insertText('🙂🙂🙂')
+  expect(await word.inputValue()).toBe('😀'.repeat(18) + '🙂🙂' + '😁'.repeat(20))
+  expect(await caret(word)).toEqual([40, 40])
+
+  await next(page).click()
+  await expect(title(page, GRATITUDE)).toBeFocused()
+  const thanks = field(page, 'Dein Satz')
+  await thanks.click()
+  await page.keyboard.insertText('erste Zeile\nzweite Zeile')
+  await expect(thanks).toHaveValue('erste Zeile zweite Zeile')
+  expect(await caret(thanks)).toEqual([24, 24])
+  // „Return“ schließt die Tastatur und schreibt keinen Umbruch.
+  await page.keyboard.press('Enter')
+  await expect(thanks).not.toBeFocused()
+  await expect(thanks).toHaveValue('erste Zeile zweite Zeile')
+})
+
 // ── Beenden, Zurück-Geste ───────────────────────────────────────────────────────────────────────────────────────
 
 test('"×" asks before ending; "Weiter machen" stays, "Beenden" closes without an entry but keeps the check-in', async ({ page }) => {
@@ -686,6 +777,74 @@ test('ending an exercise early returns to "Aktivieren" and saves nothing', async
   await expect.poll(() => depth(page)).toBe(0)
 })
 
+// Die Meditation im langen Ablauf (Echtzeit, ohne `page.clock`): Sie spielt im Player, der Ablauf bleibt verborgen darunter.
+const guidedDialog = (page: Page) => page.getByRole('dialog', { name: 'Geführte Meditation', exact: true })
+
+test('a meditation in the long flow ends early with "Beenden" and the flow goes on at the intention, without its own end view', async ({ page }) => {
+  test.setTimeout(90_000)
+  await open(page)
+  await start(page, 'Lang · 15 Min')
+  await skipTo(page, DEEPEN)
+  await expect(flow(page).getByRole('button', { name: /^Guten Morgen/ })).toContainText('Meditation · 5 Min')
+  await flow(page).getByRole('button', { name: /^Guten Morgen/ }).click()
+
+  // Der Player ist da, der Ablauf verborgen (aber eingehängt), die App darunter unerreichbar.
+  const player = guidedDialog(page)
+  await expect(player).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Morgen-Start', exact: true, includeHidden: true })).toBeHidden()
+  await expect.poll(() => depth(page)).toBe(2) // Ablauf und Player
+  await expect(player.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+  await page.waitForTimeout(4000) // ein paar Sekunden gehört: Die Meditation läuft, die Engine zählt die gehörte Zeit
+
+  await player.getByRole('button', { name: 'Beenden', exact: true }).click()
+
+  // Der Ablauf steht beim nächsten Schritt, sichtbar; der Abschluss der Meditation (und mit ihm der Ruhe-Check-in) fehlt.
+  await expect(player).toHaveCount(0)
+  await expect(title(page, INTENTION)).toBeFocused()
+  await expect(flow(page).getByRole('img', { name: 'Schritt 4 von 6', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Schön, dass du dir die Zeit genommen hast.' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Gut gemacht.' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Fertig', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('radiogroup', { name: 'Vorher', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('radiogroup', { name: 'Jetzt', exact: true })).toHaveCount(0)
+  await expect.poll(() => depth(page)).toBe(1) // nur noch die Ebene des Ablaufs
+
+  // Unter einer Minute gehört: Die Sitzung zählt nicht, und es entstand kein Morgen-Eintrag.
+  const data = await stored(page)
+  expect(data.sessions).toEqual([])
+  expect(data.mornings).toBeUndefined()
+
+  // Der Ablauf geht normal weiter und endet sauber.
+  await skipTo(page, DONE)
+  await flow(page).getByRole('button', { name: 'Fertig', exact: true }).click()
+  await expect(flow(page)).toHaveCount(0)
+  await expect.poll(() => depth(page)).toBe(0)
+})
+
+test('offline, an unsaved meditation is locked at "Vertiefen" with the hint, and "Tageslicht tanken" stays possible', async ({ page, context }) => {
+  await open(page, { now: SEVEN })
+  await start(page, 'Lang · 15 Min')
+  await skipTo(page, DEEPEN)
+  const guten = flow(page).getByRole('button', { name: /^Guten Morgen/ })
+  const licht = flow(page).getByRole('button', { name: /^Tageslicht tanken/ })
+  await expect(guten).toBeEnabled()
+  await expect(flow(page).getByText('Nicht offline verfügbar')).toHaveCount(0)
+
+  // Frisch geladen ist die Datei nicht gespeichert (sie wird erst beim ersten Abspielen gesichert).
+  await context.setOffline(true)
+  await expect(guten).toBeDisabled()
+  await expect(flow(page).getByText('Nicht offline verfügbar', { exact: true })).toBeVisible()
+  await expect(guten).toHaveAccessibleDescription('Nicht offline verfügbar')
+  await expect(licht).toBeEnabled()
+  await expect(flow(page).getByText('Am besten, sobald es hell ist.')).toHaveCount(0) // um 7:00 ist es hell genug
+  expect((await guten.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+
+  // Mit Netz ist sie wieder wählbar.
+  await context.setOffline(false)
+  await expect(guten).toBeEnabled()
+  await expect(flow(page).getByText('Nicht offline verfügbar')).toHaveCount(0)
+})
+
 // ── Doppeltipp ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 for (const [variant, x] of [['Kurz · 5 Min', 0.5], ['Lang · 15 Min', 0.5]] as const) {
@@ -742,6 +901,50 @@ test('a double tap on the last "Weiter" does not close the summary', async ({ pa
   await expect(title(page, DONE)).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Fokus-Sprint' })).toHaveCount(0)
   await expect(flow(page)).toBeVisible()
+})
+
+test('a double tap on "Beenden" in the dialog does not reach "Lang" of the card below, and the flow stays closed', async ({ page }) => {
+  await open(page, { now: SEVEN })
+  await start(page, 'Kurz · 5 Min')
+  await close(page).click()
+  await expect(confirm(page)).toBeVisible()
+  // Auf einem niedrigen Bildschirm (kleines Telefon, Tastatur) liegt „Beenden“ über den Knöpfen der Karte: Der zweite Tipp
+  // träfe sie, sobald der Ablauf zu ist.
+  const ending = confirm(page).getByRole('button', { name: 'Beenden', exact: true })
+  const lang = card(page).getByRole('button', { name: 'Lang · 15 Min', exact: true })
+  const x = await putOver(page, ending, lang)
+  await doubleTap(page, ending, x)
+
+  await expect(flow(page)).toHaveCount(0)
+  await expect(confirm(page)).toHaveCount(0)
+  await expect.poll(() => depth(page)).toBe(0)
+  // Danach nimmt die Karte Tipps wieder an: ein einzelner Tipp öffnet den Ablauf.
+  await expect(lang).toBeEnabled()
+  await lang.click()
+  await expect(flow(page).getByRole('img', { name: 'Schritt 1 von 6', exact: true })).toBeVisible()
+})
+
+test('the summary keeps its content and "Fokus-Sprint starten" when the clock passes midnight', async ({ page }) => {
+  await open(page, { now: new Date('2026-10-28T23:58:00+01:00') })
+  await start(page, 'Kurz · 5 Min')
+  await skipTo(page, DOMINO)
+  await field(page, 'Dein Big Domino').fill('Vorhaben prüfen')
+  await next(page).click()
+  await expect(title(page, DONE)).toBeFocused()
+  await expect(flow(page).getByRole('definition')).toHaveText(['Vorhaben prüfen'])
+  const sprint = flow(page).getByRole('button', { name: 'Fokus-Sprint starten · 50 Min', exact: true })
+  await expect(sprint).toBeVisible()
+  await expect(card(page).getByText('Heute schon gemacht. Ein neuer Durchgang ersetzt die Angaben.', { exact: true })).toBeVisible()
+
+  // Die App bleibt offen, die Uhr geht über Mitternacht: Die Karte darunter weiß, dass der Eintrag nicht mehr von heute ist …
+  await page.clock.setFixedTime(new Date('2026-10-29T00:02:00+01:00'))
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await expect(card(page).getByText('Kurz oder lang, jederzeit.', { exact: true })).toBeVisible({ timeout: 2000 })
+  // … der Abschluss zeigt trotzdem, was gespeichert wurde, und bietet den Sprint an.
+  await expect(flow(page).getByRole('definition')).toHaveText(['Vorhaben prüfen'])
+  await expect(flow(page).getByText('Morgen-Start erledigt.')).toHaveCount(0)
+  await expect(sprint).toBeVisible()
+  await expect(sprint).toBeEnabled()
 })
 
 // ── 360 px und 130 % ────────────────────────────────────────────────────────────────────────────────────────────
