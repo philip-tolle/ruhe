@@ -5,6 +5,7 @@
   import { hackById } from '../../lib/energy/hacks'
   import { setHackEffect, stats } from '../../lib/stats/store.svelte'
   import { tapArming } from '../../lib/ui/arming.svelte'
+  import { morningContinueAfterHack, morningUi } from '../../lib/ui/morning-ui.svelte'
   import { clearDone, startHack, type SessionDoneInfo } from '../../lib/ui/session-ui.svelte'
   import { vibrate } from '../../lib/ui/vibrate'
 
@@ -12,6 +13,8 @@
   // nach der Wirkung. Kam der Vorher-Wert schon aus einem Check-in (höchstens 2 Stunden vor dem Start), fragt eine Reihe
   // „{Bereich} jetzt?“, sonst zwei, „vorher“ und „jetzt“. Beides ist freiwillig; ein Tipp speichert sofort, derselbe
   // Punkt noch einmal nimmt zurück, „Fertig“ schließt nur. Die Werte stehen am gespeicherten Lauf; die Ansicht liest sie von dort.
+  // Wartet der Morgen-Start auf diesen Hack (Spec M10 §2.3), steht statt „Fertig“ und „Noch einmal“ ein „Weiter“: Es schließt
+  // das Ende und führt den Ablauf zum nächsten Schritt.
   let { done }: { done: SessionDoneInfo } = $props()
 
   type Which = 'before' | 'after'
@@ -21,6 +24,8 @@
   // Einmal beim Einblenden entschieden: Tippt jemand in der Zeile „vorher“, trägt der Lauf danach einen Vorher-Wert,
   // und aus zwei Zeilen würde mitten im Tippen eine.
   const single = untrack(() => run?.before !== undefined)
+  // Nicht eingefroren wie `single`: Der Ablauf setzt das Warten zurück, wenn „Weiter“ getippt ist (dann verschwindet die Ansicht ohnehin).
+  const inMorning = $derived(morningUi.awaiting === 'hack')
 
   // Der letzte Tipp auf „Beenden“ (Doppeltipp) träfe sonst einen Punkt, der sich gerade dorthin legt (siehe `tapArming`).
   const arming = tapArming()
@@ -65,11 +70,15 @@
   {/if}
 
   <div class="actions">
-    <button type="button" class="button" disabled={!arming.armed} onclick={clearDone}>Fertig</button>
-    <button type="button" class="button secondary" disabled={!arming.armed} onclick={() => startHack(done.ref)}>Noch einmal</button>
+    {#if inMorning}
+      <button type="button" class="button" disabled={!arming.armed} onclick={morningContinueAfterHack}>Weiter</button>
+    {:else}
+      <button type="button" class="button" disabled={!arming.armed} onclick={clearDone}>Fertig</button>
+      <button type="button" class="button secondary" disabled={!arming.armed} onclick={() => startHack(done.ref)}>Noch einmal</button>
+    {/if}
   </div>
   {#if area}
-    <p class="skip">Ohne Antwort einfach „Fertig“.</p>
+    <p class="skip">Ohne Antwort einfach „{inMorning ? 'Weiter' : 'Fertig'}“.</p>
   {/if}
 </div>
 

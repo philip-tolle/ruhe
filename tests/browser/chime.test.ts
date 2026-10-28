@@ -1,0 +1,97 @@
+// Die Klangschale im Abschluss des Morgen-Starts (`playChime`): „Feuer und vergiss“ mit eigenem Audio-Kontext, den
+// die Tests als Ersatz einreichen. Fetch ist ersetzt, damit kein Test ans Netz geht.
+import { afterEach, beforeEach, expect, test, vi, type MockInstance } from 'vitest'
+import { playChime, resetChimeForTests } from '../../src/lib/audio/chime'
+import { EFFECTS } from '../../src/lib/sounds/catalog'
+
+let fetchMock: MockInstance<typeof fetch>
+
+beforeEach(() => {
+  resetChimeForTests()
+  fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(new ArrayBuffer(8)))
+})
+
+afterEach(() => {
+  fetchMock.mockRestore()
+})
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Ein Ersatz-Kontext, der aufzeichnet, was mit ihm geschieht. */
+function fakeContext(decode: () => Promise<unknown> = async () => ({ fake: 'buffer' })) {
+  const gain = { gain: { value: 1 }, connect: vi.fn() }
+  const source = { buffer: null as unknown, connect: vi.fn(), start: vi.fn() }
+  const ctx = {
+    state: 'running',
+    destination: { fake: 'destination' },
+    decodeAudioData: vi.fn(decode),
+    createBufferSource: vi.fn(() => source),
+    createGain: vi.fn(() => gain),
+  }
+  return { ctx: ctx as unknown as AudioContext, raw: ctx, source, gain }
+}
+
+test('playChime lädt die Klangschale, dekodiert sie und spielt einen Anschlag mit Lautstärke 0,8', async () => {
+  const { ctx, raw, source, gain } = fakeContext()
+  playChime(() => ctx)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+  expect(raw.decodeAudioData).toHaveBeenCalledTimes(1)
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+  expect(String(fetchMock.mock.calls[0][0])).toContain(EFFECTS[0].file)
+  expect(source.buffer).toEqual({ fake: 'buffer' })
+  // Quelle → Verstärkung (0,8) → Ausgang.
+  expect(source.connect).toHaveBeenCalledWith(gain)
+  expect(gain.gain.value).toBe(0.8)
+  expect(gain.connect).toHaveBeenCalledWith(raw.destination)
+})
+
+test('der Kontext wird einmal erzeugt und behalten; die Aufnahme wird nur einmal geladen', async () => {
+  const { ctx, raw, source } = fakeContext()
+  const make = vi.fn(() => ctx)
+  playChime(make)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+  playChime(make)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(2))
+  expect(make).toHaveBeenCalledTimes(1)
+  expect(raw.decodeAudioData).toHaveBeenCalledTimes(1)
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+test('scheitert das Laden (Netz), wirft playChime nicht, und der nächste Aufruf versucht es erneut', async () => {
+  fetchMock.mockRejectedValueOnce(new TypeError('offline'))
+  const { ctx, source } = fakeContext()
+  expect(() => playChime(() => ctx)).not.toThrow()
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+  await wait(30) // Ein unbehandelter Fehler käme hier zum Vorschein und ließe den Test scheitern.
+  expect(source.start).not.toHaveBeenCalled()
+
+  playChime(() => ctx)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+})
+
+test('eine Antwort mit Fehlerstatus (404) und eine nicht dekodierbare Datei bleiben still', async () => {
+  fetchMock.mockResolvedValueOnce(new Response('nicht da', { status: 404 }))
+  const first = fakeContext()
+  expect(() => playChime(() => first.ctx)).not.toThrow()
+  await wait(30)
+  expect(first.raw.decodeAudioData).not.toHaveBeenCalled()
+  expect(first.source.start).not.toHaveBeenCalled()
+
+  resetChimeForTests()
+  const second = fakeContext(async () => {
+    throw new DOMException('kaputt', 'EncodingError')
+  })
+  expect(() => playChime(() => second.ctx)).not.toThrow()
+  await vi.waitFor(() => expect(second.raw.decodeAudioData).toHaveBeenCalledTimes(1))
+  await wait(30)
+  expect(second.source.start).not.toHaveBeenCalled()
+})
+
+test('kann der Audio-Kontext nicht erzeugt werden, bleibt es still', async () => {
+  const make = vi.fn(() => {
+    throw new Error('kein Audio')
+  })
+  expect(() => playChime(make)).not.toThrow()
+  await wait(30)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
