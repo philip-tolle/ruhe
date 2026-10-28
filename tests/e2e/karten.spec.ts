@@ -712,7 +712,9 @@ test.describe('Heute', () => {
     await expect(rows.nth(2)).toHaveAccessibleName('Klänge Zur Ruhe kommen')
   })
 
-  // Um 14 Uhr, außerhalb des Morgen-Fensters: Dort steht keine Morgen-Karte, und „Jetzt starten“ ist der einzige volle Knopf.
+  // Um 14 Uhr, außerhalb des Morgen-Fensters (4 bis 11 Uhr) und ohne Morgen-Eintrag von heute: Dort steht keine Morgen-Karte,
+  // und „Jetzt starten“ ist der einzige volle Knopf. Das gilt nur so: Im Morgen-Fenster kommt „Kurz · 5 Min“ dazu (nächster
+  // Test), und mit einem Eintrag von heute steht „Dein Tag“ mit „Sprint starten“. Darum ist die Uhrzeit gepinnt.
   test('„Jetzt starten“ of the suggestion is the only full button on the screen', async ({ page }) => {
     await openHeute(page, '14:00:00', { kind: 'breath', pattern: 'box', minutes: 5 })
     await expect(page.locator('.screen button.button')).toHaveText(['Jetzt starten'])

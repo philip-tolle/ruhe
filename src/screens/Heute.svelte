@@ -121,7 +121,8 @@
   <AkkuCard compact onOpen={() => onNavigate('energie')} />
 
   <!-- Waschung in der Farbe der Tageszeit oben rechts, um das Motiv; Überschrift, Titel und Beschreibung liegen links
-       davon bzw. darunter. Der volle Knopf ist der einzige auf dem Bildschirm. -->
+       davon bzw. darunter. „Jetzt starten“ ist der volle Knopf dieser Karte; auf dem Bildschirm gibt es zeitweise weitere:
+       „Kurz · 5 Min“ der Morgen-Karte im Morgen-Fenster und „Sprint starten“ bei „Dein Tag“. -->
   <div class="card vorschlag">
     <Waschung farbe={tageszeitWaschung(tageszeitUi.current)} />
     <div class="suggestion">
