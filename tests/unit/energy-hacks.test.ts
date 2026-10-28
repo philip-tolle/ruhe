@@ -17,12 +17,15 @@ import {
   type HackGuide,
 } from '../../src/lib/energy/hacks'
 
-// Spec §4: Kennung, Titel, Bereich, Minuten, Führung – in Katalog-Reihenfolge.
+// Spec M9 §4 und M10 §3.1: Kennung, Titel, Bereich, Minuten, Führung – in Katalog-Reihenfolge.
 const TABLE: [string, string, EnergyArea, number, HackGuide][] = [
   ['bewegungs-snack', 'Bewegungs-Snack', 'koerper', 2, 'schritte'],
   ['tageslicht', 'Tageslicht tanken', 'koerper', 5, 'ring'],
   ['wach-atmung', 'Wach-Atmung', 'koerper', 1, 'takt'],
   ['power-pause', 'Power-Pause', 'koerper', 10, 'ring'],
+  ['strecken', 'Strecken & Aufrichten', 'koerper', 2, 'schritte'],
+  ['wasser-licht', 'Wasser & Licht', 'koerper', 2, 'schritte'],
+  ['wach-klopfen', 'Wach-Klopfen', 'koerper', 1, 'schritte'],
   ['seufzer', 'Physiologischer Seufzer', 'gefuehl', 1, 'takt'],
   ['kaltes-gesicht', 'Kaltes Gesicht', 'gefuehl', 1, 'schritte'],
   ['gefuehl-benennen', 'Gefühl benennen', 'gefuehl', 2, 'schritte'],
@@ -85,24 +88,27 @@ test('Bereiche und Stufen wie in Spec §2', () => {
   for (const v of [0, 6, 2.5, '3', NaN, null]) expect(isEnergyLevel(v), String(v)).toBe(false)
 })
 
-test('der Katalog hat 16 gültige Hacks, je 4 pro Bereich', () => {
-  expect(HACKS).toHaveLength(16)
-  for (const a of AREAS) expect(hacksIn(a), a).toHaveLength(4)
+test('der Katalog hat 19 gültige Hacks: 7 Körper, je 4 Gefühl, Geist und Sinn', () => {
+  expect(HACKS).toHaveLength(19)
+  expect(hacksIn('koerper')).toHaveLength(7)
+  for (const a of ['gefuehl', 'geist', 'sinn'] as const) expect(hacksIn(a), a).toHaveLength(4)
   for (const h of HACKS) expect(hackProblems(h), h.id).toEqual([])
   expect(HACKS.map((h) => h.id)).toEqual(TABLE.map(([id]) => id))
-  expect(new Set(HACKS.map((h) => h.id)).size).toBe(16)
+  expect(new Set(HACKS.map((h) => h.id)).size).toBe(19)
 })
 
 test('Titel, Bereich, Minuten und Führung wie in Spec §4', () => {
   expect(HACKS.map((h) => [h.id, h.title, h.area, h.minutes, h.guide])).toEqual(TABLE)
-  expect(hacksIn('koerper').map((h) => h.id)).toEqual(['bewegungs-snack', 'tageslicht', 'wach-atmung', 'power-pause'])
+  expect(hacksIn('koerper').map((h) => h.id)).toEqual([
+    'bewegungs-snack', 'tageslicht', 'wach-atmung', 'power-pause', 'strecken', 'wasser-licht', 'wach-klopfen',
+  ])
   expect(hackById('gibtsnicht')).toBeNull()
 })
 
-test('Hinweise, Fenster und Verweise wie in Spec §4', () => {
+test('Hinweise, Fenster und Verweise wie in Spec M9 §4 und M10 §3.1', () => {
   const windows = Object.fromEntries(HACKS.filter((h) => h.window).map((h) => [h.id, h.window]))
-  expect(windows).toEqual({ tageslicht: { from: 7, to: 17 }, 'power-pause': { from: 11, to: 16 } })
-  expect(HACKS.filter((h) => h.caution !== null).map((h) => h.id)).toEqual(['wach-atmung', 'kaltes-gesicht'])
+  expect(windows).toEqual({ tageslicht: { from: 7, to: 17 }, 'power-pause': { from: 11, to: 16 }, 'wasser-licht': { from: 4, to: 12 } })
+  expect(HACKS.filter((h) => h.caution !== null).map((h) => h.id)).toEqual(['wach-atmung', 'strecken', 'wach-klopfen', 'kaltes-gesicht'])
   expect(HACKS.filter((h) => h.link !== null).map((h) => h.id)).toEqual(['seufzer'])
 })
 
@@ -255,6 +261,61 @@ test('Zeitfenster', () => {
   expect(inWindow(pause, at(16, 0))).toBe(false)
   const seufzer = hack('seufzer')
   for (let hour = 0; hour < 24; hour++) expect(inWindow(seufzer, at(hour, 30)), `${hour} Uhr`).toBe(true)
+})
+
+describe('Morgen-Übungen (Spec M10 §3.1)', () => {
+  const plan = (h: Hack) => h.steps.map((s) => [s.seconds, s.icon])
+
+  test('Strecken & Aufrichten: 2 Min in 4 Schritten à 30 s', () => {
+    const h = hack('strecken')
+    expect([h.area, h.guide, h.minutes]).toEqual(['koerper', 'schritte', 2])
+    expect(plan(h)).toEqual([[30, 'liegen'], [30, 'bewegung'], [30, 'bewegung'], [30, 'bewegung']])
+    expect(hackLength(h)).toBe(120)
+    expect(h.caution).toBe('Nur so weit, wie es angenehm ist.')
+    expect(h.why).toMatchObject({ from: 'Steif', to: 'Beweglich' })
+    expect(h.source).toBe('Allgemeine Mobilisation; Energie-Management nach Loehr/Schwartz')
+  })
+
+  test('Wasser & Licht: 2 Min in 30/60/30 s, nur 4 bis 12 Uhr im Jetzt-Reset', () => {
+    const h = hack('wasser-licht')
+    expect([h.area, h.guide, h.minutes]).toEqual(['koerper', 'schritte', 2])
+    expect(plan(h)).toEqual([[30, 'wasser'], [60, 'sonne'], [30, 'auge']])
+    expect(hackLength(h)).toBe(120)
+    expect(h.window).toEqual({ from: 4, to: 12 })
+    expect(h.caution).toBeNull()
+    expect(h.why).toMatchObject({ from: 'Nachtmodus', to: 'Tagmodus' })
+    expect(h.source).toBe('Angelehnt an Huberman (Morgenlicht und innere Uhr)')
+  })
+
+  test('Wach-Klopfen: 1 Min in 3 Schritten à 20 s', () => {
+    const h = hack('wach-klopfen')
+    expect([h.area, h.guide, h.minutes]).toEqual(['koerper', 'schritte', 1])
+    expect(plan(h)).toEqual([[20, 'bewegung'], [20, 'bewegung'], [20, 'bewegung']])
+    expect(hackLength(h)).toBe(60)
+    expect(h.caution).toBe('Sanft klopfen und schmerzende Stellen auslassen.')
+    expect(h.why).toMatchObject({ from: 'Träge', to: 'Wach' })
+    expect(h.source).toBe('Angelehnt an Qigong-Übungen')
+  })
+
+  test('keine Leseempfehlung, kein Verweis; Nutzen mit „kann“, Wirkung in zwei bis drei Sätzen', () => {
+    for (const id of ['strecken', 'wasser-licht', 'wach-klopfen']) {
+      const h = hack(id)
+      expect(h.further, id).toBeNull()
+      expect(h.link, id).toBeNull()
+      expect(h.benefit, id).toMatch(/\b(kann|können)\b/)
+      expect(h.why.text.match(/[.!?](\s|$)/g)?.length, id).toBeGreaterThanOrEqual(2)
+      expect(h.why.text.match(/[.!?](\s|$)/g)?.length, id).toBeLessThanOrEqual(3)
+      expect(hackProblems(h), id).toEqual([])
+    }
+  })
+
+  test('Wasser & Licht: Fenster 4 bis 12 Uhr, um 11:59 wahr, um 12:00 falsch', () => {
+    const h = hack('wasser-licht')
+    expect(inWindow(h, at(3, 59))).toBe(false)
+    expect(inWindow(h, at(4, 0))).toBe(true)
+    expect(inWindow(h, at(11, 59))).toBe(true)
+    expect(inWindow(h, at(12, 0))).toBe(false)
+  })
 })
 
 test('Geist-Hacks nennen Hildebrandt', () => {

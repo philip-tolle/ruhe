@@ -49,8 +49,11 @@ describe('Reihenfolge im Bereich', () => {
       ...effects('tageslicht', [-2]), // nur ein bewerteter Lauf: Gruppe 2
       ...effects('wach-atmung', [0, 0]), // Gruppe 3, Schnitt 0
       ...effects('bewegungs-snack', [-1, -1]), // Gruppe 3, Schnitt −1
+      // strecken und wach-klopfen: nie gelaufen, Gruppe 2 und dort vor tageslicht (wasser-licht fehlt mittags, Fenster 4 bis 12 Uhr)
     ]
-    expect(ids(resetOrder('koerper', runs, NOON))).toEqual(['power-pause', 'tageslicht', 'wach-atmung', 'bewegungs-snack'])
+    expect(ids(resetOrder('koerper', runs, NOON))).toEqual([
+      'power-pause', 'strecken', 'wach-klopfen', 'tageslicht', 'wach-atmung', 'bewegungs-snack',
+    ])
   })
   test('unbewertete Läufe machen einen Hack nicht bewertet; unbekannte Hacks stören nicht', () => {
     const runs = [
@@ -110,8 +113,19 @@ describe('Zeitfenster', () => {
     expect(has('koerper', 'tageslicht', at(7, 0))).toBe(true)
     expect(has('koerper', 'tageslicht', at(17, 0))).toBe(false)
   })
+  test('wasser-licht (4 bis 12 Uhr): um 3:59 nicht, um 4:00 schon, um 11:59 noch, um 12:00 nicht', () => {
+    expect(has('koerper', 'wasser-licht', at(3, 59))).toBe(false)
+    expect(has('koerper', 'wasser-licht', at(4, 0))).toBe(true)
+    expect(has('koerper', 'wasser-licht', at(11, 59))).toBe(true)
+    expect(has('koerper', 'wasser-licht', at(12, 0))).toBe(false)
+  })
   test('um 6:30 fehlen power-pause und tageslicht, die anderen bleiben', () => {
-    expect(ids(resetOrder('koerper', [], at(6, 30)))).toEqual(['bewegungs-snack', 'wach-atmung'])
+    expect(ids(resetOrder('koerper', [], at(6, 30)))).toEqual(['bewegungs-snack', 'wach-atmung', 'strecken', 'wasser-licht', 'wach-klopfen'])
+  })
+  test('um 14 Uhr fehlt wasser-licht, die übrigen sechs Körper-Hacks stehen in Katalog-Reihenfolge', () => {
+    expect(ids(resetOrder('koerper', [], at(14, 0)))).toEqual([
+      'bewegungs-snack', 'tageslicht', 'wach-atmung', 'power-pause', 'strecken', 'wach-klopfen',
+    ])
   })
   test('ein Hack außerhalb des Fensters bleibt auch mit bester Wirkung draußen', () => {
     const runs = effects('power-pause', [2, 2])
@@ -139,7 +153,9 @@ describe('resetSequence', () => {
     expect(seq).toEqual(expected)
     expect(seq[0].hack.id).toBe('ablenkung-aus')
     expect(seq.every((e) => e.hack.area === e.area)).toBe(true)
-    expect(seq).toHaveLength(HACKS.length)
+    // Mittags fehlt nur wasser-licht (Fenster 4 bis 12 Uhr); alle anderen Hacks stehen in der Folge.
+    expect(seq.map((e) => e.hack.id)).not.toContain('wasser-licht')
+    expect(seq).toHaveLength(HACKS.length - 1)
   })
   test('ohne Stufen: feste Reihenfolge ab start', () => {
     expect(areaOrder(resetSequence(null, 'sinn', [], NOON))).toEqual(['sinn', 'koerper', 'gefuehl', 'geist'])

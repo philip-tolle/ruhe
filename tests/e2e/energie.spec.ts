@@ -414,13 +414,17 @@ test('without a fresh check-in the reset asks what needs energy, and the chosen 
   await expect(resetName(page)).toHaveText('Bewegungs-Snack')
   await expect(card.getByText(/ist gerade am niedrigsten/)).toHaveCount(0)
 
-  // Die Folge läuft durch die Körper-Hacks (um 14 Uhr alle vier), dann weiter zum nächsten Bereich der festen Reihenfolge.
+  // Die Folge läuft durch die Körper-Hacks (um 14 Uhr sechs von sieben: Wasser & Licht gilt nur von 4 bis 12 Uhr),
+  // dann weiter zum nächsten Bereich der festen Reihenfolge.
   const titles: string[] = []
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     titles.push(await resetName(page).innerText())
     await next(page).click()
   }
-  expect(titles).toEqual(['Bewegungs-Snack', 'Tageslicht tanken', 'Wach-Atmung', 'Power-Pause', 'Physiologischer Seufzer', 'Kaltes Gesicht'])
+  expect(titles).toEqual([
+    'Bewegungs-Snack', 'Tageslicht tanken', 'Wach-Atmung', 'Power-Pause', 'Strecken & Aufrichten', 'Wach-Klopfen',
+    'Physiologischer Seufzer', 'Kaltes Gesicht',
+  ])
 
   // Eine neue Wahl beginnt wieder beim ersten Vorschlag des Bereichs.
   await area(page, 'Geist').click()
@@ -429,19 +433,21 @@ test('without a fresh check-in the reset asks what needs energy, and the chosen 
   await expect(resetName(page)).toHaveText('Kopf leeren')
 })
 
-// Zeitfenster (Spec M9 §6.7): tageslicht 7–17, power-pause 11–16; der Reset schlägt außerhalb nichts vor.
-for (const [time, power, light] of [
-  ['10:59', false, true],
-  ['11:00', true, true],
-  ['16:00', false, true],
-  ['17:00', false, false],
+// Zeitfenster (Spec M9 §6.7, M10 §3.1): tageslicht 7–17, power-pause 11–16, wasser-licht 4–12; der Reset schlägt außerhalb nichts vor.
+for (const [time, power, light, water] of [
+  ['10:59', false, true, true],
+  ['11:00', true, true, true],
+  ['16:00', false, true, false],
+  ['17:00', false, false, false],
 ] as const) {
-  test(`at ${time} the reset ${power ? 'offers' : 'skips'} the Power-Pause and ${light ? 'offers' : 'skips'} Tageslicht tanken`, async ({ page }) => {
+  test(`at ${time} the reset ${power ? 'offers' : 'skips'} the Power-Pause, ${light ? 'offers' : 'skips'} Tageslicht tanken and ${water ? 'offers' : 'skips'} Wasser & Licht`, async ({ page }) => {
     await open(page, { now: new Date(`2026-10-21T${time}:00+02:00`) })
     await area(page, 'Körper').click()
-    const seen = await browse(page)
+    // Mehr Schritte als die längste Folge (alle 19 Hacks um 11:00), damit sie sich sicher schließt.
+    const seen = await browse(page, 24)
     expect(seen.includes('Power-Pause')).toBe(power)
     expect(seen.includes('Tageslicht tanken')).toBe(light)
+    expect(seen.includes('Wasser & Licht')).toBe(water)
     // Der Rest bleibt, und die Folge schließt sich: nach dem letzten Vorschlag kommt der erste wieder.
     expect(seen.includes('Bewegungs-Snack')).toBe(true)
     expect(seen[0]).toBe('Bewegungs-Snack')
@@ -478,11 +484,11 @@ const library = (page: Page) => page.getByRole('region', { name: 'Brain Hacks', 
 const tile = (page: Page, title: string) => library(page).getByRole('button', { name: title })
 const chip = (page: Page, name: string) => library(page).getByRole('radio', { name, exact: true })
 
-test('the library shows all 16 hacks, filters by area, remembers the filter for the session and ignores time windows', async ({ page }) => {
+test('the library shows all 19 hacks, filters by area, remembers the filter for the session and ignores time windows', async ({ page }) => {
   // 10:59: Der Reset schlüge die Power-Pause nicht vor, die Bibliothek zeigt sie.
   await open(page, { now: new Date('2026-10-21T10:59:00+02:00') })
   await expect(library(page).getByRole('heading', { level: 2, name: 'Brain Hacks' })).toBeVisible()
-  await expect(library(page).getByRole('listitem')).toHaveCount(16)
+  await expect(library(page).getByRole('listitem')).toHaveCount(19)
   await expect(tile(page, 'Power-Pause')).toBeVisible()
   await expect(library(page).getByText('Körper · 10 Min', { exact: true })).toBeVisible()
 
@@ -515,9 +521,14 @@ test('the library shows all 16 hacks, filters by area, remembers the filter for 
   await page.reload()
   await nav(page).getByRole('button', { name: 'Energie' }).click()
   await expect(chip(page, 'Alle')).toHaveAttribute('aria-checked', 'true')
-  await expect(library(page).getByRole('listitem')).toHaveCount(16)
+  await expect(library(page).getByRole('listitem')).toHaveCount(19)
 
-  for (const [name, count] of [['Körper', 4], ['Gefühl', 4], ['Geist', 4]] as const) {
+  await chip(page, 'Körper').click()
+  await expect(library(page).getByRole('listitem').locator('.title')).toHaveText([
+    'Bewegungs-Snack', 'Tageslicht tanken', 'Wach-Atmung', 'Power-Pause', 'Strecken & Aufrichten', 'Wasser & Licht', 'Wach-Klopfen',
+  ])
+
+  for (const [name, count] of [['Körper', 7], ['Gefühl', 4], ['Geist', 4]] as const) {
     await chip(page, name).click()
     await expect(library(page).getByRole('listitem')).toHaveCount(count)
   }
