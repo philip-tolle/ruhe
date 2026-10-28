@@ -1,7 +1,8 @@
 import { beforeEach, expect, test } from 'vitest'
 import { serializeBackup } from '../../src/lib/stats/backup'
 import { emptyData, type SessionResult } from '../../src/lib/stats/schema'
-import { importBackup, recordResult, saveCheckin, setHackEffect, stats } from '../../src/lib/stats/store.svelte'
+import { importBackup, recordResult, saveCheckin, saveMorning, setHackEffect, stats, toggleDomino } from '../../src/lib/stats/store.svelte'
+import { dayKey } from '../../src/lib/stats/summary'
 
 // Der Speicher ist ein Modul mit einem Zustand: pro Test auf den leeren Stand zurücksetzen.
 beforeEach(() => {
@@ -65,4 +66,52 @@ test('importBackup meldet neue Sitzungen und neue Energie-Einträge', () => {
   expect(stats.data.hackRuns).toHaveLength(1)
   expect(stats.data.energyCheckins).toHaveLength(1)
   expect(stats.data.focusSprints).toHaveLength(1)
+})
+
+test('saveMorning und toggleDomino speichern in localStorage und lösen keine Sitzung aus', () => {
+  saveMorning({ variant: 'lang', intention: ' klar ', gratitude: 'ein ruhiger Morgen', value: 'Mut', domino: 'Konzept' })
+  expect(stats.data.mornings).toHaveLength(1)
+  const entry = stats.data.mornings![0]
+  // „Jetzt“ ist die Uhr der App: Der Tag ist der Tag des Zeitpunkts `at`.
+  expect(entry).toMatchObject({ variant: 'lang', intention: 'klar', gratitude: 'ein ruhiger Morgen', value: 'Mut', domino: 'Konzept' })
+  expect(entry.day).toBe(dayKey(new Date(entry.at)))
+  expect(Math.abs(Date.now() - Date.parse(entry.at))).toBeLessThan(5000)
+  expect(stats.saveFailed).toBe(false)
+  expect(JSON.parse(localStorage.getItem('ruhe.v1')!).mornings).toEqual([entry])
+
+  toggleDomino(entry.day)
+  expect(stats.data.mornings![0].dominoDone).toBeTypeOf('string')
+  expect(JSON.parse(localStorage.getItem('ruhe.v1')!).mornings[0].dominoDone).toBe(stats.data.mornings![0].dominoDone)
+  toggleDomino(entry.day)
+  expect(stats.data.mornings![0]).not.toHaveProperty('dominoDone')
+  expect(JSON.parse(localStorage.getItem('ruhe.v1')!).mornings[0]).not.toHaveProperty('dominoDone')
+
+  // Der Morgen-Start ist keine Sitzung, kein Check-in, kein Hack-Lauf und kein Sprint.
+  expect(stats.data.sessions).toEqual([])
+  for (const key of ['energyCheckins', 'hackRuns', 'focusSprints']) expect(stats.data).not.toHaveProperty(key)
+  expect(JSON.parse(localStorage.getItem('ruhe.v1')!).sessions).toEqual([])
+})
+test('saveMorning ersetzt den Eintrag des Tags; toggleDomino ohne Eintrag oder Big Domino ändert nichts', () => {
+  saveMorning({ variant: 'kurz', intention: 'klar' })
+  const day = stats.data.mornings![0].day
+  const unchanged = stats.data
+  toggleDomino(day) // kein Big Domino
+  toggleDomino('2000-01-01') // kein Eintrag
+  expect(stats.data).toBe(unchanged)
+  saveMorning({ variant: 'kurz', domino: 'Konzept' })
+  toggleDomino(day)
+  saveMorning({ variant: 'lang', domino: ' konzept ' })
+  expect(stats.data.mornings).toHaveLength(1)
+  expect(stats.data.mornings![0]).toMatchObject({ variant: 'lang', domino: 'konzept' })
+  expect(stats.data.mornings![0].dominoDone).toBeTypeOf('string') // derselbe Big Domino: der Haken bleibt
+  saveMorning({ variant: 'lang', domino: 'Anderes' })
+  expect(stats.data.mornings![0]).not.toHaveProperty('dominoDone')
+})
+test('importBackup zählt neue Morgen-Einträge in addedEnergy', () => {
+  saveMorning({ variant: 'kurz', intention: 'klar' })
+  const file = serializeBackup(stats.data)
+  stats.data = emptyData() // anderes Gerät
+  expect(importBackup(file)).toEqual({ added: 0, addedEnergy: 1 })
+  expect(importBackup(file)).toEqual({ added: 0, addedEnergy: 0 })
+  expect(stats.data.mornings).toHaveLength(1)
 })

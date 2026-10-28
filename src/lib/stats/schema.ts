@@ -5,6 +5,7 @@ import { BREATH_MINUTES, isBuiltinPatternId } from '../breath/patterns'
 import { CUSTOM_PATTERN_ID, MAX_LOADED_PATTERNS, parseCustomPattern, type CustomBreathPattern } from '../breath/custom'
 import { INTERVAL_OPTIONS } from '../meditation/timer-plan'
 import { isEnergyArea, isEnergyLevel, AREAS, type EnergyArea, type EnergyLevel } from '../energy/areas'
+import { DOMINO_MAX, GRATITUDE_MAX, INTENTION_MAX, VALUE_MAX } from '../morning/words'
 
 export type SessionKind = 'guided' | 'timer' | 'breath'
 
@@ -73,6 +74,33 @@ export interface FocusSprint {
 
 export const MAX_TASK_LENGTH = 80
 
+export type MorningVariant = 'kurz' | 'lang'
+
+/** Ein Morgen-Start (Spec M10 §4.1): je Tag höchstens einer; die Texte sind getrimmt und gekürzt, leere fehlen. */
+export interface MorningEntry {
+  /** Tag in Ortszeit, `JJJJ-MM-TT`. */
+  day: string
+  /** ISO-Zeitpunkt, an dem der Abschluss erreicht wurde. */
+  at: string
+  variant: MorningVariant
+  intention?: string
+  gratitude?: string
+  /** Nur bei `lang`. */
+  value?: string
+  domino?: string
+  /** ISO-Zeitpunkt des Abhakens; nur mit `domino`. */
+  dominoDone?: string
+}
+
+/** Was der Ablauf am Ende meldet; Tag und Zeitpunkt setzt `withMorning`, die Texte prüft und kürzt es. */
+export interface MorningInput {
+  variant: MorningVariant
+  intention?: string
+  gratitude?: string
+  value?: string
+  domino?: string
+}
+
 /** Von der Engine gemeldetes Ende einer Sitzung, eines Hacks oder eines Sprints. */
 export interface SessionResult {
   kind: ResultKind
@@ -120,6 +148,8 @@ export interface AppData {
   energyCheckins?: EnergyCheckin[]
   hackRuns?: HackRun[]
   focusSprints?: FocusSprint[]
+  /** Morgen-Starts (Spec M10 §4.1), nach Tag sortiert, je Tag einer; fehlt, solange es keinen gibt. */
+  mornings?: MorningEntry[]
 }
 
 function defaultSettings(): Settings {
@@ -145,10 +175,27 @@ export function isFocusMinutes(v: unknown): v is FocusMinutes {
   return (FOCUS_MINUTES as readonly unknown[]).includes(v)
 }
 
-/** Kürzt eine Aufgabe auf `MAX_TASK_LENGTH` Zeichen; gezählt werden Unicode-Zeichen, damit kein Ersatzpaar zerreißt. */
-export function clipTask(text: string): string {
+export function isMorningVariant(v: unknown): v is MorningVariant {
+  return v === 'kurz' || v === 'lang'
+}
+
+// Gezählt werden Unicode-Zeichen (Codepunkte), damit kein Ersatzpaar zerreißt.
+function clipChars(text: string, max: number): string {
   const chars = Array.from(text)
-  return chars.length > MAX_TASK_LENGTH ? chars.slice(0, MAX_TASK_LENGTH).join('') : text
+  return chars.length > max ? chars.slice(0, max).join('') : text
+}
+
+/** Kürzt eine Aufgabe auf `MAX_TASK_LENGTH` Zeichen; sie trimmt nicht (das tun die Aufrufer). */
+export function clipTask(text: string): string {
+  return clipChars(text, MAX_TASK_LENGTH)
+}
+
+/**
+ * Trimmt und kürzt auf `max` Zeichen; leer ergibt `''`. Der Schnitt kann auf einem Leerzeichen landen, darum wird
+ * danach noch einmal hinten getrimmt: Gespeichert ist immer ein getrimmter Text (Spec M10 §4.1).
+ */
+export function clipText(text: string, max: number): string {
+  return clipChars(text.trim(), max).trimEnd()
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -314,10 +361,62 @@ function parseList<T>(raw: unknown, parse: (item: unknown) => T | null): T[] {
   return list
 }
 
+/** Ein Kalendertag `JJJJ-MM-TT`, den es gibt: `2026-02-30` und `2026-13-01` nicht. */
+function isDayKey(v: unknown): v is string {
+  if (typeof v !== 'string') return false
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v)
+  if (!m) return false
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  // Date rechnet einen Überlauf weiter (30. Februar → 2. März); stimmt das Datum danach nicht mehr, gab es den Tag nicht.
+  // setUTCFullYear statt Date.UTC, weil Letzteres die Jahre 0 bis 99 auf 1900 bis 1999 legt.
+  const t = new Date(0)
+  t.setUTCFullYear(y, mo - 1, d)
+  return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d
+}
+
+/** Getrimmt und gekürzt; ohne Text (fehlt, falscher Typ, nur Leerraum) ergibt es `undefined`. */
+function parseText(raw: unknown, max: number): string | undefined {
+  const text = typeof raw === 'string' ? clipText(raw, max) : ''
+  return text === '' ? undefined : text
+}
+
+/** Ungültiger Tag, Zeitpunkt oder Variante ergibt `null`; ungültige Texte entfallen einzeln, der Eintrag bleibt. */
+function parseMorning(raw: unknown): MorningEntry | null {
+  if (!isRecord(raw)) return null
+  const { day, at, variant } = raw
+  if (!isDayKey(day) || !isIsoTime(at) || !isMorningVariant(variant)) return null
+  const entry: MorningEntry = { day, at, variant }
+  const intention = parseText(raw.intention, INTENTION_MAX)
+  if (intention) entry.intention = intention
+  const gratitude = parseText(raw.gratitude, GRATITUDE_MAX)
+  if (gratitude) entry.gratitude = gratitude
+  const value = variant === 'lang' ? parseText(raw.value, VALUE_MAX) : undefined
+  if (value) entry.value = value
+  const domino = parseText(raw.domino, DOMINO_MAX)
+  if (domino) entry.domino = domino
+  if (domino && isIsoTime(raw.dominoDone)) entry.dominoDone = raw.dominoDone
+  return entry
+}
+
+/** Je Tag der Eintrag mit dem späteren `at` (bei gleichem Zeitpunkt der erste), nach Tag sortiert. */
+function parseMornings(raw: unknown): MorningEntry[] {
+  const byDay = new Map<string, MorningEntry>()
+  for (const entry of parseList(raw, parseMorning)) {
+    const known = byDay.get(entry.day)
+    if (!known || Date.parse(entry.at) > Date.parse(known.at)) byDay.set(entry.day, entry)
+  }
+  return sortByDay([...byDay.values()])
+}
+
+/** Nach Tag aufsteigend; `JJJJ-MM-TT` ordnet sich als Text richtig. */
+export function sortByDay(list: readonly MorningEntry[]): MorningEntry[] {
+  return [...list].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
+}
+
 /**
  * Strenge Strukturprüfung. Eine ungültige Sitzung macht alles ungültig (`null`);
  * fehlende oder ungültige Einstellungen werden aufgefüllt, ein ungültiges `lastUsed`, ungültige eigene
- * Atemmuster sowie ungültige Check-ins, Hack-Läufe und Sprints entfallen einzeln.
+ * Atemmuster sowie ungültige Check-ins, Hack-Läufe, Sprints und Morgen-Einträge entfallen einzeln.
  */
 export function parseData(raw: unknown): AppData | null {
   if (!isRecord(raw) || raw.version !== 1) return null
@@ -339,5 +438,7 @@ export function parseData(raw: unknown): AppData | null {
   if (hackRuns.length > 0) data.hackRuns = hackRuns
   const focusSprints = parseList(raw.focusSprints, parseFocusSprint)
   if (focusSprints.length > 0) data.focusSprints = focusSprints
+  const mornings = parseMornings(raw.mornings)
+  if (mornings.length > 0) data.mornings = mornings
   return data
 }

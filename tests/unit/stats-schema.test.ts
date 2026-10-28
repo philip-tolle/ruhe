@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { parseData, emptyData, isSessionKind, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
+import { parseData, emptyData, isSessionKind, isMorningVariant, clipText, clipTask, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
 import { MUSIC, SOUNDS } from '../../src/lib/sounds/catalog'
 import { BREATH_MINUTES, BREATH_PATTERNS } from '../../src/lib/breath/patterns'
 
@@ -293,4 +293,92 @@ test('settings.focus hängt nicht an den Standard-Objekten', () => {
 test('isSessionKind trennt Sitzungen von Hack-Läufen und Sprints', () => {
   for (const k of ['guided', 'timer', 'breath'] as const) expect(isSessionKind(k)).toBe(true)
   for (const k of ['hack', 'focus'] as const) expect(isSessionKind(k)).toBe(false)
+})
+
+// Morgen-Start (Spec M10 §4.1): Jeder Eintrag wird einzeln geprüft, ein ungültiger kostet nie den Rest.
+const morning = { day: '2026-10-28', at: '2026-10-28T06:30:00.000Z', variant: 'lang', intention: 'klar', gratitude: 'ein ruhiger Morgen', value: 'Mut', domino: 'Konzept schreiben', dominoDone: '2026-10-28T09:00:00.000Z' }
+const withMornings = (mornings: unknown) => parseData({ version: 1, sessions: [session], settings: {}, mornings })
+
+test('Morgen-Einträge werden einzeln geprüft', () => {
+  const bad = [
+    { ...morning, day: '2026-13-01' },
+    { ...morning, day: '2026-02-30' },
+    { ...morning, day: '28.10.2026' },
+    { ...morning, day: 20261028 },
+    { ...morning, at: 'heute' },
+    { ...morning, variant: 'mittel' },
+    { day: '2026-10-29' },
+    null,
+    'x',
+  ]
+  const data = withMornings([bad[0], morning, ...bad.slice(1), { ...morning, day: '2026-10-29' }])
+  expect(data?.mornings?.map(m => m.day)).toEqual(['2026-10-28', '2026-10-29'])
+  expect(data?.mornings?.[0]).toEqual(morning)
+  expect(data?.sessions).toEqual([session])
+  expect(withMornings([{ ...morning, day: '2028-02-29' }, { ...morning, day: '2026-02-29' }])?.mornings?.map(m => m.day)).toEqual(['2028-02-29']) // nur 2028 ist ein Schaltjahr
+})
+test('Morgen-Texte: Zu Langes wird gekürzt, Leeres entfällt, der Eintrag bleibt', () => {
+  const long = withMornings([{ ...morning, intention: 'x'.repeat(60), gratitude: 'g'.repeat(150), value: 'w'.repeat(50), domino: 'd'.repeat(100) }])
+  expect(long?.mornings?.[0]).toMatchObject({ intention: 'x'.repeat(40), gratitude: 'g'.repeat(120), value: 'w'.repeat(40), domino: 'd'.repeat(80) })
+  const bare = { day: morning.day, at: morning.at, variant: 'lang' }
+  for (const empty of ['   ', '', 5, null, {}]) {
+    expect(withMornings([{ ...bare, intention: empty, gratitude: empty, value: empty, domino: empty }])?.mornings).toEqual([bare])
+  }
+  expect(withMornings([{ ...bare, intention: '  klar  ', domino: ' Konzept ' }])?.mornings).toEqual([{ ...bare, intention: 'klar', domino: 'Konzept' }])
+})
+test('Morgen-Einträge: value gibt es nur bei variant lang', () => {
+  const short = withMornings([{ ...morning, variant: 'kurz' }])?.mornings?.[0]
+  expect(short).not.toHaveProperty('value')
+  expect(short).toMatchObject({ variant: 'kurz', intention: 'klar', domino: 'Konzept schreiben' })
+  expect(withMornings([morning])?.mornings?.[0].value).toBe('Mut')
+})
+test('Morgen-Einträge: dominoDone gibt es nur mit domino und nur als Zeitpunkt', () => {
+  const { domino: _domino, ...noDomino } = morning
+  expect(withMornings([noDomino])?.mornings?.[0]).not.toHaveProperty('dominoDone')
+  expect(withMornings([{ ...morning, domino: '   ' }])?.mornings?.[0]).not.toHaveProperty('dominoDone')
+  for (const dominoDone of ['gestern', 5, null, '']) {
+    const entry = withMornings([{ ...morning, dominoDone }])?.mornings?.[0]
+    expect(entry).not.toHaveProperty('dominoDone')
+    expect(entry?.domino).toBe('Konzept schreiben')
+  }
+  expect(withMornings([morning])?.mornings?.[0].dominoDone).toBe('2026-10-28T09:00:00.000Z')
+})
+test('Morgen-Einträge: ein weiterer Schlüssel entfällt', () => {
+  expect(withMornings([{ ...morning, extra: 1 }])?.mornings).toEqual([morning])
+})
+test('Morgen-Einträge: je Tag einer (später at gewinnt), nach Tag sortiert; leer fehlt', () => {
+  const early = { ...morning, at: '2026-10-28T05:00:00.000Z', intention: 'früh' }
+  const late = { ...morning, at: '2026-10-28T08:00:00.000Z', intention: 'spät' }
+  const other = { ...morning, day: '2026-10-27', at: '2026-10-27T06:00:00.000Z' }
+  for (const order of [[late, early, other], [other, early, late], [early, other, late]]) {
+    const list = withMornings(order)?.mornings
+    expect(list?.map(m => [m.day, m.intention])).toEqual([['2026-10-27', 'klar'], ['2026-10-28', 'spät']])
+  }
+  // Zeitzonen-Schreibweisen vergleicht der Zeitpunkt, nicht der Text.
+  const plus = { ...morning, at: '2026-10-28T08:30:00.000+02:00', intention: 'plus' } // 06:30 UTC
+  const utc = { ...morning, at: '2026-10-28T07:00:00.000Z', intention: 'utc' }
+  expect(withMornings([utc, plus])?.mornings?.[0].intention).toBe('utc')
+  // Gleicher Zeitpunkt: der erste bleibt.
+  expect(withMornings([early, { ...early, intention: 'zweiter' }])?.mornings?.[0].intention).toBe('früh')
+  for (const empty of [[], 'kein Array', [{ day: 'x' }], undefined]) expect(withMornings(empty)).not.toHaveProperty('mornings')
+  expect(parseData({ version: 1, sessions: [], settings: {} })).not.toHaveProperty('mornings')
+})
+test('isMorningVariant', () => {
+  for (const v of ['kurz', 'lang']) expect(isMorningVariant(v)).toBe(true)
+  for (const v of ['mittel', '', null, undefined, 1, 'Kurz']) expect(isMorningVariant(v)).toBe(false)
+})
+test('clipText trimmt und kürzt nach Zeichen, nicht nach UTF-16-Einheiten', () => {
+  expect(clipText('  klar  ', 40)).toBe('klar')
+  expect(clipText('   ', 40)).toBe('')
+  expect(clipText('x'.repeat(60), 40)).toBe('x'.repeat(40))
+  expect(clipText('🌅'.repeat(50), 40)).toBe('🌅'.repeat(40)) // kein zerrissenes Ersatzpaar
+  expect(clipText('x'.repeat(40), 40)).toBe('x'.repeat(40))
+  // Endet der Schnitt auf einem Leerzeichen, bleibt der Text getrimmt.
+  expect(clipText(`${'x'.repeat(39)} y`, 40)).toBe('x'.repeat(39))
+})
+test('clipTask bleibt, wie es war: kürzt auf 80 Zeichen, trimmt nicht', () => {
+  expect(clipTask('x'.repeat(120))).toBe('x'.repeat(80))
+  expect(clipTask('🌅'.repeat(90))).toBe('🌅'.repeat(80))
+  expect(clipTask('  Konzept ')).toBe('  Konzept ')
+  expect(clipTask('   ')).toBe('   ')
 })

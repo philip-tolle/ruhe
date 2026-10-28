@@ -2,19 +2,24 @@
 // hineingereicht (testbar); jeder Zugriff steht in try/catch, Fehler gelangen nie nach oben.
 import type { CustomBreathPattern } from '../breath/custom'
 import type { EnergyLevel } from '../energy/areas'
+import { DOMINO_MAX, GRATITUDE_MAX, INTENTION_MAX, VALUE_MAX } from '../morning/words'
 import {
+  clipText,
   emptyData,
   isSessionKind,
   parseData,
+  sortByDay,
   type AppData,
   type Calm,
   type CalmLevel,
   type EnergyCheckin,
   type FocusSprint,
   type HackRun,
+  type MorningEntry,
+  type MorningInput,
   type SessionResult,
 } from './schema'
-import { MIN_SECONDS } from './summary'
+import { dayKey, MIN_SECONDS } from './summary'
 
 export const STORAGE_KEY = 'ruhe.v1'
 export const CORRUPT_KEY = 'ruhe.v1.corrupt'
@@ -132,4 +137,42 @@ export function withHackEffect(data: AppData, runId: string, which: 'before' | '
   if (level === null) delete next[which]
   else next[which] = level
   return { ...data, hackRuns: runs.map((r, i) => (i === index ? next : r)) }
+}
+
+/**
+ * Speichert einen Morgen-Start in einem neuen Stand (`data` bleibt unverändert, Sitzungen auch). Der Tag ist der
+ * Ortstag von `now`; ein Eintrag desselben Tags wird ersetzt. Die Texte werden getrimmt und gekürzt, leere entfallen,
+ * `value` gibt es nur bei `lang`. `dominoDone` des alten Eintrags bleibt nur, wenn das Big Domino dasselbe ist.
+ */
+export function withMorning(data: AppData, input: MorningInput, now: Date): AppData {
+  const day = dayKey(now)
+  const old = data.mornings?.find(m => m.day === day)
+  const entry: MorningEntry = { day, at: now.toISOString(), variant: input.variant }
+  const intention = clipText(input.intention ?? '', INTENTION_MAX)
+  if (intention !== '') entry.intention = intention
+  const gratitude = clipText(input.gratitude ?? '', GRATITUDE_MAX)
+  if (gratitude !== '') entry.gratitude = gratitude
+  const value = input.variant === 'lang' ? clipText(input.value ?? '', VALUE_MAX) : ''
+  if (value !== '') entry.value = value
+  const domino = clipText(input.domino ?? '', DOMINO_MAX)
+  if (domino !== '') entry.domino = domino
+  // Groß- und Kleinschreibung gilt nicht als anderes Ziel; `toLowerCase` statt `localeCompare`, weil es nicht vom
+  // Gerät abhängt und keine Schreibweisen gleichsetzt (`localeCompare` hält „ﬁ“ und „fi“ für gleich).
+  if (old?.dominoDone && old.domino && domino !== '' && old.domino.trim().toLowerCase() === domino.toLowerCase()) {
+    entry.dominoDone = old.dominoDone
+  }
+  return { ...data, mornings: sortByDay([...(data.mornings ?? []).filter(m => m.day !== day), entry]) }
+}
+
+/**
+ * Hakt das Big Domino eines Tages ab bzw. nimmt den Haken zurück (`dominoDone` auf `now` oder weg), in einem neuen
+ * Stand. Ohne Eintrag für den Tag oder ohne Big Domino darin ergibt es `null`.
+ */
+export function withDominoToggled(data: AppData, day: string, now: Date): AppData | null {
+  const list = data.mornings ?? []
+  const index = list.findIndex(m => m.day === day)
+  if (index === -1 || !list[index].domino) return null
+  const { dominoDone, ...rest } = list[index]
+  const next: MorningEntry = dominoDone === undefined ? { ...rest, dominoDone: now.toISOString() } : rest
+  return { ...data, mornings: list.map((m, i) => (i === index ? next : m)) }
 }

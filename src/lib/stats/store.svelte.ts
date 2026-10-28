@@ -5,8 +5,9 @@ import { mergeBackup } from './backup'
 import type { CustomBreathPattern } from '../breath/custom'
 import type { EnergyArea, EnergyLevel } from '../energy/areas'
 import { focusSprintFrom, hackRunFrom } from '../energy/record'
-import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withFocusSprint, withHackEffect, withHackRun, withoutBreathPattern, withSession, type StorageLike } from './persist'
-import type { AppData, CalmLevel, LastUsed, SessionResult, Settings } from './schema'
+import { appNow } from '../ui/tageszeit.svelte'
+import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withMorning, withoutBreathPattern, withSession, type StorageLike } from './persist'
+import type { AppData, CalmLevel, LastUsed, MorningInput, SessionResult, Settings } from './schema'
 
 /** `window.localStorage`, oder `null`, wenn der Zugriff wirft (z. B. SecurityError) oder fehlt. */
 export function safeLocalStorage(): StorageLike | null {
@@ -52,6 +53,20 @@ export function recordResult(r: SessionResult): string | null {
 /** Energie-Check-in mit allen vier Stufen, zeitgestempelt mit der aktuellen Uhrzeit. */
 export function saveCheckin(levels: Record<EnergyArea, EnergyLevel>): void {
   commit(withCheckin(stats.data, { id: crypto.randomUUID(), at: new Date().toISOString(), levels: { ...levels } }))
+}
+
+/**
+ * Morgen-Start am Ende des Ablaufs: legt den Eintrag des heutigen Tages an oder ersetzt ihn. „Heute“ ist `appNow()`.
+ * Es entsteht nie eine Sitzung; Check-in, Übungen und Meditation des Ablaufs speichern sich selbst.
+ */
+export function saveMorning(input: MorningInput): void {
+  commit(withMorning(stats.data, input, appNow()))
+}
+
+/** Hakt das Big Domino eines Tages ab bzw. nimmt den Haken zurück; ohne Eintrag oder Big Domino ändert sich nichts. */
+export function toggleDomino(day: string): void {
+  const next = withDominoToggled(stats.data, day, appNow())
+  if (next) commit(next)
 }
 
 /** Vorher- oder Jetzt-Wert eines Hack-Laufs: setzt oder entfernt (`null`); eine unbekannte ID ändert nichts. */

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withFocusSprint, withHackEffect, withHackRun, withoutBreathPattern, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
+import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withMorning, withoutBreathPattern, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
 import { emptyData } from '../../src/lib/stats/schema'
 const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) } }
 
@@ -151,4 +151,99 @@ test('withSession lässt Hack-Läufe und Sprints nicht in die Sitzungen', () => 
   const start = new Date('2026-10-21T08:00:00.000Z')
   expect(withSession(emptyData(), { kind: 'hack', ref: 'seufzer', start, seconds: 600 }, 'x')).toBeNull()
   expect(withSession(emptyData(), { kind: 'focus', ref: 'focus-50', start, seconds: 3000, note: 'Kurs' }, 'x')).toBeNull()
+})
+
+// Morgen-Start (Spec M10 §4.2): speichern, ersetzen, Haken setzen; Sitzungen bleiben unberührt.
+const at = (h: number, min = 0) => new Date(2026, 9, 28, h, min, 30) // Ortszeit
+const MORGEN = { variant: 'kurz', domino: 'Konzept' } as const
+
+test('withMorning legt einen Eintrag für den Tag von „jetzt“ an, ohne den alten Stand zu ändern', () => {
+  const d = two()
+  const before = structuredClone(d)
+  const now = at(6, 30)
+  const next = withMorning(d, MORGEN, now)
+  expect(next.mornings).toEqual([{ day: '2026-10-28', at: now.toISOString(), variant: 'kurz', domino: 'Konzept' }])
+  expect(next.sessions).toBe(d.sessions)
+  expect(d).toEqual(before)
+  expect(d).not.toHaveProperty('mornings')
+})
+test('withMorning trimmt, kürzt und lässt Leeres weg; value nur bei lang', () => {
+  const now = at(6, 30)
+  const full = withMorning(emptyData(), { variant: 'lang', intention: '  klar ', gratitude: 'g'.repeat(130), value: ' Mut ', domino: 'd'.repeat(90) }, now).mornings![0]
+  expect(full).toEqual({ day: '2026-10-28', at: now.toISOString(), variant: 'lang', intention: 'klar', gratitude: 'g'.repeat(120), value: 'Mut', domino: 'd'.repeat(80) })
+  const short = withMorning(emptyData(), { variant: 'kurz', intention: 'klar', value: 'Mut' }, now).mornings![0]
+  expect(short).toEqual({ day: '2026-10-28', at: now.toISOString(), variant: 'kurz', intention: 'klar' })
+  const empty = withMorning(emptyData(), { variant: 'lang', intention: '  ', gratitude: '', value: '\n', domino: ' ' }, now).mornings![0]
+  expect(empty).toEqual({ day: '2026-10-28', at: now.toISOString(), variant: 'lang' })
+  const none = withMorning(emptyData(), { variant: 'kurz' }, now).mornings![0]
+  expect(none).toEqual({ day: '2026-10-28', at: now.toISOString(), variant: 'kurz' })
+})
+test('withMorning: ein zweiter Durchgang am selben Tag ersetzt den Eintrag', () => {
+  const first = withMorning(emptyData(), { variant: 'lang', intention: 'klar', value: 'Mut', domino: 'Konzept' }, at(6, 30))
+  const second = withMorning(first, { variant: 'kurz', intention: 'ruhig' }, at(8, 15))
+  expect(second.mornings).toEqual([{ day: '2026-10-28', at: at(8, 15).toISOString(), variant: 'kurz', intention: 'ruhig' }])
+  expect(first.mornings).toHaveLength(1)
+  expect(first.mornings![0].intention).toBe('klar') // der alte Stand bleibt
+})
+test('withMorning: dominoDone bleibt nur beim selben Big Domino (getrimmt, Groß- und Kleinschreibung egal)', () => {
+  const ticked = withDominoToggled(withMorning(emptyData(), MORGEN, at(6, 30)), '2026-10-28', at(7))!
+  const done = ticked.mornings![0].dominoDone
+  expect(done).toBe(at(7).toISOString())
+  for (const same of ['  konzept ', 'KONZEPT', 'Konzept']) {
+    const again = withMorning(ticked, { variant: 'lang', domino: same }, at(9))
+    expect(again.mornings![0]).toMatchObject({ domino: same.trim(), dominoDone: done, at: at(9).toISOString() })
+  }
+  for (const other of ['Anderes', 'Konzepte', 'Konzept 2', '', '   ', undefined]) {
+    const again = withMorning(ticked, { variant: 'kurz', domino: other }, at(9)).mornings![0]
+    expect(again).not.toHaveProperty('dominoDone')
+  }
+  // ohne Haken kommt keiner dazu
+  expect(withMorning(withMorning(emptyData(), MORGEN, at(6)), MORGEN, at(7)).mornings![0]).not.toHaveProperty('dominoDone')
+  // Zu lange Eingaben gelten gekürzt: dieselbe lange Eingabe bleibt „dasselbe“.
+  const long = withDominoToggled(withMorning(emptyData(), { variant: 'kurz', domino: 'd'.repeat(100) }, at(6)), '2026-10-28', at(7))!
+  expect(withMorning(long, { variant: 'kurz', domino: 'D'.repeat(100) }, at(8)).mornings![0].dominoDone).toBe(at(7).toISOString())
+})
+test('withMorning: um 0:03 gehört der Eintrag zum neuen Tag; andere Tage bleiben, nach Tag sortiert', () => {
+  const lateEvening = new Date(2026, 9, 28, 23, 59, 10)
+  const afterMidnight = new Date(2026, 9, 29, 0, 3, 0)
+  const one = withMorning(emptyData(), MORGEN, lateEvening)
+  const next = withMorning(one, MORGEN, afterMidnight)
+  expect(next.mornings!.map(m => m.day)).toEqual(['2026-10-28', '2026-10-29'])
+  expect(next.mornings![1].at).toBe(afterMidnight.toISOString())
+  // Ein früherer Tag nachträglich: Die Liste bleibt nach Tag sortiert.
+  const back = withMorning(next, MORGEN, new Date(2026, 9, 27, 7))
+  expect(back.mornings!.map(m => m.day)).toEqual(['2026-10-27', '2026-10-28', '2026-10-29'])
+})
+test('withMorning lässt alles außer mornings unverändert', () => {
+  const d = withCheckin(two(), checkin)
+  const next = withMorning(d, MORGEN, at(6))
+  const { mornings: _mornings, ...rest } = next
+  expect(rest).toEqual(d)
+  expect(next.sessions).toBe(d.sessions)
+  expect(next.energyCheckins).toBe(d.energyCheckins)
+})
+test('withDominoToggled setzt und entfernt den Haken', () => {
+  const d = withMorning(withMorning(emptyData(), MORGEN, at(6)), MORGEN, new Date(2026, 9, 29, 6))
+  const before = structuredClone(d)
+  const on = withDominoToggled(d, '2026-10-28', at(7, 45))!
+  expect(on.mornings![0]).toEqual({ ...d.mornings![0], dominoDone: at(7, 45).toISOString() })
+  expect(on.mornings![1]).toEqual(d.mornings![1]) // der andere Tag bleibt
+  expect(on.sessions).toBe(d.sessions)
+  const off = withDominoToggled(on, '2026-10-28', at(8))!
+  expect(off.mornings![0]).toEqual(d.mornings![0])
+  expect(off.mornings![0]).not.toHaveProperty('dominoDone')
+  expect(d).toEqual(before) // der alte Stand bleibt
+})
+test('withDominoToggled ohne Eintrag oder ohne Big Domino ergibt null', () => {
+  expect(withDominoToggled(emptyData(), '2026-10-28', at(7))).toBeNull()
+  const d = withMorning(emptyData(), MORGEN, at(6))
+  expect(withDominoToggled(d, '2026-10-27', at(7))).toBeNull()
+  const noDomino = withMorning(emptyData(), { variant: 'kurz', intention: 'klar' }, at(6))
+  expect(withDominoToggled(noDomino, '2026-10-28', at(7))).toBeNull()
+})
+test('Morgen-Einträge überstehen Speichern und Laden', () => {
+  const s = mem()
+  const d = withDominoToggled(withMorning(two(), { variant: 'lang', intention: 'klar', gratitude: 'ein Morgen', value: 'Mut', domino: 'Konzept' }, at(6)), '2026-10-28', at(7))!
+  expect(saveData(s, d)).toBe(true)
+  expect(loadData(s)).toEqual(d)
 })

@@ -176,3 +176,82 @@ test('Energie im Backup: ein altes Backup ohne Energie-Felder lässt die Daten d
   const none = mergeBackup(emptyData(), serializeBackup(emptyData()))
   for (const key of ['energyCheckins', 'hackRuns', 'focusSprints']) expect('data' in none && none.data).not.toHaveProperty(key)
 })
+
+// Morgen-Start (Spec M10 §4.4): je Tag zusammengeführt, der spätere at gewinnt, ein gleicher Eintrag zählt nicht.
+const morning = (day: string, at: string, extra: Record<string, unknown> = {}) => ({ day, at, variant: 'kurz' as const, intention: 'klar', ...extra })
+const mornings = (): AppData => ({ ...emptyData(), mornings: [morning('2026-10-20', '2026-10-20T06:00:00.000Z'), morning('2026-10-21', '2026-10-21T06:00:00.000Z', { domino: 'Konzept', dominoDone: '2026-10-21T09:00:00.000Z' })] })
+const merge = (current: AppData, file: unknown) => {
+  const r = mergeBackup(current, typeof file === 'string' ? file : JSON.stringify(file))
+  if ('error' in r) throw new Error(r.error)
+  return r
+}
+
+test('Morgen im Backup: Export enthält mornings, ohne Einträge fehlt das Feld', () => {
+  const parsed = JSON.parse(serializeBackup(mornings()))
+  expect(Object.keys(parsed)).toEqual(['version', 'sessions', 'settings', 'mornings'])
+  expect(parsed.mornings).toEqual(mornings().mornings)
+  expect(Object.keys(JSON.parse(serializeBackup(emptyData())))).toEqual(['version', 'sessions', 'settings'])
+  expect(JSON.parse(serializeBackup({ ...energy(), ...mornings() })).mornings).toEqual(mornings().mornings)
+})
+test('Morgen im Backup: ein neuer Tag kommt dazu und zählt 1 in addedEnergy', () => {
+  const mine: AppData = { ...emptyData(), mornings: [morning('2026-10-22', '2026-10-22T06:00:00.000Z')] }
+  const r = merge(mine, serializeBackup(mornings()))
+  expect(r.addedEnergy).toBe(2)
+  expect(r.added).toBe(0)
+  expect(r.data.mornings?.map(m => m.day)).toEqual(['2026-10-20', '2026-10-21', '2026-10-22']) // nach Tag sortiert
+  const one = merge({ ...emptyData(), mornings: [mornings().mornings![0]] }, serializeBackup(mornings()))
+  expect(one.addedEnergy).toBe(1)
+  expect(one.data.mornings).toEqual(mornings().mornings)
+  expect(merge(emptyData(), serializeBackup(mornings())).data.mornings).toEqual(mornings().mornings)
+})
+test('Morgen im Backup: derselbe Eintrag noch einmal zählt 0 und erzeugt nichts doppelt', () => {
+  const file = serializeBackup(mornings())
+  const once = merge(emptyData(), file)
+  const twice = merge(once.data, file)
+  expect(once.addedEnergy).toBe(2)
+  expect(twice.addedEnergy).toBe(0)
+  expect(twice.data).toEqual(once.data)
+  expect(twice.data.mornings).toHaveLength(2)
+  // Zweimal derselbe Tag in der Datei ergibt einen Eintrag.
+  const dup = merge(emptyData(), JSON.stringify({ ...emptyData(), mornings: [mornings().mornings![0], mornings().mornings![0]] }))
+  expect(dup.addedEnergy).toBe(1)
+  expect(dup.data.mornings).toHaveLength(1)
+})
+test('Morgen im Backup: ein neuerer Eintrag desselben Tags ersetzt den alten und zählt 1', () => {
+  const mine = mornings()
+  const newer = morning('2026-10-21', '2026-10-21T07:30:00.000Z', { variant: 'lang', intention: 'ruhig', value: 'Mut' })
+  const r = merge(mine, { ...emptyData(), mornings: [newer] })
+  expect(r.addedEnergy).toBe(1)
+  expect(r.data.mornings).toEqual([mine.mornings![0], newer])
+  expect(r.data.mornings![1]).not.toHaveProperty('dominoDone') // der neuere gilt ganz, nichts wird vermischt
+})
+test('Morgen im Backup: ein älterer Eintrag desselben Tags ändert nichts', () => {
+  const mine = mornings()
+  const before = JSON.stringify(mine)
+  const older = morning('2026-10-21', '2026-10-21T05:00:00.000Z', { intention: 'früher' })
+  const r = merge(mine, { ...emptyData(), mornings: [older] })
+  expect(r.addedEnergy).toBe(0)
+  expect(r.data.mornings).toEqual(mine.mornings)
+  expect(JSON.stringify(mine)).toBe(before) // der Stand des Geräts bleibt unberührt
+})
+test('Morgen im Backup: addedEnergy zählt Morgen und Energie zusammen', () => {
+  const r = merge({ ...emptyData(), mornings: [morning('2026-10-21', '2026-10-21T05:00:00.000Z')] }, serializeBackup({ ...energy(), ...mornings() }))
+  expect(r.addedEnergy).toBe(4 + 1 + 1) // 2 Check-ins, 1 Lauf, 1 Sprint; 20.10. neu, 21.10. neuer
+})
+test('Morgen im Backup: ein altes Backup ohne mornings lässt die Einträge des Geräts unverändert', () => {
+  const mine: AppData = { ...mornings(), sessions: [sess('a', '2026-10-20T08:00:00.000Z')] }
+  const before = JSON.stringify(mine)
+  const r = merge(mine, JSON.stringify({ version: 1, sessions: [sess('b', '2026-10-19T08:00:00.000Z')], settings: {} }))
+  expect(r.added).toBe(1)
+  expect(r.addedEnergy).toBe(0)
+  expect(r.data.mornings).toEqual(mine.mornings)
+  expect(JSON.stringify(mine)).toBe(before)
+  // Ohne Morgen auf beiden Seiten fehlt das Feld.
+  expect(merge(emptyData(), serializeBackup(emptyData())).data).not.toHaveProperty('mornings')
+})
+test('Morgen im Backup: ein ungültiger Eintrag der Datei entfällt einzeln', () => {
+  const file = JSON.stringify({ ...emptyData(), mornings: [{ ...morning('2026-13-01', '2026-10-21T05:00:00.000Z') }, morning('2026-10-22', 'heute'), morning('2026-10-23', '2026-10-23T06:00:00.000Z')] })
+  const r = merge(emptyData(), file)
+  expect(r.addedEnergy).toBe(1)
+  expect(r.data.mornings?.map(m => m.day)).toEqual(['2026-10-23'])
+})
