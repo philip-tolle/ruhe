@@ -24,10 +24,11 @@
   const kind = $derived(view.kind)
   const focus = $derived(stats.data.settings.focus)
 
-  // Der Abhak-Knopf und „Sprint starten“ nehmen Tipps erst kurz nach dem Erscheinen an (siehe `tapArming`). Sie erscheinen an
-  // der Stelle, an der eben noch ein anderer Knopf lag: Mit „Fertig“ im Abschluss des Ablaufs schließt der Ablauf, und ein
-  // schneller zweiter Tipp träfe sonst, was darunter liegt. Die Sperre beginnt darum neu, wenn die Karte wechselt (der
-  // Eintrag ist da) und wenn der Ablauf schließt.
+  // Der Abhak-Knopf, „Sprint starten“ und „Kurz“/„Lang“ nehmen Tipps erst kurz nach dem Erscheinen an (siehe `tapArming`). Sie
+  // erscheinen an der Stelle, an der eben noch ein anderer Knopf lag: Mit „Fertig“ im Abschluss des Ablaufs oder mit „Beenden“
+  // in der Rückfrage schließt der Ablauf, und ein schneller zweiter Tipp träfe sonst, was darunter liegt (bei „Kurz“ und
+  // „Lang“ öffnete er den Ablauf gleich wieder). Die Sperre beginnt darum neu, wenn die Karte wechselt (der Eintrag ist da)
+  // und wenn der Ablauf öffnet oder schließt (`morningUi.open`).
   const arming = tapArming(() => `${kind}|${morningUi.open}`)
 
   // Im Tipp selbst, damit der Audio-Start als Nutzergeste gilt. Der Big Domino ist das Vorhaben des Sprints.
@@ -49,8 +50,8 @@
 
     <!-- „Kurz“ gefüllt, „Lang“ umrandet; der Ablauf öffnet sich im Tipp selbst. -->
     <div class="actions">
-      <button type="button" class="button" onclick={() => openMorning('kurz')}>Kurz · 5 Min</button>
-      <button type="button" class="button-line" onclick={() => openMorning('lang')}>Lang · 15 Min</button>
+      <button type="button" class="button" disabled={!arming.armed} onclick={() => openMorning('kurz')}>Kurz · 5 Min</button>
+      <button type="button" class="button-line" disabled={!arming.armed} onclick={() => openMorning('lang')}>Lang · 15 Min</button>
     </div>
   </section>
 {:else if view.kind === 'dein-tag' && view.entry}

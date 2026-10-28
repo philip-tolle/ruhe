@@ -2,13 +2,19 @@
   import Motiv from '../Motiv.svelte'
   import { todayEntry } from '../../lib/morning/logic'
   import { stats } from '../../lib/stats/store.svelte'
-  import { openMorning } from '../../lib/ui/morning-ui.svelte'
+  import { tapArming } from '../../lib/ui/arming.svelte'
+  import { morningUi, openMorning } from '../../lib/ui/morning-ui.svelte'
   import { appNow } from '../../lib/ui/tageszeit.svelte'
 
   // Karte „Morgen-Start“ im Reiter „Energie“ (Spec M10 §2.2): kurz oder lang, zu jeder Stunde. Gibt es heute schon einen
   // Eintrag, sagt der Satz, dass ein neuer Durchgang die Angaben ersetzt; die Knöpfe bleiben. „Heute“ ist die Zeit der App
   // (`appNow`): Mit Mitternacht endet „heute schon gemacht“ auch bei offener App. Der Start läuft im Tipp selbst.
   const id = $props.id()
+
+  // „Kurz“ und „Lang“ nehmen Tipps erst kurz nach dem Erscheinen an (siehe `tapArming`): Mit „Fertig“ im Abschluss oder
+  // „Beenden“ in der Rückfrage schließt der Ablauf, und der zweite Tipp eines Doppeltipps träfe sonst den Knopf, der darunter
+  // liegt, und öffnete den Ablauf gleich wieder. Die Sperre beginnt neu, wenn der Ablauf öffnet oder schließt.
+  const arming = tapArming(() => morningUi.open)
 
   const done = $derived(todayEntry(stats.data.mornings ?? [], appNow()) !== null)
 </script>
@@ -25,8 +31,8 @@
   </div>
 
   <div class="actions">
-    <button type="button" class="button-line" onclick={() => openMorning('kurz')}>Kurz · 5 Min</button>
-    <button type="button" class="button-line" onclick={() => openMorning('lang')}>Lang · 15 Min</button>
+    <button type="button" class="button-line" disabled={!arming.armed} onclick={() => openMorning('kurz')}>Kurz · 5 Min</button>
+    <button type="button" class="button-line" disabled={!arming.armed} onclick={() => openMorning('lang')}>Lang · 15 Min</button>
   </div>
 </section>
 
