@@ -164,17 +164,19 @@ export function startMorningMeditation(): void {
  * main.ts zeigt keinen Abschluss.
  *
  * - Meditation, auf die der Ablauf wartet: Sie ist erfasst (zählt oder nicht, wie sonst), ihr Abschluss entfällt,
- *   der Ablauf geht weiter.
+ *   der Ablauf geht weiter. Außer sie wurde gar nicht gehört (`seconds` ist 0: die Datei war nicht zu laden, oder der
+ *   Player wurde sofort geschlossen): Dann bleibt der Ablauf bei „Vertiefen“, wie bei einer Übung, die nicht zählt, und es
+ *   gibt ebenfalls keinen Abschluss der Meditation. Wer vorzeitig beendet, hat sie gehört und kommt weiter.
  * - Hack, der nicht zählt (unter 30 s): Er hat keine Ende-Ansicht, der Ablauf bleibt bei seinem Schritt.
  * - Hack, der zählt: Das Warten bleibt; `HackEffect` zeigt die Wirkungsfrage mit „Weiter“. Wird sie anders geschlossen,
  *   führt `morningPlayerClosed` den Ablauf weiter.
  */
-export function morningSessionEnded(kind: ResultKind, counted: boolean): boolean {
+export function morningSessionEnded(kind: ResultKind, counted: boolean, seconds: number): boolean {
   if (!morningUi.open) return false
   if (kind === 'guided' && morningUi.awaiting === 'guided') {
     setAwaiting(null)
     clearDone()
-    nextStep()
+    if (seconds > 0) nextStep()
     return true
   }
   if (kind === 'hack' && morningUi.awaiting === 'hack') {

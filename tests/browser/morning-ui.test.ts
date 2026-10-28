@@ -238,7 +238,7 @@ test('morningSessionEnded: Meditation im Ablauf übernimmt das Ende, zählt oder
     morningUi.step = 'vertiefen'
     morningUi.awaiting = 'guided'
     vi.mocked(clearDone).mockClear()
-    expect(morningSessionEnded('guided', counted)).toBe(true)
+    expect(morningSessionEnded('guided', counted, counted ? 300 : 12)).toBe(true)
     expect(morningUi.step).toBe('intention')
     expect(morningUi.awaiting).toBeNull()
     expect(morningUi.open).toBe(true)
@@ -247,11 +247,41 @@ test('morningSessionEnded: Meditation im Ablauf übernimmt das Ende, zählt oder
   }
 })
 
+test('morningSessionEnded: eine Meditation ohne gehörte Sekunde lässt den Ablauf bei „Vertiefen“, ohne ihren Abschluss', () => {
+  for (const counted of [true, false]) {
+    openMorning('lang')
+    morningUi.step = 'vertiefen'
+    startMorningMeditation()
+    expect(morningUi.awaiting).toBe('guided')
+    vi.mocked(clearDone).mockClear()
+    // Die Datei war nicht zu laden oder der Player wurde sofort geschlossen: 0 s gehört.
+    expect(morningSessionEnded('guided', counted, 0)).toBe(true) // kein normaler Endbildschirm der Meditation
+    expect(morningUi.step).toBe('vertiefen')
+    expect(morningUi.awaiting).toBeNull()
+    expect(morningUi.open).toBe(true)
+    expect(clearDone).toHaveBeenCalledTimes(1)
+    // Der Ablauf wartet nicht mehr: Er ist sichtbar, und ein Aufruf des Schließens rückt nicht vor.
+    morningPlayerClosed()
+    expect(morningUi.step).toBe('vertiefen')
+  }
+})
+
+test('morningSessionEnded: eine Meditation, die vorzeitig endet, aber gehört wurde, geht weiter wie bisher', () => {
+  for (const seconds of [0.5, 3, 59, 60, 300]) {
+    openMorning('lang')
+    morningUi.step = 'vertiefen'
+    morningUi.awaiting = 'guided'
+    expect(morningSessionEnded('guided', seconds >= 60, seconds)).toBe(true)
+    expect(morningUi.step).toBe('intention')
+    expect(morningUi.awaiting).toBeNull()
+  }
+})
+
 test('morningSessionEnded: ein Hack, der nicht zählt, beendet das Warten; der Ablauf bleibt beim Schritt', () => {
   openMorning('kurz')
   morningUi.step = 'aktivieren'
   morningUi.awaiting = 'hack'
-  expect(morningSessionEnded('hack', false)).toBe(false)
+  expect(morningSessionEnded('hack', false, 12)).toBe(false)
   expect(morningUi.step).toBe('aktivieren')
   expect(morningUi.awaiting).toBeNull()
 })
@@ -260,7 +290,7 @@ test('morningSessionEnded: ein Hack, der zählt, lässt das Warten stehen; „We
   openMorning('kurz')
   morningUi.step = 'aktivieren'
   morningUi.awaiting = 'hack'
-  expect(morningSessionEnded('hack', true)).toBe(false)
+  expect(morningSessionEnded('hack', true, 64)).toBe(false)
   expect(morningUi.step).toBe('aktivieren')
   expect(morningUi.awaiting).toBe('hack')
 
@@ -274,18 +304,18 @@ test('morningSessionEnded: eine andere Art als die erwartete ändert nichts', ()
   openMorning('lang')
   morningUi.step = 'aktivieren'
   morningUi.awaiting = 'hack'
-  expect(morningSessionEnded('guided', true)).toBe(false)
+  expect(morningSessionEnded('guided', true, 300)).toBe(false)
   expect(morningUi).toMatchObject({ step: 'aktivieren', awaiting: 'hack' })
 
   morningUi.step = 'vertiefen'
   morningUi.awaiting = 'guided'
-  expect(morningSessionEnded('hack', false)).toBe(false)
-  expect(morningSessionEnded('focus', true)).toBe(false)
+  expect(morningSessionEnded('hack', false, 12)).toBe(false)
+  expect(morningSessionEnded('focus', true, 3000)).toBe(false)
   expect(morningUi).toMatchObject({ step: 'vertiefen', awaiting: 'guided' })
 
   // Wartet der Ablauf auf nichts, sind alle Arten Sache der Player.
   morningUi.awaiting = null
-  expect(morningSessionEnded('guided', true)).toBe(false)
+  expect(morningSessionEnded('guided', true, 300)).toBe(false)
   expect(morningUi.step).toBe('vertiefen')
 })
 
@@ -297,7 +327,7 @@ test('morningSessionEnded ohne offenen Ablauf gibt für jede Art false und ände
       morningUi.open = false
       morningUi.step = 'aktivieren'
       morningUi.awaiting = kind === 'guided' ? 'guided' : 'hack'
-      expect(morningSessionEnded(kind, counted)).toBe(false)
+      expect(morningSessionEnded(kind, counted, 64)).toBe(false)
       expect(morningUi.step).toBe('aktivieren')
     }
   }
@@ -310,7 +340,7 @@ test('ein Hack hat gezählt und seine Ende-Ansicht wird ohne „Weiter“ geschl
   openMorning('kurz')
   morningUi.step = 'aktivieren'
   startExercise('strecken')
-  expect(morningSessionEnded('hack', true)).toBe(false)
+  expect(morningSessionEnded('hack', true, 64)).toBe(false)
   expect(morningUi).toMatchObject({ step: 'aktivieren', awaiting: 'hack' })
   // `PlayerShell` hat den Abschluss selbst geschlossen (`clearDone`); der Ablauf ruft es nicht noch einmal.
   vi.mocked(clearDone).mockClear()
@@ -330,7 +360,7 @@ test('ein Hack, der nicht zählt, oder gar kein Ende: der Ablauf bleibt beim Sch
   openMorning('lang')
   morningUi.step = 'aktivieren'
   startExercise('strecken')
-  expect(morningSessionEnded('hack', false)).toBe(false)
+  expect(morningSessionEnded('hack', false, 12)).toBe(false)
   expect(morningUi.awaiting).toBeNull()
   morningPlayerClosed()
   expect(morningUi).toMatchObject({ step: 'aktivieren', awaiting: null })
@@ -355,7 +385,7 @@ test('bei geschlossenem Ablauf oder ohne Warten tut morningPlayerClosed nichts',
   expect(morningUi).toMatchObject({ open: true, step: 'aktivieren', awaiting: null })
 
   startExercise('strecken')
-  morningSessionEnded('hack', true)
+  morningSessionEnded('hack', true, 64)
   closeMorning()
   morningPlayerClosed() // geschlossen
   expect(morningUi).toMatchObject({ open: false, step: 'aktivieren', awaiting: null })
@@ -371,7 +401,7 @@ test('nach „Weiter“ rückt morningPlayerClosed nicht noch einmal vor: genau 
   openMorning('kurz')
   morningUi.step = 'aktivieren'
   startExercise('strecken')
-  morningSessionEnded('hack', true)
+  morningSessionEnded('hack', true, 64)
   morningContinueAfterHack()
   expect(morningUi.step).toBe('intention')
   // Der `$effect` der Oberfläche läuft danach, wenn der Player zu ist.
@@ -383,7 +413,7 @@ test('ein neuer Start und jedes Zurücksetzen vergessen, dass der letzte Hack ge
   openMorning('kurz')
   morningUi.step = 'aktivieren'
   startExercise('strecken')
-  morningSessionEnded('hack', true)
+  morningSessionEnded('hack', true, 64)
   // Ein neuer Start (hier eine andere Übung): Er hat noch nicht gezählt.
   swapExercise()
   startExercise('wasser-licht')
@@ -392,7 +422,7 @@ test('ein neuer Start und jedes Zurücksetzen vergessen, dass der letzte Hack ge
 
   // Beenden und neu Öffnen: der Rest des alten Ablaufs gilt nicht.
   startExercise('strecken')
-  morningSessionEnded('hack', true)
+  morningSessionEnded('hack', true, 64)
   closeMorning()
   openMorning('kurz')
   morningUi.step = 'aktivieren'
