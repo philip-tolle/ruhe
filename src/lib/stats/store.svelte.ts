@@ -7,7 +7,8 @@ import type { EnergyArea, EnergyLevel } from '../energy/areas'
 import { focusSprintFrom, hackRunFrom } from '../energy/record'
 import { appNow } from '../ui/tageszeit.svelte'
 import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withMorning, withoutBreathPattern, withSession, type StorageLike } from './persist'
-import type { AppData, CalmLevel, LastUsed, MorningInput, SessionResult, Settings } from './schema'
+import type { AppData, CalmLevel, LastUsed, MorningEntry, MorningInput, SessionResult, Settings } from './schema'
+import { dayKey } from './summary'
 
 /** `window.localStorage`, oder `null`, wenn der Zugriff wirft (z. B. SecurityError) oder fehlt. */
 export function safeLocalStorage(): StorageLike | null {
@@ -57,10 +58,15 @@ export function saveCheckin(levels: Record<EnergyArea, EnergyLevel>): void {
 
 /**
  * Morgen-Start am Ende des Ablaufs: legt den Eintrag des heutigen Tages an oder ersetzt ihn. „Heute“ ist `appNow()`.
- * Es entsteht nie eine Sitzung; Check-in, Übungen und Meditation des Ablaufs speichern sich selbst.
+ * Es entsteht nie eine Sitzung; Check-in, Übungen und Meditation des Ablaufs speichern sich selbst. Gibt den Eintrag
+ * zurück, wie er gespeichert ist (getrimmt, gekürzt).
  */
-export function saveMorning(input: MorningInput): void {
-  commit(withMorning(stats.data, input, appNow()))
+export function saveMorning(input: MorningInput): MorningEntry {
+  const now = appNow()
+  const next = withMorning(stats.data, input, now)
+  commit(next)
+  const day = dayKey(now)
+  return next.mornings!.find((m) => m.day === day)!
 }
 
 /** Hakt das Big Domino eines Tages ab bzw. nimmt den Haken zurück; ohne Eintrag oder Big Domino ändert sich nichts. */

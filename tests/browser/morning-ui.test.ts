@@ -14,10 +14,11 @@ import { playChime } from '../../src/lib/audio/chime'
 import type { ProgramSnapshot } from '../../src/lib/audio/engine'
 import { audio } from '../../src/lib/audio/engine-store.svelte'
 import { meditationById } from '../../src/lib/content/catalog'
-import { exerciseOfDay } from '../../src/lib/morning/logic'
+import { exerciseOfDay, todayEntry } from '../../src/lib/morning/logic'
 import { MORNING_EXERCISES } from '../../src/lib/morning/words'
 import { emptyData, type ResultKind } from '../../src/lib/stats/schema'
 import { stats } from '../../src/lib/stats/store.svelte'
+import { dayKey } from '../../src/lib/stats/summary'
 import {
   closeMorning,
   morningContinueAfterHack,
@@ -63,6 +64,7 @@ test('openMorning setzt den Ablauf zurück: Schritt Check-in, Übung des Tages, 
   morningUi.checkin = { koerper: 1, gefuehl: 2, geist: 3, sinn: 4 }
   morningUi.awaiting = 'guided'
   morningUi.confirming = true
+  morningUi.entry = { day: '2026-10-27', at: '2026-10-27T06:10:00.000Z', variant: 'kurz', intention: 'klar' }
   fillDraft()
 
   openMorning('kurz')
@@ -74,6 +76,7 @@ test('openMorning setzt den Ablauf zurück: Schritt Check-in, Übung des Tages, 
     exercise: exerciseOfDay(appNow()),
     checkin: null,
     draft: { intention: '', gratitude: '', value: '', domino: '' },
+    entry: null,
     awaiting: null,
     confirming: false,
   })
@@ -129,6 +132,45 @@ test('im Abschluss tut nextStep nichts mehr: ein zweiter Tipp speichert nicht no
   expect(morningUi.step).toBe('abschluss')
   expect(JSON.stringify(stats.data.mornings)).toBe(saved)
   expect(playChime).toHaveBeenCalledTimes(1)
+})
+
+test('nach „Big Domino“ hält der Zustand den gespeicherten Eintrag fest: getrimmt, auch über Mitternacht hinaus', () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  try {
+    vi.setSystemTime(new Date(2026, 9, 28, 23, 58))
+    openMorning('kurz')
+    fillDraft()
+    expect(morningUi.entry).toBeNull()
+    walk(nextStep, 5)
+    expect(morningUi.step).toBe('abschluss')
+    const expected = { day: '2026-10-28', variant: 'kurz', intention: 'gelassen', gratitude: 'ein ruhiger Kaffee', domino: 'Kapitel 3 abgeben' }
+    expect(morningUi.entry).toMatchObject(expected)
+    expect(morningUi.entry).toEqual(stats.data.mornings![0])
+
+    // Mitternacht ist vorbei: „heute“ ist ein anderer Tag, der Eintrag des Abschlusses bleibt der gespeicherte.
+    vi.setSystemTime(new Date(2026, 9, 29, 0, 3))
+    expect(todayEntry(stats.data.mornings ?? [], appNow())).toBeNull()
+    expect(morningUi.entry).toMatchObject(expected)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+test('der festgehaltene Eintrag trägt den Haken eines früheren Durchgangs mit demselben Big Domino', () => {
+  stats.data = {
+    ...emptyData(),
+    mornings: [{ day: dayKey(appNow()), at: appNow().toISOString(), variant: 'kurz', domino: 'Kapitel 3 abgeben', dominoDone: '2026-10-28T09:00:00.000Z' }],
+  }
+  openMorning('kurz')
+  fillDraft()
+  walk(nextStep, 5)
+  expect(morningUi.entry).toMatchObject({ domino: 'Kapitel 3 abgeben', dominoDone: '2026-10-28T09:00:00.000Z' })
+})
+
+test('skipStep bis zum Abschluss hält einen Eintrag nur mit der Variante fest', () => {
+  openMorning('kurz')
+  walk(skipStep, 5)
+  expect(Object.keys(morningUi.entry!).sort()).toEqual(['at', 'day', 'variant'])
 })
 
 test('bei geschlossenem Ablauf tut nextStep nichts', () => {

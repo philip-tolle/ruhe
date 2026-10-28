@@ -1,21 +1,23 @@
 <script lang="ts">
   import Motiv from '../Motiv.svelte'
-  import { todayEntry } from '../../lib/morning/logic'
   import { stats } from '../../lib/stats/store.svelte'
   import { tapArming } from '../../lib/ui/arming.svelte'
-  import { closeMorning } from '../../lib/ui/morning-ui.svelte'
+  import { closeMorning, morningUi } from '../../lib/ui/morning-ui.svelte'
   import { startSprint } from '../../lib/ui/session-ui.svelte'
-  import { appNow } from '../../lib/ui/tageszeit.svelte'
 
   // Der Abschluss (Spec M10 §2.3): Der Eintrag ist gespeichert (beim Erreichen des Abschlusses, `nextStep`), die Karte zeigt
-  // nur die Angaben, die gesetzt sind. Mit Big Domino startet „Fokus-Sprint starten“ den Sprint mit den Einstellungen aus
-  // `settings.focus` und dem Big Domino als Vorhaben; der Ablauf schließt vorher, im Tipp selbst (Autoplay-Regel). „Fertig“
-  // schließt. Beide Knöpfe liegen an der Stelle des „Weiter“ des letzten Schritts (siehe `tapArming`).
+  // nur die Angaben, die gesetzt sind. Welchen Eintrag, hält `nextStep` in `morningUi.entry` fest, statt ihn hier aus der Uhr
+  // abzuleiten: Geht die Uhr bei offenem Abschluss über Mitternacht, wäre „der Eintrag von heute“ sonst ein anderer (keiner),
+  // und der Abschluss zeigte „Morgen-Start erledigt.“ ohne den Sprint-Knopf. Mit einem Big Domino, der noch offen ist, startet
+  // „Fokus-Sprint starten“ den Sprint mit den Einstellungen aus `settings.focus` und dem Big Domino als Vorhaben (ist er schon
+  // erledigt, etwa nach einem zweiten Durchgang am Tag, steht der Knopf nicht, wie bei „Dein Tag“); der Ablauf schließt
+  // vorher, im Tipp selbst (Autoplay-Regel). „Fertig“ schließt. Beide Knöpfe liegen an der Stelle des „Weiter“ des letzten
+  // Schritts (siehe `tapArming`).
   const arming = tapArming()
 
-  const entry = $derived(todayEntry(stats.data.mornings ?? [], appNow()))
+  const entry = $derived(morningUi.entry)
   const focus = $derived(stats.data.settings.focus)
-  const domino = $derived(entry?.domino ?? null)
+  const domino = $derived(entry?.domino && entry.dominoDone === undefined ? entry.domino : null)
 
   function sprint() {
     if (domino === null) return

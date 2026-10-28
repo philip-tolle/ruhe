@@ -8,7 +8,7 @@ import { hackById } from '../energy/hacks'
 import { exerciseOfDay, nextExercise } from '../morning/logic'
 import { morningSteps, type MorningStep } from '../morning/steps'
 import { MORNING_EXERCISES, type MorningExerciseId } from '../morning/words'
-import type { MorningInput, MorningVariant, ResultKind } from '../stats/schema'
+import type { MorningEntry, MorningInput, MorningVariant, ResultKind } from '../stats/schema'
 import { saveMorning } from '../stats/store.svelte'
 import { playerOpen } from './player-state'
 import { clearDone, startGuidedSession, startHack } from './session-ui.svelte'
@@ -31,6 +31,11 @@ export interface MorningState {
   checkin: Record<EnergyArea, EnergyLevel> | null
   /** Die Eingaben, bis der Abschluss erreicht ist; erst dann wird gespeichert. Leer heißt: nichts eingegeben. */
   draft: MorningDraft
+  /**
+   * Der Eintrag, den der Abschluss beim Speichern angelegt hat, einmal festgehalten: Der Abschluss zeigt ihn weiter, auch
+   * wenn die Uhr über Mitternacht geht (der „heutige“ Eintrag wäre dann ein anderer). Vor dem Abschluss `null`.
+   */
+  entry: MorningEntry | null
   /** Der Ablauf hat einen Player gestartet und ist so lange verborgen. */
   awaiting: 'hack' | 'guided' | null
   /** Die Rückfrage „Morgen-Start beenden?“ steht. */
@@ -48,6 +53,7 @@ export const morningUi: MorningState = $state({
   exercise: MORNING_EXERCISES[0],
   checkin: null,
   draft: emptyDraft(),
+  entry: null,
   awaiting: null,
   confirming: false,
 })
@@ -72,6 +78,7 @@ export function openMorning(variant: MorningVariant): void {
   morningUi.checkin = null
   // An Ort und Stelle statt eines neuen Objekts: Wer den Entwurf schon in der Hand hält (Eingabefelder), sieht den Neustart.
   Object.assign(morningUi.draft, emptyDraft())
+  morningUi.entry = null
   setAwaiting(null)
   morningUi.confirming = false
 }
@@ -105,7 +112,10 @@ export function nextStep(): void {
     morningUi.step = steps[index + 1]
     return
   }
-  saveMorning(inputFromDraft())
+  // Der Eintrag, wie er gespeichert ist (getrimmt, gekürzt, mit dem Haken eines früheren Durchgangs); der Abschluss
+  // zeigt ihn, auch wenn die Uhr danach über Mitternacht geht. Eine Kopie, damit spätere Änderungen an den Daten sie
+  // nicht berühren.
+  morningUi.entry = { ...saveMorning(inputFromDraft()) }
   morningUi.step = 'abschluss'
   playChime()
 }
