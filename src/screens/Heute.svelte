@@ -4,6 +4,7 @@
   import OfflineMark from '../components/OfflineMark.svelte'
   import Waschung from '../components/Waschung.svelte'
   import AkkuCard from '../components/energy/AkkuCard.svelte'
+  import MorningTodayCard from '../components/morning/MorningTodayCard.svelte'
   import { breathProgram } from '../lib/audio/program'
   import { durationLabel, suggestionFor, type Meditation } from '../lib/content/catalog'
   import { vorschlagMotiv, type MotivId } from '../lib/content/motive'
@@ -110,6 +111,10 @@
     <h1>{greeting}</h1>
     <p class="lead" class:streak={days > 0}>{streakLine(days)}</p>
   </header>
+
+  <!-- Morgen-Karte (Spec M10 §2.1): „Guten Morgen“ von 4:00 bis 10:59 ohne Eintrag von heute, „Dein Tag“ danach bis
+       Mitternacht; sonst steht hier nichts. -->
+  <MorningTodayCard />
 
   <!-- Dein Akku (Spec M9 §3.7): ohne frischen Check-in die Frage und „Check-in“ (das Blatt öffnet sich hier, am App-Wurzel),
        mit frischem eine schmale Karte, die zum Reiter „Energie“ führt. -->

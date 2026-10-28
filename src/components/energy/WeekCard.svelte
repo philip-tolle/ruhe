@@ -12,12 +12,14 @@
     whatWorks,
     WHAT_WORKS_HINT,
   } from '../../lib/energy/insights'
+  import { morningCount, morningCountLine } from '../../lib/morning/logic'
   import { stats } from '../../lib/stats/store.svelte'
   import { appNow } from '../../lib/ui/tageszeit.svelte'
 
   // „Deine Woche“ (Spec M9 §3.2 Punkt 6, §6.3–§6.6): das Raster der letzten 7 Tage mit den vier Bereichen, darunter die
-  // Muster-Sätze (oder der Hinweis, wann sie kommen), die Fokus-Zeile und „Was bei dir wirkt“. „Jetzt“ ist die Zeit der App
-  // (`appNow`): neu bei jeder Änderung der Daten, mit jeder vollen Minute und bei der Rückkehr in die App.
+  // Muster-Sätze (oder der Hinweis, wann sie kommen), die Fokus-Zeile, die Zeile zum Morgen-Start (Spec M10 §2.2) und
+  // „Was bei dir wirkt“. „Jetzt“ ist die Zeit der App (`appNow`): neu bei jeder Änderung der Daten, mit jeder vollen
+  // Minute und bei der Rückkehr in die App.
   const id = $props.id()
 
   const view = $derived.by(() => {
@@ -29,6 +31,7 @@
       patterns,
       sentences: patterns ? patternSentences(checkins, now) : [],
       focus: focusLine(stats.data.focusSprints ?? [], now),
+      morning: morningCount(stats.data.mornings ?? [], now),
       works: whatWorks(stats.data.hackRuns ?? []),
     }
   })
@@ -73,6 +76,11 @@
 
   {#if view.focus}
     <p class="focus">{view.focus}</p>
+  {/if}
+
+  <!-- Spec M10 §2.2: unter der Fokus-Zeile, erst ab einem Tag mit Morgen-Start. -->
+  {#if view.morning >= 1}
+    <p class="morning-line">{morningCountLine(view.morning)}</p>
   {/if}
 
   <div class="works">
@@ -148,7 +156,9 @@
     font-size: 0.9375rem;
   }
 
-  .focus {
+  /* Fokus-Zeile und Zeile zum Morgen-Start sehen gleich aus. */
+  .focus,
+  .morning-line {
     font-weight: 700;
   }
 

@@ -636,15 +636,24 @@ test.describe('Heute', () => {
 
   test('a tap on a wash lands on the card, not on the picture, and starts nothing', async ({ page }) => {
     await openHeute(page, '08:00:00', { kind: 'breath', pattern: 'box', minutes: 5 })
+    // Um 8 Uhr steht die Morgen-Karte oben und schiebt die Karten unter den unteren Rand: Jede Zone kommt erst ins Bild,
+    // dann wird gemessen (die Maße gelten für das Fenster, nicht für die Seite).
     // Vorschlag: links unten in der Zone, neben dem Motiv und unter der Überschrift (keine Bedienfläche).
-    const v = (await vorschlag(page).locator('.waschung').boundingBox())!
-    const motiv = (await vorschlag(page).locator('img.motiv').boundingBox())!
-    const pointV = { x: (v.x + motiv.x) / 2, y: motiv.y + motiv.height / 2 }
-    expect(pointV.x).toBeGreaterThan(v.x)
+    const pointV = async () => {
+      await vorschlag(page).locator('img.motiv').scrollIntoViewIfNeeded()
+      const v = (await vorschlag(page).locator('.waschung').boundingBox())!
+      const motiv = (await vorschlag(page).locator('img.motiv').boundingBox())!
+      expect((v.x + motiv.x) / 2).toBeGreaterThan(v.x)
+      return { x: (v.x + motiv.x) / 2, y: motiv.y + motiv.height / 2 }
+    }
     // Zuletzt: die Mitte der Zone.
-    const z = (await zuletzt(page).locator('.waschung').boundingBox())!
-    const pointZ = { x: z.x + z.width * 0.6, y: z.y + z.height / 2 }
-    for (const point of [pointV, pointZ]) {
+    const pointZ = async () => {
+      await zuletzt(page).locator('.waschung').scrollIntoViewIfNeeded()
+      const z = (await zuletzt(page).locator('.waschung').boundingBox())!
+      return { x: z.x + z.width * 0.6, y: z.y + z.height / 2 }
+    }
+    for (const find of [pointV, pointZ]) {
+      const point = await find()
       await expectTapPassesThrough(page, point.x, point.y)
       await page.touchscreen.tap(point.x, point.y)
     }
@@ -703,9 +712,17 @@ test.describe('Heute', () => {
     await expect(rows.nth(2)).toHaveAccessibleName('Klänge Zur Ruhe kommen')
   })
 
+  // Um 14 Uhr, außerhalb des Morgen-Fensters: Dort steht keine Morgen-Karte, und „Jetzt starten“ ist der einzige volle Knopf.
   test('„Jetzt starten“ of the suggestion is the only full button on the screen', async ({ page }) => {
-    await openHeute(page, '08:00:00', { kind: 'breath', pattern: 'box', minutes: 5 })
+    await openHeute(page, '14:00:00', { kind: 'breath', pattern: 'box', minutes: 5 })
     await expect(page.locator('.screen button.button')).toHaveText(['Jetzt starten'])
+    await expect(vorschlag(page).locator('button.button')).toHaveCount(1)
+  })
+
+  // Im Morgen-Fenster kommt „Kurz · 5 Min“ der Morgen-Karte dazu (Spec M10 §2.1: gefüllt); „Lang“ ist umrandet.
+  test('in the morning the morning card adds one full button („Kurz“), the suggestion keeps its own', async ({ page }) => {
+    await openHeute(page, '08:00:00', { kind: 'breath', pattern: 'box', minutes: 5 })
+    await expect(page.locator('.screen button.button')).toHaveText(['Kurz · 5 Min', 'Jetzt starten'])
     await expect(vorschlag(page).locator('button.button')).toHaveCount(1)
   })
 
@@ -720,7 +737,7 @@ test.describe('Heute', () => {
       await expect.poll(() => page.locator('.waschung img').evaluateAll((imgs) => (imgs as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth > 0))).toBe(true)
       const heights = () => page.locator('.card').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
       const withImages = await heights()
-      expect(withImages).toHaveLength(4) // „Dein Akku“, Vorschlag, Zuletzt genutzt, Aktivitäten
+      expect(withImages).toHaveLength(5) // Morgen-Start (um 8 Uhr), „Dein Akku“, Vorschlag, Zuletzt genutzt, Aktivitäten
 
       await page.route('**/images/waschungen/**', (route) => route.fulfill({ status: 404 }))
       await openHeute(page)
