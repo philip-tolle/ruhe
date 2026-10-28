@@ -28,6 +28,8 @@ const next = (page: Page) => flow(page).getByRole('button', { name: 'Weiter', ex
 const skip = (page: Page) => flow(page).getByRole('button', { name: 'Überspringen', exact: true })
 const close = (page: Page) => flow(page).getByRole('button', { name: 'Morgen-Start beenden', exact: true })
 const confirm = (page: Page) => page.getByRole('alertdialog', { name: 'Morgen-Start beenden?', exact: true })
+// Die sichtbare Zeile über „Weiter“ bei der Intention; die unsichtbare Live-Zeile daneben trägt den Satz nur nach der Wahl eines Vorschlags.
+const intentionLine = (page: Page) => flow(page).locator('.summary')
 const field = (page: Page, label: string) => flow(page).getByLabel(label, { exact: true })
 const radio = (page: Page, group: string, name: string) => flow(page).getByRole('radiogroup', { name: group, exact: true }).getByRole('radio', { name, exact: true })
 const dot = (page: Page, area: string, n: number, word: string) => flow(page).getByRole('radio', { name: `${area}: ${n} von 5, ${word}`, exact: true })
@@ -205,14 +207,14 @@ test('the short flow: check-in, activate, intention, gratitude, big domino, then
   await expect(flow(page).getByText('Dein Geist-Akku ist gerade am niedrigsten.', { exact: true })).toBeVisible()
   const suggestions = flow(page).getByRole('radiogroup', { name: 'Vorschläge', exact: true })
   await expect(suggestions.getByRole('radio')).toHaveText(['klar', 'fokussiert', 'wach', 'neugierig', 'gesammelt', 'entschieden'])
-  await expect(flow(page).getByText('Wähle ein Wort oder tippe ein eigenes.', { exact: true })).toBeVisible()
+  await expect(intentionLine(page)).toHaveText('Wähle ein Wort oder tippe ein eigenes.')
   await expect(flow(page).getByText('Deine Wörter', { exact: true })).toHaveCount(0)
   await radio(page, 'Vorschläge', 'klar').click()
   await expect(radio(page, 'Vorschläge', 'klar')).toHaveAttribute('aria-checked', 'true')
-  await expect(flow(page).getByText('Heute will ich klar sein.', { exact: true })).toBeVisible()
+  await expect(intentionLine(page)).toHaveText('Heute will ich klar sein.')
   await radio(page, 'Vorschläge', 'klar').click()
   await expect(radio(page, 'Vorschläge', 'klar')).toHaveAttribute('aria-checked', 'false')
-  await expect(flow(page).getByText('Wähle ein Wort oder tippe ein eigenes.', { exact: true })).toBeVisible()
+  await expect(intentionLine(page)).toHaveText('Wähle ein Wort oder tippe ein eigenes.')
   await radio(page, 'Vorschläge', 'klar').click()
   await next(page).click()
 
@@ -405,17 +407,17 @@ test('own words from earlier runs appear under "Deine Wörter"; typing clears th
 
   await radio(page, 'Deine Wörter', 'stark').click()
   await expect(radio(page, 'Deine Wörter', 'stark')).toHaveAttribute('aria-checked', 'true')
-  await expect(flow(page).getByText('Heute will ich stark sein.', { exact: true })).toBeVisible()
+  await expect(intentionLine(page)).toHaveText('Heute will ich stark sein.')
 
   // Tippen im Feld hebt die Auswahl auf (in beiden Gruppen) und schreibt das Wort.
   await field(page, 'Eigenes Wort').fill('furchtlos')
   await expect(flow(page).locator('[role="radio"][aria-checked="true"]')).toHaveCount(0)
-  await expect(flow(page).getByText('Heute will ich furchtlos sein.', { exact: true })).toBeVisible()
+  await expect(intentionLine(page)).toHaveText('Heute will ich furchtlos sein.')
 
   // Eine Auswahl leert das Feld.
   await radio(page, 'Vorschläge', 'klar').click()
   await expect(field(page, 'Eigenes Wort')).toHaveValue('')
-  await expect(flow(page).getByText('Heute will ich klar sein.', { exact: true })).toBeVisible()
+  await expect(intentionLine(page)).toHaveText('Heute will ich klar sein.')
 
   // Ein Wort aus „Vorschläge“ und eines aus „Deine Wörter“ sind nie zugleich gewählt.
   await radio(page, 'Deine Wörter', 'leuchtend').click()
@@ -793,7 +795,7 @@ test.describe('on a 360px phone with 130% text', () => {
     await expect(title(page, INTENTION)).toBeFocused()
     await expect(radio(page, 'Deine Wörter', OWN_WORD)).toBeVisible()
     await radio(page, 'Deine Wörter', OWN_WORD).click()
-    await expect(flow(page).getByText(`Heute will ich ${OWN_WORD} sein.`, { exact: true })).toBeVisible()
+    await expect(intentionLine(page)).toHaveText(`Heute will ich ${OWN_WORD} sein.`)
     await expectNoSideways(page)
     await expectTapTargets(page)
     await next(page).click()

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import WordPicker from './WordPicker.svelte'
   import { AREA_INFO } from '../../lib/energy/areas'
   import { freshCheckin, weakestArea } from '../../lib/energy/insights'
@@ -15,11 +16,23 @@
   // (siehe `tapArming`).
   const arming = tapArming()
 
-  const levels = $derived(morningUi.checkin ?? freshCheckin(stats.data.energyCheckins ?? [], appNow())?.levels ?? null)
-  const area = $derived(levels ? weakestArea(levels) : null)
+  // Der Bereich wird beim Einblenden einmal festgehalten (`untrack`): Der Check-in „frisch“ rechnet mit der Uhr, und die
+  // Daten können sich ändern (ein Check-in aus dem Blatt, der Schritt hängt Stunden im Speicher). Die Vorschläge und die
+  // Zeile über den Akku wechseln nicht unter den Fingern, solange man auf dem Schritt ist.
+  const area = untrack(() => {
+    const levels = morningUi.checkin ?? freshCheckin(stats.data.energyCheckins ?? [], appNow())?.levels ?? null
+    return levels ? weakestArea(levels) : null
+  })
+  const words = suggestions(area)
   const own = $derived(ownWords(stats.data.mornings ?? []))
 
   const word = $derived(morningUi.draft.intention.trim())
+
+  // Die Zeile über „Weiter“ steht immer da; ansagen soll sie nur, wenn ein Wort gewählt wurde (Tipp auf einen Vorschlag),
+  // nicht bei jedem Tastendruck im Feld. Darum sagt eine eigene, unsichtbare Live-Zeile an: Sie bekommt den Satz bei der Wahl
+  // und leert sich, sobald im Feld getippt wird.
+  const sentence = (chosen: string) => (chosen ? `Heute will ich ${chosen} sein.` : 'Wähle ein Wort oder tippe ein eigenes.')
+  let announced = $state('')
 </script>
 
 <div class="step">
@@ -34,7 +47,7 @@
 
     <WordPicker
       label="Vorschläge"
-      words={suggestions(area)}
+      {words}
       ownLabel="Deine Wörter"
       {own}
       fieldLabel="Eigenes Wort"
@@ -42,12 +55,16 @@
       max={INTENTION_MAX}
       capitalize="none"
       value={morningUi.draft.intention}
-      onChange={(value) => (morningUi.draft.intention = value)}
+      onChange={(value, via) => {
+        morningUi.draft.intention = value
+        announced = via === 'chip' ? sentence(value.trim()) : ''
+      }}
     />
   </div>
 
   <div class="foot">
-    <p class="summary" aria-live="polite">{word ? `Heute will ich ${word} sein.` : 'Wähle ein Wort oder tippe ein eigenes.'}</p>
+    <p class="summary">{sentence(word)}</p>
+    <p class="visually-hidden" aria-live="polite">{announced}</p>
     <button type="button" class="button" disabled={!arming.armed} onclick={nextStep}>Weiter</button>
   </div>
 </div>

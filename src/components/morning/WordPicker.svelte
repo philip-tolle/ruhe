@@ -33,7 +33,8 @@
     /** Großschreibung der Tastatur: Wörter wie „klar“ klein, Werte wie „Geduld“ groß. */
     capitalize: 'none' | 'sentences'
     value: string
-    onChange: (value: string) => void
+    /** Das gewählte oder getippte Wort; `via` sagt, woher es kommt (ein Tipp auf ein Wort oder das freie Feld). */
+    onChange: (value: string, via: 'chip' | 'field') => void
   } = $props()
 
   const id = $props.id()
@@ -48,14 +49,14 @@
 
   function pick(word: string) {
     typed = ''
-    onChange(word === picked ? '' : word)
+    onChange(word === picked ? '' : word, 'chip')
   }
 
   // Das Feld: `limitedInput` macht aus Zeilenumbrüchen (eingefügter Text) Leerzeichen und kürzt auf `max` Zeichen, ohne zu
   // trimmen (das Leerzeichen zwischen zwei Wörtern muss sich tippen lassen; getrimmt wird beim Speichern). Das Wort im Feld gilt.
   function type(text: string) {
     typed = text
-    onChange(text)
+    onChange(text, 'field')
   }
 
   // Pfeiltasten, Pos1 und Ende wählen wie in einer Radiogruppe und nehmen den Fokus mit (wie `LevelDots`). Zeigt die Taste auf
