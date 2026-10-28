@@ -108,7 +108,7 @@ test('Titel, Bereich, Minuten und Führung wie in Spec §4', () => {
 test('Hinweise, Fenster und Verweise wie in Spec M9 §4 und M10 §3.1', () => {
   const windows = Object.fromEntries(HACKS.filter((h) => h.window).map((h) => [h.id, h.window]))
   expect(windows).toEqual({ tageslicht: { from: 7, to: 17 }, 'power-pause': { from: 11, to: 16 }, 'wasser-licht': { from: 4, to: 12 } })
-  expect(HACKS.filter((h) => h.caution !== null).map((h) => h.id)).toEqual(['wach-atmung', 'strecken', 'wach-klopfen', 'kaltes-gesicht'])
+  expect(HACKS.filter((h) => h.caution !== null).map((h) => h.id)).toEqual(['wach-atmung', 'strecken', 'wasser-licht', 'wach-klopfen', 'kaltes-gesicht'])
   expect(HACKS.filter((h) => h.link !== null).map((h) => h.id)).toEqual(['seufzer'])
 })
 
@@ -282,7 +282,7 @@ describe('Morgen-Übungen (Spec M10 §3.1)', () => {
     expect(plan(h)).toEqual([[30, 'wasser'], [60, 'sonne'], [30, 'auge']])
     expect(hackLength(h)).toBe(120)
     expect(h.window).toEqual({ from: 4, to: 12 })
-    expect(h.caution).toBeNull()
+    expect(h.caution).toBe('Nicht direkt in die Sonne schauen.')
     expect(h.why).toMatchObject({ from: 'Nachtmodus', to: 'Tagmodus' })
     expect(h.source).toBe('Angelehnt an Huberman (Morgenlicht und innere Uhr)')
   })
@@ -297,11 +297,12 @@ describe('Morgen-Übungen (Spec M10 §3.1)', () => {
     expect(h.source).toBe('Angelehnt an Qigong-Übungen')
   })
 
-  test('keine Leseempfehlung, kein Verweis; Nutzen mit „kann“, Wirkung in zwei bis drei Sätzen', () => {
+  test('keine Leseempfehlung, kein Verweis, ein Hinweis; Nutzen mit „kann“, Wirkung in zwei bis drei Sätzen', () => {
     for (const id of ['strecken', 'wasser-licht', 'wach-klopfen']) {
       const h = hack(id)
       expect(h.further, id).toBeNull()
       expect(h.link, id).toBeNull()
+      expect(h.caution, id).toMatch(/\S/)
       expect(h.benefit, id).toMatch(/\b(kann|können)\b/)
       expect(h.why.text.match(/[.!?](\s|$)/g)?.length, id).toBeGreaterThanOrEqual(2)
       expect(h.why.text.match(/[.!?](\s|$)/g)?.length, id).toBeLessThanOrEqual(3)

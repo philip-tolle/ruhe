@@ -109,18 +109,18 @@
       "title": "Strecken & Aufrichten",
       "area": "koerper",
       "minutes": 2,
-      "benefit": "Zwei Minuten Strecken können dich nach dem Aufwachen geschmeidiger und wacher machen.",
+      "benefit": "Zwei Minuten Strecken können dich geschmeidiger und wacher machen.",
       "guide": "schritte",
       "steps": [
-        { "title": "Räkeln", "detail": "Streck dich im Liegen in alle Richtungen und gähn ruhig.", "icon": "liegen", "seconds": 30 },
-        { "title": "Lang machen", "detail": "Steh auf, streck die Arme hoch und neig dich zu beiden Seiten.", "icon": "bewegung", "seconds": 30 },
-        { "title": "Aufrichten", "detail": "Roll dich ab und richte dich Wirbel für Wirbel wieder auf.", "icon": "bewegung", "seconds": 30 },
+        { "title": "Räkeln", "detail": "Räkel dich und streck dich in alle Richtungen, gähnen ist erlaubt.", "icon": "liegen", "seconds": 30 },
+        { "title": "Lang machen", "detail": "Komm in den Stand, streck die Arme hoch, neig dich zur Seite.", "icon": "bewegung", "seconds": 30 },
+        { "title": "Aufrichten", "detail": "Roll dich nach vorn ab und richte dich Wirbel für Wirbel auf.", "icon": "bewegung", "seconds": 30 },
         { "title": "Schultern kreisen", "detail": "Kreise die Schultern groß nach hinten und lass den Nacken weich.", "icon": "bewegung", "seconds": 30 }
       ],
       "why": {
         "from": "Steif",
         "to": "Beweglich",
-        "text": "Nach der Nacht sind Muskeln und Gelenke oft noch steif. Sanftes Strecken kann die Durchblutung anregen und den Körper wieder geschmeidiger machen. Viele fühlen sich danach wacher und aufrechter."
+        "text": "Nach der Nacht sind Muskeln und Gelenke oft noch steif. Sanftes Strecken kann die Durchblutung anregen und den Körper wieder geschmeidiger machen. Oft fühlst du dich danach wacher und aufrechter."
       },
       "source": "Allgemeine Mobilisation; Energie-Management nach Loehr/Schwartz",
       "further": null,
@@ -137,17 +137,17 @@
       "guide": "schritte",
       "steps": [
         { "title": "Ein Glas Wasser", "detail": "Trink in Ruhe ein Glas Wasser, in kleinen Schlucken.", "icon": "wasser", "seconds": 30 },
-        { "title": "Ans Licht", "detail": "Geh ans Fenster oder raus und mach fünf tiefe Atemzüge.", "icon": "sonne", "seconds": 60 },
-        { "title": "Blick in die Ferne", "detail": "Lass den Blick weit schweifen, aber nie direkt in die Sonne.", "icon": "auge", "seconds": 30 }
+        { "title": "Ans Licht", "detail": "Geh ans Fenster oder raus ins Helle und mach fünf tiefe Atemzüge.", "icon": "sonne", "seconds": 60 },
+        { "title": "Blick in die Ferne", "detail": "Lass den Blick weit in die Ferne schweifen.", "icon": "auge", "seconds": 30 }
       ],
       "why": {
         "from": "Nachtmodus",
         "to": "Tagmodus",
-        "text": "Helles Licht am frühen Morgen kann deiner inneren Uhr den Takt für den Tag geben. Draußen ist es auch bei Wolken heller als drinnen. Ein Glas Wasser kann ausgleichen, was dein Körper über Nacht nicht bekommen hat."
+        "text": "Helles Licht am frühen Morgen kann deiner inneren Uhr den Takt für den Tag geben. Draußen ist es auch bei Wolken heller als drinnen. Ein Glas Wasser kann dir nach der Nacht guttun."
       },
       "source": "Angelehnt an Huberman (Morgenlicht und innere Uhr)",
       "further": null,
-      "caution": null,
+      "caution": "Nicht direkt in die Sonne schauen.",
       "window": { "from": 4, "to": 12 },
       "link": null
     },
@@ -160,13 +160,13 @@
       "guide": "schritte",
       "steps": [
         { "title": "Arme und Beine", "detail": "Klopf mit der flachen Hand locker Arme und Beine ab.", "icon": "bewegung", "seconds": 20 },
-        { "title": "Brust und Rücken", "detail": "Klopf locker Brust und Seiten, hinten so weit du kommst.", "icon": "bewegung", "seconds": 20 },
+        { "title": "Brust und Rücken", "detail": "Klopf Brust und Seiten ab, den Rücken so weit du kommst.", "icon": "bewegung", "seconds": 20 },
         { "title": "Ausschütteln", "detail": "Schüttle Arme, Beine und den ganzen Körper locker aus.", "icon": "bewegung", "seconds": 20 }
       ],
       "why": {
         "from": "Träge",
         "to": "Wach",
-        "text": "Leichtes Klopfen und Schütteln regen Haut und Muskeln an. Das kann die Durchblutung fördern und deine Aufmerksamkeit in den Körper holen. Viele fühlen sich danach wacher und präsenter."
+        "text": "Leichtes Klopfen und Schütteln können Haut und Muskeln anregen. Das kann die Durchblutung fördern und deine Aufmerksamkeit in den Körper holen. Oft fühlst du dich danach wacher und präsenter."
       },
       "source": "Angelehnt an Qigong-Übungen",
       "further": null,

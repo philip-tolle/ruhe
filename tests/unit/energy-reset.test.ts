@@ -49,9 +49,9 @@ describe('Reihenfolge im Bereich', () => {
       ...effects('tageslicht', [-2]), // nur ein bewerteter Lauf: Gruppe 2
       ...effects('wach-atmung', [0, 0]), // Gruppe 3, Schnitt 0
       ...effects('bewegungs-snack', [-1, -1]), // Gruppe 3, Schnitt −1
-      // strecken und wach-klopfen: nie gelaufen, Gruppe 2 und dort vor tageslicht (wasser-licht fehlt mittags, Fenster 4 bis 12 Uhr)
+      // strecken und wach-klopfen: nie gelaufen, Gruppe 2 und dort vor tageslicht (wasser-licht fehlt um 14 Uhr, Fenster 4 bis 12 Uhr)
     ]
-    expect(ids(resetOrder('koerper', runs, NOON))).toEqual([
+    expect(ids(resetOrder('koerper', runs, at(14)))).toEqual([
       'power-pause', 'strecken', 'wach-klopfen', 'tageslicht', 'wach-atmung', 'bewegungs-snack',
     ])
   })
@@ -147,13 +147,14 @@ describe('resetSequence', () => {
   test('die Folge setzt die Reihenfolgen der Bereiche aneinander', () => {
     const levels = { koerper: 4, gefuehl: 3, geist: 1, sinn: 3 } as Record<EnergyArea, EnergyLevel>
     const runs = effects('ablenkung-aus', [2, 2])
-    const seq = resetSequence(levels, 'koerper', runs, NOON)
+    const afternoon = at(14)
+    const seq = resetSequence(levels, 'koerper', runs, afternoon)
     const expected = (['geist', 'gefuehl', 'sinn', 'koerper'] as const).flatMap((area) =>
-      resetOrder(area, runs, NOON).map((hack) => ({ area, hack })))
+      resetOrder(area, runs, afternoon).map((hack) => ({ area, hack })))
     expect(seq).toEqual(expected)
     expect(seq[0].hack.id).toBe('ablenkung-aus')
     expect(seq.every((e) => e.hack.area === e.area)).toBe(true)
-    // Mittags fehlt nur wasser-licht (Fenster 4 bis 12 Uhr); alle anderen Hacks stehen in der Folge.
+    // Um 14 Uhr fehlt nur wasser-licht (Fenster 4 bis 12 Uhr); alle anderen Hacks stehen in der Folge.
     expect(seq.map((e) => e.hack.id)).not.toContain('wasser-licht')
     expect(seq).toHaveLength(HACKS.length - 1)
   })

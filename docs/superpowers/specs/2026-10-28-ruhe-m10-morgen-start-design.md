@@ -215,6 +215,7 @@ Die Texte schreibt die Umsetzung in eigenen Worten. Der Nutzer gibt sie frei, be
 - **„Hinweis“:**
   - für `wach-klopfen`: sanft klopfen, schmerzende Stellen auslassen
   - für `strecken`: nur so weit, wie es angenehm ist
+  - für `wasser-licht`: nicht direkt in die Sonne schauen
 - **Übung des Tages:** Die Reihenfolge ist `strecken`, `wasser-licht`, `wach-klopfen`. Am Tag `t` (Tage seit 1.1.1970, Ortszeit) ist es die Übung `t mod 3`.
 - **„Andere Übung“:** nimmt die nächste in dieser Reihenfolge, auch außerhalb ihres Fensters, und kehrt nach der dritten zur ersten zurück.
 - **Fenster von `wasser-licht`:** gilt nur für den Jetzt-Reset (M9 §6.7). Der Morgen-Start bietet die Übung immer an.
