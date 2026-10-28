@@ -20,11 +20,17 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 /** Ein Ersatz-Kontext, der aufzeichnet, was mit ihm geschieht. */
 function fakeContext(decode: () => Promise<unknown> = async () => ({ fake: 'buffer' }), state: AudioContextState = 'running') {
   const gain = { gain: { value: 1 }, connect: vi.fn() }
-  const source = { buffer: null as unknown, connect: vi.fn(), start: vi.fn() }
+  const source = { buffer: null as unknown, connect: vi.fn(), start: vi.fn(), onended: null as (() => void) | null }
   const ctx = {
-    state,
+    state: state as AudioContextState,
     destination: { fake: 'destination' },
-    resume: vi.fn(async () => {}),
+    // Wie ein echter Kontext: Der Zustand wechselt mit dem Versprechen.
+    resume: vi.fn(async () => {
+      ctx.state = 'running'
+    }),
+    suspend: vi.fn(async () => {
+      ctx.state = 'suspended'
+    }),
     decodeAudioData: vi.fn(decode),
     createBufferSource: vi.fn(() => source),
     createGain: vi.fn(() => gain),
@@ -118,5 +124,56 @@ test('ein laufender Kontext wird nicht angefasst; scheitert das Fortsetzen, blei
   suspended.raw.resume.mockRejectedValueOnce(new DOMException('abgelehnt', 'NotAllowedError'))
   expect(() => playChime(() => suspended.ctx)).not.toThrow()
   await vi.waitFor(() => expect(suspended.source.start).toHaveBeenCalledTimes(1))
+  await wait(30) // Ein unbehandelter Fehler käme hier zum Vorschein.
+})
+
+// ── Der Kontext ruht, wenn nichts klingt (Akku: die Engine hält ihre Ausgabe im Leerlauf ebenfalls an) ────────────────
+
+test('nach dem Anschlag (onended) wird der Kontext angehalten, und der nächste Aufruf setzt ihn fort', async () => {
+  const { ctx, raw, source } = fakeContext()
+  playChime(() => ctx)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+  // Solange der Anschlag klingt, läuft der Kontext.
+  expect(raw.suspend).not.toHaveBeenCalled()
+  source.onended!()
+  expect(raw.suspend).toHaveBeenCalledTimes(1)
+
+  playChime(() => ctx)
+  expect(raw.resume).toHaveBeenCalledTimes(1) // noch im Aufruf, in der Geste
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(2))
+})
+
+test('scheitert das Laden, wird der Kontext angehalten, und der nächste Aufruf setzt ihn fort', async () => {
+  fetchMock.mockRejectedValueOnce(new TypeError('offline'))
+  const { ctx, raw, source } = fakeContext()
+  playChime(() => ctx)
+  await vi.waitFor(() => expect(raw.suspend).toHaveBeenCalledTimes(1))
+  expect(source.start).not.toHaveBeenCalled()
+
+  playChime(() => ctx)
+  expect(raw.resume).toHaveBeenCalledTimes(1)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+})
+
+test('ein Anschlag, der noch klingt, hält den Kontext offen; erst der letzte hält ihn an', async () => {
+  const { ctx, raw, source } = fakeContext()
+  playChime(() => ctx)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+  const first = source.onended!
+  playChime(() => ctx)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(2))
+  const second = source.onended!
+  first()
+  expect(raw.suspend).not.toHaveBeenCalled()
+  second()
+  expect(raw.suspend).toHaveBeenCalledTimes(1)
+})
+
+test('ein Anhalten, das scheitert, bleibt still', async () => {
+  const { ctx, raw, source } = fakeContext()
+  raw.suspend.mockRejectedValueOnce(new DOMException('geschlossen', 'InvalidStateError'))
+  playChime(() => ctx)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+  expect(() => source.onended!()).not.toThrow()
   await wait(30) // Ein unbehandelter Fehler käme hier zum Vorschein.
 })
