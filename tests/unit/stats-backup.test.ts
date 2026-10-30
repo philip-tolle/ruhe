@@ -255,3 +255,36 @@ test('Morgen im Backup: ein ungültiger Eintrag der Datei entfällt einzeln', ()
   expect(r.addedEnergy).toBe(1)
   expect(r.data.mornings?.map(m => m.day)).toEqual(['2026-10-23'])
 })
+
+// Abend-Logbuch (Spec M11 §4.4): je Tag zusammengeführt wie die Morgen-Einträge, neue zählen in addedEnergy.
+const evening = (day: string, at: string, extra: Record<string, unknown> = {}) => ({ day, at, gave: ['Bewegung'], ...extra })
+const evenings = (): AppData => ({ ...emptyData(), evenings: [evening('2026-10-20', '2026-10-20T20:00:00.000Z'), evening('2026-10-21', '2026-10-21T20:00:00.000Z', { better: 'Früher ins Bett' })] })
+
+test('Logbuch im Backup: Export enthält evenings, ohne Einträge fehlt das Feld', () => {
+  const parsed = JSON.parse(serializeBackup(evenings()))
+  expect(Object.keys(parsed)).toEqual(['version', 'sessions', 'settings', 'evenings'])
+  expect(parsed.evenings).toEqual(evenings().evenings)
+  expect(Object.keys(JSON.parse(serializeBackup({ ...mornings(), ...evenings() })))).toEqual(['version', 'sessions', 'settings', 'mornings', 'evenings'])
+})
+test('Logbuch im Backup: neu zählt 1, derselbe noch einmal 0, neuer ersetzt, älter ändert nichts', () => {
+  const file = serializeBackup(evenings())
+  const once = merge(emptyData(), file)
+  expect(once.addedEnergy).toBe(2)
+  const twice = merge(once.data, file)
+  expect(twice.addedEnergy).toBe(0)
+  expect(twice.data.evenings).toHaveLength(2)
+  const newer = evening('2026-10-21', '2026-10-21T22:00:00.000Z', { gave: ['Musik'] })
+  const replaced = merge(once.data, { ...emptyData(), evenings: [newer] })
+  expect(replaced.addedEnergy).toBe(1)
+  expect(replaced.data.evenings).toEqual([evenings().evenings![0], newer])
+  const older = evening('2026-10-21', '2026-10-21T18:00:00.000Z', { gave: ['Lärm'] })
+  const kept = merge(once.data, { ...emptyData(), evenings: [older] })
+  expect(kept.addedEnergy).toBe(0)
+  expect(kept.data.evenings).toEqual(once.data.evenings)
+})
+test('Logbuch im Backup: ein altes Backup ohne evenings lässt die des Geräts unverändert', () => {
+  const mine = evenings()
+  const r = merge(mine, serializeBackup(mornings()))
+  expect(r.data.evenings).toEqual(mine.evenings)
+  expect(r.addedEnergy).toBe(2) // nur die beiden Morgen-Einträge
+})

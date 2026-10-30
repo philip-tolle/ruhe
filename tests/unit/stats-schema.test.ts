@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { parseData, emptyData, isSessionKind, isMorningVariant, clipChars, clipText, clipTask, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
+import { parseData, emptyData, isSessionKind, isMorningVariant, isIntentionScore, cleanTags, clipChars, clipText, clipTask, DEFAULT_SETTINGS } from '../../src/lib/stats/schema'
 import { MUSIC, SOUNDS } from '../../src/lib/sounds/catalog'
 import { BREATH_MINUTES, BREATH_PATTERNS } from '../../src/lib/breath/patterns'
 
@@ -389,4 +389,46 @@ test('clipTask bleibt, wie es war: kürzt auf 80 Zeichen, trimmt nicht', () => {
   expect(clipTask('🌅'.repeat(90))).toBe('🌅'.repeat(80))
   expect(clipTask('  Konzept ')).toBe('  Konzept ')
   expect(clipTask('   ')).toBe('   ')
+})
+
+// Abend-Logbuch (Spec M11 §4.1): Jeder Eintrag wird einzeln geprüft, ein ungültiger kostet nie den Rest.
+const evening = { day: '2026-10-29', at: '2026-10-29T19:30:00.000Z', gave: ['Bewegung', 'Kochen'], cost: ['Bildschirm'], intentionScore: 'teils', learned: 'Pausen helfen.', better: 'Früher ins Bett' }
+const withEvenings = (evenings: unknown) => parseData({ version: 1, sessions: [session], settings: {}, evenings })
+
+test('Logbuch-Einträge werden einzeln geprüft', () => {
+  const bad = [{ ...evening, day: '2026-02-30' }, { ...evening, at: 'gestern' }, { ...evening, day: 20261029 }, null, 'x']
+  const data = withEvenings([bad[0], evening, ...bad.slice(1), { ...evening, day: '2026-10-28' }])
+  expect(data?.evenings?.map(e => e.day)).toEqual(['2026-10-28', '2026-10-29'])
+  expect(data?.evenings?.[1]).toEqual(evening)
+  expect(data?.sessions).toEqual([session])
+})
+test('Logbuch-Stichworte: getrimmt, gekürzt, ohne Leere und Doppelte, höchstens 20', () => {
+  expect(withEvenings([{ ...evening, gave: ['Bewegung', ' bewegung ', '', 42, 'x'.repeat(40)] }])?.evenings?.[0].gave).toEqual(['Bewegung', 'x'.repeat(30)])
+  const many = Array.from({ length: 25 }, (_, i) => `Wort ${i}`)
+  expect(withEvenings([{ ...evening, cost: many }])?.evenings?.[0].cost).toEqual(many.slice(0, 20))
+  expect(withEvenings([{ ...evening, gave: [] }])?.evenings?.[0]).not.toHaveProperty('gave')
+  expect(withEvenings([{ ...evening, gave: 'Bewegung' }])?.evenings?.[0]).not.toHaveProperty('gave')
+  expect(cleanTags(['  Musik ', 'MUSIK', 'Lachen'])).toEqual(['Musik', 'Lachen'])
+})
+test('Logbuch-Texte und Stufe: Ungültiges entfällt einzeln, zu Langes wird gekürzt', () => {
+  const entry = withEvenings([{ ...evening, intentionScore: 'sehr', learned: 'l'.repeat(150), better: '  ' }])?.evenings?.[0]
+  expect(entry).not.toHaveProperty('intentionScore')
+  expect(entry?.learned).toBe('l'.repeat(120))
+  expect(entry).not.toHaveProperty('better')
+  expect(withEvenings([{ ...evening, better: 'b'.repeat(90) }])?.evenings?.[0].better).toBe('b'.repeat(80))
+  expect(isIntentionScore('ganz')).toBe(true)
+  expect(isIntentionScore('sehr')).toBe(false)
+})
+test('Wochenfokus gilt nur an einem Sonntag als Logbuch-Tag', () => {
+  expect(withEvenings([{ ...evening, day: '2026-11-01', weekFocus: '  Mehr Schlaf ' }])?.evenings?.[0].weekFocus).toBe('Mehr Schlaf')
+  expect(withEvenings([{ ...evening, day: '2026-11-01', weekFocus: 'f'.repeat(50) }])?.evenings?.[0].weekFocus).toBe('f'.repeat(40))
+  expect(withEvenings([{ ...evening, day: '2026-11-02', weekFocus: 'Mehr Schlaf' }])?.evenings?.[0]).not.toHaveProperty('weekFocus')
+})
+test('Logbuch: je Tag der Eintrag mit späterem at; leer fehlt die Liste', () => {
+  const later = { ...evening, at: '2026-10-29T21:00:00.000Z', learned: 'später' }
+  expect(withEvenings([later, evening])?.evenings).toEqual([later])
+  expect(withEvenings([evening, later])?.evenings).toEqual([later])
+  expect(withEvenings([])).not.toHaveProperty('evenings')
+  expect(withEvenings(undefined)).not.toHaveProperty('evenings')
+  expect(withEvenings([{ day: '2026-10-29', at: '2026-10-29T19:30:00.000Z' }])?.evenings).toEqual([{ day: '2026-10-29', at: '2026-10-29T19:30:00.000Z' }])
 })

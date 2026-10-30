@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from 'vitest'
 import { serializeBackup } from '../../src/lib/stats/backup'
 import { emptyData, type SessionResult } from '../../src/lib/stats/schema'
-import { importBackup, recordResult, saveCheckin, saveMorning, setHackEffect, stats, toggleDomino } from '../../src/lib/stats/store.svelte'
+import { importBackup, recordResult, saveCheckin, saveEvening, saveMorning, setHackEffect, stats, toggleDomino } from '../../src/lib/stats/store.svelte'
 import { dayKey } from '../../src/lib/stats/summary'
 
 // Der Speicher ist ein Modul mit einem Zustand: pro Test auf den leeren Stand zurücksetzen.
@@ -114,4 +114,17 @@ test('importBackup zählt neue Morgen-Einträge in addedEnergy', () => {
   expect(importBackup(file)).toEqual({ added: 0, addedEnergy: 1 })
   expect(importBackup(file)).toEqual({ added: 0, addedEnergy: 0 })
   expect(stats.data.mornings).toHaveLength(1)
+})
+
+test('saveEvening speichert in localStorage, gibt den Eintrag zurück und löst keine Sitzung aus', () => {
+  const entry = saveEvening({ day: '2026-10-29', gave: [' Bewegung '], cost: [], intentionScore: null, learned: 'Pausen helfen.' })
+  expect(entry).toMatchObject({ day: '2026-10-29', gave: ['Bewegung'], learned: 'Pausen helfen.' })
+  expect(entry).not.toHaveProperty('cost')
+  expect(Math.abs(Date.now() - Date.parse(entry.at))).toBeLessThan(5000)
+  expect(stats.data.evenings).toEqual([entry])
+  expect(stats.data.sessions).toEqual([])
+  expect(JSON.parse(localStorage.getItem('ruhe.v1')!).evenings).toEqual([entry])
+  // Ein zweiter Durchgang am selben Logbuch-Tag ersetzt den Eintrag.
+  const second = saveEvening({ day: '2026-10-29', better: 'Früher ins Bett' })
+  expect(stats.data.evenings).toEqual([second])
 })

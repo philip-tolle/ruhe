@@ -3,7 +3,9 @@
 import type { CustomBreathPattern } from '../breath/custom'
 import type { EnergyLevel } from '../energy/areas'
 import { DOMINO_MAX, GRATITUDE_MAX, INTENTION_MAX, VALUE_MAX } from '../morning/words'
+import { BETTER_MAX, FOCUS_MAX, LEARNED_MAX } from '../evening/words'
 import {
+  cleanTags,
   clipText,
   emptyData,
   isSessionKind,
@@ -13,13 +15,15 @@ import {
   type Calm,
   type CalmLevel,
   type EnergyCheckin,
+  type EveningEntry,
+  type EveningInput,
   type FocusSprint,
   type HackRun,
   type MorningEntry,
   type MorningInput,
   type SessionResult,
 } from './schema'
-import { dayKey, MIN_SECONDS } from './summary'
+import { dayKey, isSunday, MIN_SECONDS } from './summary'
 
 export const STORAGE_KEY = 'ruhe.v1'
 export const CORRUPT_KEY = 'ruhe.v1.corrupt'
@@ -175,4 +179,26 @@ export function withDominoToggled(data: AppData, day: string, now: Date): AppDat
   const { dominoDone, ...rest } = list[index]
   const next: MorningEntry = dominoDone === undefined ? { ...rest, dominoDone: now.toISOString() } : rest
   return { ...data, mornings: list.map((m, i) => (i === index ? next : m)) }
+}
+
+/**
+ * Speichert ein Abend-Logbuch in einem neuen Stand (`data` bleibt unverändert). Der Tag ist der Logbuch-Tag aus dem
+ * Eingang, `at` ist `now`; ein Eintrag desselben Tags wird ganz ersetzt. Stichworte und Texte werden bereinigt und
+ * gekürzt, Leeres entfällt, der Wochenfokus gilt nur an einem Sonntag.
+ */
+export function withEvening(data: AppData, input: EveningInput, now: Date): AppData {
+  const { day } = input
+  const entry: EveningEntry = { day, at: now.toISOString() }
+  const gave = cleanTags(input.gave)
+  if (gave.length > 0) entry.gave = gave
+  const cost = cleanTags(input.cost)
+  if (cost.length > 0) entry.cost = cost
+  if (input.intentionScore) entry.intentionScore = input.intentionScore
+  const learned = clipText(input.learned ?? '', LEARNED_MAX)
+  if (learned !== '') entry.learned = learned
+  const better = clipText(input.better ?? '', BETTER_MAX)
+  if (better !== '') entry.better = better
+  const weekFocus = isSunday(day) ? clipText(input.weekFocus ?? '', FOCUS_MAX) : ''
+  if (weekFocus !== '') entry.weekFocus = weekFocus
+  return { ...data, evenings: sortByDay([...(data.evenings ?? []).filter(e => e.day !== day), entry]) }
 }

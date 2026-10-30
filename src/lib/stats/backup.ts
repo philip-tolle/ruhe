@@ -1,6 +1,6 @@
 // Backup: Export als JSON-Text, Import mit Zusammenführen. Reine Funktionen; Download und
 // Dateiauswahl gehören zur Oberfläche.
-import { parseData, sortByDay, type AppData, type MorningEntry, type Session } from './schema'
+import { parseData, sortByDay, type AppData, type Session } from './schema'
 import { dayKey, MIN_SECONDS } from './summary'
 
 const INVALID_BACKUP = 'Diese Datei ist kein gültiges Ruhe-Backup.'
@@ -15,8 +15,8 @@ export function backupFileName(now: Date): string {
  * (jeweils falls vorhanden); `lastUsed` gehört nicht ins Backup.
  */
 export function serializeBackup(data: AppData): string {
-  const { version, sessions, settings, breathPatterns, energyCheckins, hackRuns, focusSprints, mornings } = data
-  const optional = { ...(breathPatterns && { breathPatterns }), ...(energyCheckins && { energyCheckins }), ...(hackRuns && { hackRuns }), ...(focusSprints && { focusSprints }), ...(mornings && { mornings }) }
+  const { version, sessions, settings, breathPatterns, energyCheckins, hackRuns, focusSprints, mornings, evenings } = data
+  const optional = { ...(breathPatterns && { breathPatterns }), ...(energyCheckins && { energyCheckins }), ...(hackRuns && { hackRuns }), ...(focusSprints && { focusSprints }), ...(mornings && { mornings }), ...(evenings && { evenings }) }
   return JSON.stringify({ version, sessions, settings, ...optional }, null, 2)
 }
 
@@ -38,11 +38,11 @@ function mergeEntries<T extends { id: string; at: string }>(own: readonly T[] | 
 }
 
 /**
- * Morgen-Starts gehen nach Tag, nicht nach Kennung (sie haben keine): Der Eintrag mit dem späteren `at` gilt, ein
- * gleicher Zeitpunkt zählt als derselbe Eintrag (nichts ändert sich), und nur Neues und Ersetztes wird gezählt.
- * Kommt nichts dazu, bleibt die Liste des Geräts, wie sie ist.
+ * Morgen-Starts und Abend-Logbücher gehen nach Tag, nicht nach Kennung (sie haben keine): Der Eintrag mit dem späteren
+ * `at` gilt, ein gleicher Zeitpunkt zählt als derselbe Eintrag (nichts ändert sich), und nur Neues und Ersetztes wird
+ * gezählt. Kommt nichts dazu, bleibt die Liste des Geräts, wie sie ist.
  */
-function mergeMornings(own: readonly MorningEntry[] | undefined, incoming: readonly MorningEntry[] | undefined): { list: MorningEntry[]; added: number } {
+function mergeByDay<T extends { day: string; at: string }>(own: readonly T[] | undefined, incoming: readonly T[] | undefined): { list: T[]; added: number } {
   const list = [...(own ?? [])]
   let added = 0
   for (const entry of incoming ?? []) {
@@ -64,7 +64,7 @@ function mergeMornings(own: readonly MorningEntry[] | undefined, incoming: reado
  * Einstellungen stammen aus der Datei, `lastUsed` bleibt. Eigene Atemmuster kommen dazu, wenn ihre
  * Kennung neu ist; ein Muster des Geräts bleibt, wie es ist. Ebenso Check-ins, Hack-Läufe und Sprints:
  * nur unbekannte Kennungen kommen dazu (`addedEnergy` zählt sie), und ein Backup ohne Energie-Felder lässt die
- * des Geräts unverändert. Morgen-Starts kommen je Tag zusammen (`mergeMornings`) und zählen ebenfalls in `addedEnergy`,
+ * des Geräts unverändert. Morgen-Starts und Abend-Logbücher kommen je Tag zusammen (`mergeByDay`) und zählen ebenfalls in `addedEnergy`,
  * damit die Meldung nach dem Import dieselbe bleibt. Bei ungültiger Datei kommt nur ein Fehlertext zurück;
  * `current` wird nie verändert.
  */
@@ -93,10 +93,12 @@ export function mergeBackup(current: AppData, text: string): { data: AppData; ad
   const checkins = mergeEntries(current.energyCheckins, incoming.energyCheckins)
   const runs = mergeEntries(current.hackRuns, incoming.hackRuns)
   const sprints = mergeEntries(current.focusSprints, incoming.focusSprints)
-  const mornings = mergeMornings(current.mornings, incoming.mornings)
+  const mornings = mergeByDay(current.mornings, incoming.mornings)
+  const evenings = mergeByDay(current.evenings, incoming.evenings)
   if (checkins.list.length > 0) data.energyCheckins = checkins.list
   if (runs.list.length > 0) data.hackRuns = runs.list
   if (sprints.list.length > 0) data.focusSprints = sprints.list
   if (mornings.list.length > 0) data.mornings = mornings.list
-  return { data, added: added.length, addedEnergy: checkins.added + runs.added + sprints.added + mornings.added }
+  if (evenings.list.length > 0) data.evenings = evenings.list
+  return { data, added: added.length, addedEnergy: checkins.added + runs.added + sprints.added + mornings.added + evenings.added }
 }

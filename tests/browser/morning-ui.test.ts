@@ -34,7 +34,7 @@ import {
   swapExercise,
 } from '../../src/lib/ui/morning-ui.svelte'
 import { clearDone, sessionUi, startGuidedSession, startHack, type SessionDoneInfo } from '../../src/lib/ui/session-ui.svelte'
-import { appNow } from '../../src/lib/ui/tageszeit.svelte'
+import { appNow, tageszeitUi } from '../../src/lib/ui/tageszeit.svelte'
 
 beforeEach(() => {
   localStorage.clear()
@@ -137,7 +137,10 @@ test('im Abschluss tut nextStep nichts mehr: ein zweiter Tipp speichert nicht no
 test('nach „Big Domino“ hält der Zustand den gespeicherten Eintrag fest: getrimmt, auch über Mitternacht hinaus', () => {
   vi.useFakeTimers({ toFake: ['Date'] })
   try {
+    // Die Minuten-Uhr der App mitstellen: `appNow()` nimmt das Spätere von ihr und `Date.now()`, sonst gälte nach dem
+    // 28.10.2026 die echte Zeit des Rechners.
     vi.setSystemTime(new Date(2026, 9, 28, 23, 58))
+    tageszeitUi.now = Date.now()
     openMorning('kurz')
     fillDraft()
     expect(morningUi.entry).toBeNull()
@@ -149,10 +152,12 @@ test('nach „Big Domino“ hält der Zustand den gespeicherten Eintrag fest: ge
 
     // Mitternacht ist vorbei: „heute“ ist ein anderer Tag, der Eintrag des Abschlusses bleibt der gespeicherte.
     vi.setSystemTime(new Date(2026, 9, 29, 0, 3))
+    tageszeitUi.now = Date.now()
     expect(todayEntry(stats.data.mornings ?? [], appNow())).toBeNull()
     expect(morningUi.entry).toMatchObject(expected)
   } finally {
     vi.useRealTimers()
+    tageszeitUi.now = Date.now()
   }
 })
 

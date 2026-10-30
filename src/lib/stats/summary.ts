@@ -11,6 +11,12 @@ export function dayKey(d: Date): string {
   return `${p(d.getFullYear(), 4)}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+/** Ob ein Kalendertag `JJJJ-MM-TT` ein Sonntag ist (lokal gerechnet, wie `dayKey`). */
+export function isSunday(day: string): boolean {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(y, m - 1, d).getDay() === 0
+}
+
 /**
  * Tage in Folge mit mindestens einer Sitzung. Gezählt wird ab heute rückwärts, hat heute noch
  * keine Sitzung, ab gestern. Die Tage rechnet der Kalender (kein 24-Stunden-Schritt), damit

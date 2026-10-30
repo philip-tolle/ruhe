@@ -6,8 +6,8 @@ import type { CustomBreathPattern } from '../breath/custom'
 import type { EnergyArea, EnergyLevel } from '../energy/areas'
 import { focusSprintFrom, hackRunFrom } from '../energy/record'
 import { appNow } from '../ui/tageszeit.svelte'
-import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withMorning, withoutBreathPattern, withSession, type StorageLike } from './persist'
-import type { AppData, CalmLevel, LastUsed, MorningEntry, MorningInput, SessionResult, Settings } from './schema'
+import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withEvening, withMorning, withoutBreathPattern, withSession, type StorageLike } from './persist'
+import type { AppData, CalmLevel, EveningEntry, EveningInput, LastUsed, MorningEntry, MorningInput, SessionResult, Settings } from './schema'
 import { dayKey } from './summary'
 
 /** `window.localStorage`, oder `null`, wenn der Zugriff wirft (z. B. SecurityError) oder fehlt. */
@@ -67,6 +67,17 @@ export function saveMorning(input: MorningInput): MorningEntry {
   commit(next)
   const day = dayKey(now)
   return next.mornings!.find((m) => m.day === day)!
+}
+
+/**
+ * Abend-Logbuch am Ende des Ablaufs: legt den Eintrag des Logbuch-Tages an oder ersetzt ihn; `at` ist `appNow()`. Es
+ * entsteht nie eine Sitzung; der Check-in und der Haken am Big Domino speichern sich schon im Ablauf. Gibt den Eintrag
+ * zurück, wie er gespeichert ist (bereinigt, gekürzt).
+ */
+export function saveEvening(input: EveningInput): EveningEntry {
+  const next = withEvening(stats.data, input, appNow())
+  commit(next)
+  return next.evenings!.find((e) => e.day === input.day)!
 }
 
 /** Hakt das Big Domino eines Tages ab bzw. nimmt den Haken zurück; ohne Eintrag oder Big Domino ändert sich nichts. */

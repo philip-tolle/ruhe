@@ -6,6 +6,8 @@ import { CUSTOM_PATTERN_ID, MAX_LOADED_PATTERNS, parseCustomPattern, type Custom
 import { INTERVAL_OPTIONS } from '../meditation/timer-plan'
 import { isEnergyArea, isEnergyLevel, AREAS, type EnergyArea, type EnergyLevel } from '../energy/areas'
 import { DOMINO_MAX, GRATITUDE_MAX, INTENTION_MAX, VALUE_MAX } from '../morning/words'
+import { BETTER_MAX, FOCUS_MAX, LEARNED_MAX, TAG_MAX, TAGS_MAX } from '../evening/words'
+import { isSunday } from './summary'
 
 export type SessionKind = 'guided' | 'timer' | 'breath'
 
@@ -92,6 +94,42 @@ export interface MorningEntry {
   dominoDone?: string
 }
 
+/** Wie gut die Intention des Morgens gelungen ist (Spec M11 §2.3, Rückblick). */
+export type IntentionScore = 'kaum' | 'teils' | 'ganz'
+export const INTENTION_SCORES: readonly IntentionScore[] = ['kaum', 'teils', 'ganz']
+
+export function isIntentionScore(v: unknown): v is IntentionScore {
+  return typeof v === 'string' && (INTENTION_SCORES as readonly string[]).includes(v)
+}
+
+/**
+ * Ein Abend-Logbuch (Spec M11 §4.1): je Logbuch-Tag höchstens eines. Stichworte und Texte sind getrimmt und gekürzt,
+ * leere fehlen; `weekFocus` gibt es nur an einem Sonntag.
+ */
+export interface EveningEntry {
+  /** Logbuch-Tag `JJJJ-MM-TT` (vor 4 Uhr der Vortag). */
+  day: string
+  /** ISO-Zeitpunkt, an dem der Abschluss erreicht wurde. */
+  at: string
+  gave?: string[]
+  cost?: string[]
+  intentionScore?: IntentionScore
+  learned?: string
+  better?: string
+  weekFocus?: string
+}
+
+/** Was der Ablauf am Ende meldet; den Zeitpunkt setzt `withEvening`, die Werte prüft und kürzt es. */
+export interface EveningInput {
+  day: string
+  gave?: readonly string[]
+  cost?: readonly string[]
+  intentionScore?: IntentionScore | null
+  learned?: string
+  better?: string
+  weekFocus?: string
+}
+
 /** Was der Ablauf am Ende meldet; Tag und Zeitpunkt setzt `withMorning`, die Texte prüft und kürzt es. */
 export interface MorningInput {
   variant: MorningVariant
@@ -150,6 +188,8 @@ export interface AppData {
   focusSprints?: FocusSprint[]
   /** Morgen-Starts (Spec M10 §4.1), nach Tag sortiert, je Tag einer; fehlt, solange es keinen gibt. */
   mornings?: MorningEntry[]
+  /** Abend-Logbücher (Spec M11 §4.1), nach Tag sortiert, je Tag eines; fehlt, solange es keines gibt. */
+  evenings?: EveningEntry[]
 }
 
 function defaultSettings(): Settings {
@@ -401,17 +441,65 @@ function parseMorning(raw: unknown): MorningEntry | null {
 }
 
 /** Je Tag der Eintrag mit dem späteren `at` (bei gleichem Zeitpunkt der erste), nach Tag sortiert. */
-function parseMornings(raw: unknown): MorningEntry[] {
-  const byDay = new Map<string, MorningEntry>()
-  for (const entry of parseList(raw, parseMorning)) {
+function latestPerDay<T extends { day: string; at: string }>(list: readonly T[]): T[] {
+  const byDay = new Map<string, T>()
+  for (const entry of list) {
     const known = byDay.get(entry.day)
     if (!known || Date.parse(entry.at) > Date.parse(known.at)) byDay.set(entry.day, entry)
   }
   return sortByDay([...byDay.values()])
 }
 
+function parseMornings(raw: unknown): MorningEntry[] {
+  return latestPerDay(parseList(raw, parseMorning))
+}
+
+/**
+ * Stichworte einer Seite: nur Texte, getrimmt und auf `TAG_MAX` gekürzt, ohne leere und ohne Doppelte (Groß- und
+ * Kleinschreibung egal, das erste Vorkommen bleibt), höchstens `TAGS_MAX`.
+ */
+export function cleanTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const tags: string[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (tags.length >= TAGS_MAX) break
+    if (typeof item !== 'string') continue
+    const tag = clipText(item, TAG_MAX)
+    const key = tag.toLowerCase()
+    if (tag === '' || seen.has(key)) continue
+    seen.add(key)
+    tags.push(tag)
+  }
+  return tags
+}
+
+/** Ungültiger Tag oder Zeitpunkt ergibt `null`; ungültige Felder entfallen einzeln, der Eintrag bleibt. */
+function parseEvening(raw: unknown): EveningEntry | null {
+  if (!isRecord(raw)) return null
+  const { day, at } = raw
+  if (!isDayKey(day) || !isIsoTime(at)) return null
+  const entry: EveningEntry = { day, at }
+  const gave = cleanTags(raw.gave)
+  if (gave.length > 0) entry.gave = gave
+  const cost = cleanTags(raw.cost)
+  if (cost.length > 0) entry.cost = cost
+  if (isIntentionScore(raw.intentionScore)) entry.intentionScore = raw.intentionScore
+  const learned = parseText(raw.learned, LEARNED_MAX)
+  if (learned) entry.learned = learned
+  const better = parseText(raw.better, BETTER_MAX)
+  if (better) entry.better = better
+  const weekFocus = isSunday(day) ? parseText(raw.weekFocus, FOCUS_MAX) : undefined
+  if (weekFocus) entry.weekFocus = weekFocus
+  return entry
+}
+
+function parseEvenings(raw: unknown): EveningEntry[] {
+  return latestPerDay(parseList(raw, parseEvening))
+}
+
 /** Nach Tag aufsteigend; `JJJJ-MM-TT` ordnet sich als Text richtig. */
-export function sortByDay(list: readonly MorningEntry[]): MorningEntry[] {
+export function sortByDay<T extends { day: string }>(list: readonly T[]): T[] {
   return [...list].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
 }
 
@@ -442,5 +530,7 @@ export function parseData(raw: unknown): AppData | null {
   if (focusSprints.length > 0) data.focusSprints = focusSprints
   const mornings = parseMornings(raw.mornings)
   if (mornings.length > 0) data.mornings = mornings
+  const evenings = parseEvenings(raw.evenings)
+  if (evenings.length > 0) data.evenings = evenings
   return data
 }

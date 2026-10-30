@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withMorning, withoutBreathPattern, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
+import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withEvening, withMorning, withoutBreathPattern, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
 import { emptyData } from '../../src/lib/stats/schema'
 const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) } }
 
@@ -244,6 +244,36 @@ test('withDominoToggled ohne Eintrag oder ohne Big Domino ergibt null', () => {
 test('Morgen-Einträge überstehen Speichern und Laden', () => {
   const s = mem()
   const d = withDominoToggled(withMorning(two(), { variant: 'lang', intention: 'klar', gratitude: 'ein Morgen', value: 'Mut', domino: 'Konzept' }, at(6)), '2026-10-28', at(7))!
+  expect(saveData(s, d)).toBe(true)
+  expect(loadData(s)).toEqual(d)
+})
+
+// Abend-Logbuch (Spec M11 §4.2): Tag aus dem Eingang, at = jetzt; ein zweiter Durchgang ersetzt den Eintrag.
+test('withEvening legt einen Eintrag für den Logbuch-Tag an, ohne den alten Stand zu ändern', () => {
+  const d = two()
+  const before = structuredClone(d)
+  const now = at(21)
+  const next = withEvening(d, { day: '2026-10-29', gave: ['Bewegung'], better: 'Früher ins Bett' }, now)
+  expect(next.evenings).toEqual([{ day: '2026-10-29', at: now.toISOString(), gave: ['Bewegung'], better: 'Früher ins Bett' }])
+  expect(next.sessions).toBe(d.sessions)
+  expect(d).toEqual(before)
+})
+test('withEvening: ein zweiter Durchgang am selben Tag ersetzt den Eintrag ganz', () => {
+  const first = withEvening(emptyData(), { day: '2026-10-29', gave: ['Bewegung'], learned: 'Erstes' }, at(20))
+  const second = withEvening(first, { day: '2026-10-29', cost: ['Lärm'] }, at(22))
+  expect(second.evenings).toEqual([{ day: '2026-10-29', at: at(22).toISOString(), cost: ['Lärm'] }])
+  const other = withEvening(second, { day: '2026-10-27' }, at(23))
+  expect(other.evenings?.map(e => e.day)).toEqual(['2026-10-27', '2026-10-29'])
+})
+test('withEvening lässt Leeres weg, kürzt und nimmt den Wochenfokus nur sonntags', () => {
+  const next = withEvening(emptyData(), { day: '2026-10-29', gave: [], cost: [' bildschirm ', 'Bildschirm'], intentionScore: null, learned: '   ', better: 'b'.repeat(90), weekFocus: 'Mehr Schlaf' }, at(21))
+  expect(next.evenings).toEqual([{ day: '2026-10-29', at: at(21).toISOString(), cost: ['bildschirm'], better: 'b'.repeat(80) }])
+  const sunday = withEvening(emptyData(), { day: '2026-11-01', intentionScore: 'ganz', weekFocus: ' Dranbleiben ' }, at(21))
+  expect(sunday.evenings?.[0]).toEqual({ day: '2026-11-01', at: at(21).toISOString(), intentionScore: 'ganz', weekFocus: 'Dranbleiben' })
+})
+test('Logbuch-Einträge überstehen Speichern und Laden', () => {
+  const s = mem()
+  const d = withEvening(two(), { day: '2026-11-01', gave: ['Bewegung'], cost: ['Lärm'], intentionScore: 'teils', learned: 'Pausen helfen.', better: 'Früher ins Bett', weekFocus: 'Mehr Schlaf' }, at(21))
   expect(saveData(s, d)).toBe(true)
   expect(loadData(s)).toEqual(d)
 })
