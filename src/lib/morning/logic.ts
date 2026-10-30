@@ -149,6 +149,11 @@ export function morningCount(entries: readonly MorningEntry[], now: Date): numbe
   return count
 }
 
+/** Der Satz der Intention: im Morgen-Start (Schritt „Intention“) und im Rückblick des Abend-Logbuchs. */
+export function intentionSentence(word: string): string {
+  return `Heute will ich ${word} sein.`
+}
+
 /** „Morgen-Start an 4 der letzten 7 Tage“. */
 export function morningCountLine(n: number): string {
   return `Morgen-Start an ${n} der letzten ${COUNT_DAYS} Tage`

@@ -2,7 +2,7 @@ process.env.TZ = 'Europe/Berlin'
 import { describe, expect, test } from 'vitest'
 import {
   MORNING_FROM, MORNING_UNTIL,
-  exerciseOfDay, morningCard, morningCount, morningCountLine, nextExercise, openDomino, ownValues, ownWords,
+  exerciseOfDay, intentionSentence, morningCard, morningCount, morningCountLine, nextExercise, openDomino, ownValues, ownWords,
   suggestions, todayEntry,
 } from '../../src/lib/morning/logic'
 import { INTENTIONS_DEFAULT, MORNING_EXERCISES } from '../../src/lib/morning/words'
@@ -232,4 +232,9 @@ describe('Zählung der letzten 7 Tage', () => {
     expect(morningCountLine(4)).toBe('Morgen-Start an 4 der letzten 7 Tage')
     expect(morningCountLine(1)).toBe('Morgen-Start an 1 der letzten 7 Tage')
   })
+})
+
+test('intentionSentence: der Satz der Intention, auch für Wortgruppen', () => {
+  expect(intentionSentence('klar')).toBe('Heute will ich klar sein.')
+  expect(intentionSentence('sanft mit mir')).toBe('Heute will ich sanft mit mir sein.')
 })
