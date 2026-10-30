@@ -42,10 +42,10 @@
   const index = $derived(steps.indexOf(step))
   const finished = $derived(index === -1)
 
-  // „Überspringen“ nimmt Tipps erst kurz nach dem Öffnen an: Ein Doppeltipp auf den Knopf, der den Ablauf öffnet, träfe
-  // mit dem zweiten Tipp sonst diesen Knopf, der sich gerade in die Ecke gelegt hat (siehe `tapArming`). Die Schritte
-  // sichern ihre eigenen Knöpfe.
-  const arming = tapArming()
+  // „Überspringen“ nimmt Tipps erst kurz nach dem Öffnen und nach jedem Schrittwechsel an: Ein Doppeltipp auf den Knopf,
+  // der den Ablauf öffnet, träfe mit dem zweiten Tipp sonst diesen Knopf, der sich gerade in die Ecke gelegt hat, und ein
+  // Doppeltipp auf „Überspringen“ übersprünge zwei Schritte (siehe `tapArming`). Die Schritte sichern ihre eigenen Knöpfe.
+  const arming = tapArming(() => step)
 
   let host = $state<HTMLElement>()
 

@@ -25,13 +25,15 @@
   const id = $props.id()
   const key = (tag: string) => tag.toLowerCase()
 
-  // Gewählte eigene Stichworte, die weder in den Vorschlägen noch unter den gespeicherten eigenen stehen, sind eben
-  // hinzugefügt: Sie stehen vorn, das jüngste zuerst.
+  // Eben hinzugefügte Stichworte (weder in den Vorschlägen noch unter den gespeicherten eigenen) stehen vorn, das jüngste
+  // zuerst. Die Auswahl merkt sie sich selbst (`added`), damit ein abgewähltes an seiner Stelle stehen bleibt; dazu kommen
+  // gewählte unbekannte, die schon vor dem Einblenden gewählt waren.
+  let added = $state<string[]>([])
   const ownShown = $derived.by(() => {
     const known = new Set([...tags, ...own].map(key))
-    const added = selected.filter((t) => !known.has(key(t))).reverse()
+    const fresh = [...selected, ...added].filter((t) => !known.has(key(t))).reverse()
     const seen = new Set<string>()
-    return [...added, ...own].filter((t) => !seen.has(key(t)) && (seen.add(key(t)), true))
+    return [...fresh, ...own].filter((t) => !seen.has(key(t)) && (seen.add(key(t)), true))
   })
   const chosen = $derived(new Set(selected.map(key)))
   const full = $derived(selected.length >= TAGS_MAX)
@@ -58,6 +60,7 @@
     if (word === '') return
     const visible = [...ownShown, ...tags].find((t) => key(t) === key(word))
     const tag = visible ?? word
+    if (!visible) added = [...added, word]
     if (!chosen.has(key(tag)) && !full) onChange([...selected, tag])
     adding = false
     typed = ''

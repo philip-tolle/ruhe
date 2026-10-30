@@ -98,3 +98,12 @@ test('„Überspringen“ nimmt Tipps erst nach kurzer Zeit an und ruft dann onS
   button('Überspringen')!.click()
   expect(onSkip).toHaveBeenCalledTimes(1)
 })
+
+test('nach jedem Schrittwechsel ist „Überspringen“ wieder kurz gesperrt: ein Doppeltipp überspringt nur einen Schritt', async () => {
+  open('a')
+  await vi.waitFor(() => expect(button('Überspringen')!.disabled).toBe(false))
+  instance.go('b') // der erste Tipp hat übersprungen
+  flushSync()
+  expect(button('Überspringen')!.disabled).toBe(true) // der zweite Tipp, gleich danach, trifft nichts
+  await vi.waitFor(() => expect(button('Überspringen')!.disabled).toBe(false))
+})

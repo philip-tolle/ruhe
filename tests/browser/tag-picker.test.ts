@@ -3,6 +3,7 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { flushSync, mount, unmount } from 'svelte'
 import TagPicker from '../../src/components/evening/TagPicker.svelte'
+import TagPickerHarness from './harness/TagPickerHarness.svelte'
 
 let target: HTMLElement
 let instance: Record<string, unknown>
@@ -95,4 +96,27 @@ test('mit 20 gewählten sind übrige Stichworte und „+ Eigenes“ gesperrt, ge
   expect(button('Eigen 3')!.disabled).toBe(false)
   button('Eigen 3')!.click()
   expect(onChange).toHaveBeenLastCalledWith(twenty.filter((t) => t !== 'Eigen 3'))
+})
+
+test('ein eben hinzugefügtes Stichwort bleibt nach dem Abwählen stehen und lässt sich wieder wählen', () => {
+  target = document.createElement('div')
+  document.body.append(target)
+  instance = mount(TagPickerHarness, { target, props: { tags: TAGS } })
+  flushSync()
+  button('+ Eigenes')!.click()
+  flushSync()
+  type('Kochen')
+  field()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+  flushSync()
+  expect(button('Kochen')!.getAttribute('aria-pressed')).toBe('true')
+
+  button('Kochen')!.click() // abwählen: der Knopf bleibt an seiner Stelle, ein zweiter Tipp trifft wieder ihn
+  flushSync()
+  expect(button('Kochen')?.getAttribute('aria-pressed')).toBe('false')
+  expect(target.querySelector('[role="group"][aria-label="Deine Stichworte"]')).not.toBeNull()
+
+  button('Kochen')!.click()
+  flushSync()
+  expect(button('Kochen')!.getAttribute('aria-pressed')).toBe('true')
+  expect(button('Bewegung')!.getAttribute('aria-pressed')).toBe('false')
 })
