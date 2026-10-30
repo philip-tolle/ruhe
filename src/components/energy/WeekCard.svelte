@@ -12,14 +12,16 @@
     whatWorks,
     WHAT_WORKS_HINT,
   } from '../../lib/energy/insights'
+  import { logbookDay, morningReminder, weekReview } from '../../lib/evening/logic'
   import { morningCount, morningCountLine } from '../../lib/morning/logic'
+  import WeekSummary from '../evening/WeekSummary.svelte'
   import { stats } from '../../lib/stats/store.svelte'
   import { appNow } from '../../lib/ui/tageszeit.svelte'
 
   // „Deine Woche“ (Spec M9 §3.2 Punkt 6, §6.3–§6.6): das Raster der letzten 7 Tage mit den vier Bereichen, darunter die
-  // Muster-Sätze (oder der Hinweis, wann sie kommen), die Fokus-Zeile, die Zeile zum Morgen-Start (Spec M10 §2.2) und
-  // „Was bei dir wirkt“. „Jetzt“ ist die Zeit der App (`appNow`): neu bei jeder Änderung der Daten, mit jeder vollen
-  // Minute und bei der Rückkehr in die App.
+  // Muster-Sätze (oder der Hinweis, wann sie kommen), die Fokus-Zeile, die Zeile zum Morgen-Start (Spec M10 §2.2), den
+  // Wochenrückblick des Abend-Logbuchs (Spec M11 §2.2) und „Was bei dir wirkt“. „Jetzt“ ist die Zeit der App (`appNow`):
+  // neu bei jeder Änderung der Daten, mit jeder vollen Minute und bei der Rückkehr in die App.
   const id = $props.id()
 
   const view = $derived.by(() => {
@@ -32,6 +34,8 @@
       sentences: patterns ? patternSentences(checkins, now) : [],
       focus: focusLine(stats.data.focusSprints ?? [], now),
       morning: morningCount(stats.data.mornings ?? [], now),
+      review: weekReview(stats.data.evenings ?? [], stats.data.mornings ?? [], logbookDay(now)),
+      focusWord: morningReminder(stats.data.evenings ?? [], now).weekFocus,
       works: whatWorks(stats.data.hackRuns ?? []),
     }
   })
@@ -81,6 +85,17 @@
   <!-- Spec M10 §2.2: unter der Fokus-Zeile, erst ab einem Tag mit Morgen-Start. -->
   {#if view.morning >= 1}
     <p class="morning-line">{morningCountLine(view.morning)}</p>
+  {/if}
+
+  <!-- Spec M11 §2.2: der Wochenrückblick des Abend-Logbuchs, sobald es in den sieben Tagen ein Logbuch gibt. -->
+  {#if view.review.days >= 1}
+    <div class="review">
+      <h3>Wochenrückblick</h3>
+      <WeekSummary review={view.review} level={4} />
+      {#if view.focusWord}
+        <p class="focus-word">Wochenfokus: {view.focusWord}</p>
+      {/if}
+    </div>
   {/if}
 
   <div class="works">
@@ -162,11 +177,18 @@
     font-weight: 700;
   }
 
+  .review,
   .works {
     display: flex;
     flex-direction: column;
     gap: 8px;
     width: 100%;
+  }
+
+  .focus-word {
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
   }
 
   h3 {

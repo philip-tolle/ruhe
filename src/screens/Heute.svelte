@@ -5,10 +5,12 @@
   import Waschung from '../components/Waschung.svelte'
   import AkkuCard from '../components/energy/AkkuCard.svelte'
   import MorningTodayCard from '../components/morning/MorningTodayCard.svelte'
+  import EveningTodayCard from '../components/evening/EveningTodayCard.svelte'
   import { breathProgram } from '../lib/audio/program'
   import { durationLabel, suggestionFor, type Meditation } from '../lib/content/catalog'
   import { vorschlagMotiv, type MotivId } from '../lib/content/motive'
   import { tageszeitWaschung, zuletztWaschung } from '../lib/content/waschungen'
+  import { eveningCard } from '../lib/evening/logic'
   import { absoluteAudioUrl, startable } from '../lib/meditation/guided-view'
   import { offline, refreshSaved } from '../lib/offline/status.svelte'
   import { GREETING } from '../lib/time/tageszeit'
@@ -17,7 +19,7 @@
   import { lastUsedCard, lastUsedStart, streakLine } from '../lib/ui/heute-view'
   import { startGuidedSession, startSession } from '../lib/ui/session-ui.svelte'
   import type { TabId } from '../lib/ui/tabs'
-  import { tageszeitUi } from '../lib/ui/tageszeit.svelte'
+  import { appNow, tageszeitUi } from '../lib/ui/tageszeit.svelte'
 
   let { onNavigate }: { onNavigate: (tab: TabId) => void } = $props()
 
@@ -29,6 +31,9 @@
     void tageszeitUi.current
     return suggestionFor(new Date())
   })
+
+  // „Dein Abend“ steht an der Stelle von „Dein Tag“ (Spec M11 §2.1); „jetzt“ ist die Minuten-Uhr der App.
+  const showsEvening = $derived(eveningCard(stats.data.evenings ?? [], appNow()) === 'dein-abend')
 
   const days = $derived(streak(stats.data.sessions, new Date()))
   // Ohne Gemerktes (oder mit einer unbekannten Meditation) steht hier „Ankommen im Atem“.
@@ -112,9 +117,15 @@
     <p class="lead" class:streak={days > 0}>{streakLine(days)}</p>
   </header>
 
+  <!-- Abend-Karte (Spec M11 §2.1) über der Morgen-Karte: „Tag abschließen“ von 18:00 bis 3:59 ohne Logbuch, „Dein Abend“
+       danach bis 3:59 (nicht im Morgen-Fenster); „Dein Abend“ ersetzt dann auch „Dein Tag“. -->
+  <EveningTodayCard />
+
   <!-- Morgen-Karte (Spec M10 §2.1): „Guten Morgen“ von 4:00 bis 10:59 ohne Eintrag von heute, „Dein Tag“ danach bis
-       Mitternacht; sonst steht hier nichts. -->
-  <MorningTodayCard />
+       Mitternacht, außer neben „Dein Abend“; sonst steht hier nichts. -->
+  {#if !showsEvening}
+    <MorningTodayCard />
+  {/if}
 
   <!-- Dein Akku (Spec M9 §3.7): ohne frischen Check-in die Frage und „Check-in“ (das Blatt öffnet sich hier, am App-Wurzel),
        mit frischem eine schmale Karte, die zum Reiter „Energie“ führt. -->

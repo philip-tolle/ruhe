@@ -2,6 +2,7 @@
   import { untrack } from 'svelte'
   import WordPicker from '../flow/WordPicker.svelte'
   import { AREA_INFO } from '../../lib/energy/areas'
+  import { morningReminder } from '../../lib/evening/logic'
   import { freshCheckin, weakestArea } from '../../lib/energy/insights'
   import { intentionSentence, ownWords, suggestions } from '../../lib/morning/logic'
   import { INTENTION_MAX } from '../../lib/morning/words'
@@ -24,6 +25,10 @@
     return levels ? weakestArea(levels) : null
   })
   const words = suggestions(area)
+
+  // Der Kasten aus dem Abend-Logbuch (Spec M11 §2.4): der 1-%-Satz von gestern und der Wochenfokus, ebenfalls beim
+  // Einblenden festgehalten. Ohne beides entfällt er.
+  const reminder = untrack(() => morningReminder(stats.data.evenings ?? [], appNow()))
   const own = $derived(ownWords(stats.data.mornings ?? []))
 
   const word = $derived(morningUi.draft.intention.trim())
@@ -37,6 +42,23 @@
 
 <div class="step">
   <div class="content">
+    {#if reminder.better || reminder.weekFocus}
+      <section class="reminder" aria-label="Von gestern Abend">
+        {#if reminder.better}
+          <div class="reminder-row">
+            <p class="reminder-label">Gestern vorgenommen</p>
+            <p class="reminder-text">{reminder.better}</p>
+          </div>
+        {/if}
+        {#if reminder.weekFocus}
+          <div class="reminder-row">
+            <p class="reminder-label">Wochenfokus</p>
+            <p class="reminder-text accent">{reminder.weekFocus}</p>
+          </div>
+        {/if}
+      </section>
+    {/if}
+
     <header class="head">
       <p class="kicker">Intention</p>
       <h2 class="title" tabindex="-1" data-step-title>Wie willst du heute sein?</h2>
@@ -68,3 +90,40 @@
     <button type="button" class="button" disabled={!arming.armed} onclick={nextStep}>Weiter</button>
   </div>
 </div>
+
+<style>
+  /* Der Kasten aus dem Abend-Logbuch: reiner Text auf eigener Fläche mit Goldrand. */
+  .reminder {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--gold-line-strong);
+    border-radius: 18px;
+    background: var(--surface);
+  }
+
+  .reminder-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .reminder-label {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .reminder-text {
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .reminder-text.accent {
+    color: var(--accent);
+  }
+</style>

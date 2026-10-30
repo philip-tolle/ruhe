@@ -171,3 +171,34 @@ test('the live line announces the choice of a suggestion and not every key typed
   expect(region.textContent).toBe('Wähle ein Wort oder tippe ein eigenes.')
   observer.disconnect()
 })
+
+// Der Kasten aus dem Abend-Logbuch (Spec M11 §2.4): „Gestern vorgenommen“ und „Wochenfokus“, beim Einblenden festgehalten.
+const box = () => target!.querySelector('[aria-label="Von gestern Abend"]')
+
+test('the box from last evening shows yesterday’s 1 % and the week focus, and stays while the step is open', () => {
+  setClock(AT)
+  stats.data = {
+    ...emptyData(),
+    evenings: [
+      { day: '2026-10-25', at: '2026-10-25T20:00:00.000Z', weekFocus: 'Mehr Schlaf' },
+      { day: '2026-10-27', at: '2026-10-27T20:00:00.000Z', better: 'Handy aus bis 10 Uhr' },
+    ],
+  }
+  show()
+  expect(box()?.textContent).toContain('Gestern vorgenommen')
+  expect(box()?.textContent).toContain('Handy aus bis 10 Uhr')
+  expect(box()?.textContent).toContain('Wochenfokus')
+  expect(box()?.textContent).toContain('Mehr Schlaf')
+
+  // Ändern sich die Daten, während der Schritt offen ist, bleibt der Kasten, wie er war.
+  stats.data = { ...emptyData() }
+  flushSync()
+  expect(box()?.textContent).toContain('Handy aus bis 10 Uhr')
+})
+
+test('without a logbook there is no box', () => {
+  setClock(AT)
+  stats.data = emptyData()
+  show()
+  expect(box()).toBeNull()
+})

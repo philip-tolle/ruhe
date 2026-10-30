@@ -1,7 +1,7 @@
 <script lang="ts">
   import { TABS, type TabId } from '../lib/ui/tabs'
 
-  let { tab, onNavigate }: { tab: TabId; onNavigate: (tab: TabId) => void } = $props()
+  let { tab, onNavigate, armed }: { tab: TabId; onNavigate: (tab: TabId) => void; armed: boolean } = $props()
 </script>
 
 {#snippet icon(id: TabId)}
@@ -54,6 +54,7 @@
       type="button"
       class:active
       aria-current={active ? 'page' : undefined}
+      disabled={!armed}
       onclick={() => onNavigate(item.id)}
     >
       <span class="icon">{@render icon(item.id)}</span>

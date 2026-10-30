@@ -21,6 +21,7 @@
   import { audio } from './lib/audio/engine-store.svelte'
   import { hackById } from './lib/energy/hacks'
   import { pwa } from './lib/pwa/update.svelte'
+  import { tapArming } from './lib/ui/arming.svelte'
   import { closeCheckIn, closeHackCard, energyUi } from './lib/ui/energy-ui.svelte'
   import { morningUi } from './lib/ui/morning-ui.svelte'
   import { eveningUi } from './lib/ui/evening-ui.svelte'
@@ -41,6 +42,9 @@
   const sprintPlayerVisible = $derived(playerOpen('focus'))
   const guidedPlayerVisible = $derived(playerOpen('guided'))
   const appInert = $derived(anyPlayerOpen() || morningUi.open || eveningUi.open)
+  // Reiterleiste und Mini-Player liegen unten, wo im Vollbild „Fertig“ oder „Weiter“ steht: Schließt der erste Tipp eines
+  // Doppeltipps die Ebene, träfe der zweite sonst einen Reiter. Sie nehmen Tipps erst kurz danach an (siehe `tapArming`).
+  const barArming = tapArming(() => appInert)
 
   // Der Hack, dessen Karte offen ist; eine unbekannte Kennung zeigt keine.
   const cardHack = $derived(energyUi.hackCard ? hackById(energyUi.hackCard) : null)
@@ -87,14 +91,14 @@
   </main>
 
   {#if miniPlayerVisible}
-    <MiniPlayer {onNavigate} />
+    <MiniPlayer {onNavigate} armed={barArming.armed} />
   {/if}
 
   {#if updateToastVisible}
     <UpdateToast />
   {/if}
 
-  <TabBar {tab} {onNavigate} />
+  <TabBar {tab} {onNavigate} armed={barArming.armed} />
 </div>
 
 <!-- Der Morgen-Start (Vollbild) steht vor den Playern im Dokument: Übung und Meditation des Ablaufs öffnen ihren Player

@@ -4,7 +4,7 @@
   import { formatRemaining } from '../lib/time/format'
   import type { TabId } from '../lib/ui/tabs'
 
-  let { onNavigate }: { onNavigate: (tab: TabId) => void } = $props()
+  let { onNavigate, armed }: { onNavigate: (tab: TabId) => void; armed: boolean } = $props()
 
   // Wie in der Benachrichtigung, aber ohne Sleep-Timer-Zusatz (die Restzeit steht daneben).
   const title = $derived(mediaTitle(soundTitles(audio.snap), null))
@@ -14,11 +14,11 @@
 
 <div class="mini" role="region" aria-label="Wiedergabe">
   <div class="bar">
-    <button type="button" class="title" onclick={() => onNavigate('klaenge')}><span>{title}</span></button>
+    <button type="button" class="title" disabled={!armed} onclick={() => onNavigate('klaenge')}><span>{title}</span></button>
     {#if remaining !== null}
       <span class="remaining">Noch {formatRemaining(remaining)}</span>
     {/if}
-    <button type="button" class="button toggle" onclick={togglePause}>
+    <button type="button" class="button toggle" disabled={!armed} onclick={togglePause}>
       {playing ? 'Pause' : 'Weiter'}
     </button>
   </div>
