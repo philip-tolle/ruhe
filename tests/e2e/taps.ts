@@ -30,6 +30,31 @@ export async function expectStillRunning(page: Page) {
 // halben, unten mit der ganzen Änderung der Höhe). Gibt den Bruchteil der Breite von `button` zurück, an dem die Mitte
 // von `under` liegt: der Wert für `doubleTap`. Prüft zuletzt, dass sich die beiden wirklich überdecken.
 export async function putOver(page: Page, button: Locator, under: Locator): Promise<number> {
+  await alignHeight(page, button, under)
+  const [b, u] = [(await button.boundingBox())!, (await under.boundingBox())!]
+  const [x, y] = [u.x + u.width / 2, u.y + u.height / 2]
+  expect(x, 'Mitte des unteren Knopfs liegt waagrecht im oberen').toBeGreaterThanOrEqual(b.x)
+  expect(x).toBeLessThanOrEqual(b.x + b.width)
+  expect(y, 'Mitte des unteren Knopfs liegt senkrecht im oberen').toBeGreaterThanOrEqual(b.y)
+  expect(y).toBeLessThanOrEqual(b.y + b.height)
+  return (x - b.x) / b.width
+}
+
+// Wie `putOver`, für einen breiten Knopf darunter (etwa „Starten“ über die ganze Karte), dessen Mitte neben `button` liegen
+// kann: Geprüft wird, dass die Mitte von `button` auf `under` liegt; getippt wird dann in die Mitte von `button` (0,5).
+export async function putOverWide(page: Page, button: Locator, under: Locator): Promise<number> {
+  await alignHeight(page, button, under)
+  const [b, u] = [(await button.boundingBox())!, (await under.boundingBox())!]
+  const [x, y] = [b.x + b.width / 2, b.y + b.height / 2]
+  expect(x, 'Mitte des oberen Knopfs liegt waagrecht im unteren').toBeGreaterThanOrEqual(u.x)
+  expect(x).toBeLessThanOrEqual(u.x + u.width)
+  expect(y, 'Mitte des oberen Knopfs liegt senkrecht im unteren').toBeGreaterThanOrEqual(u.y)
+  expect(y).toBeLessThanOrEqual(u.y + u.height)
+  return 0.5
+}
+
+/** Stellt die Höhe des Bildschirms so ein, dass `button` senkrecht auf der Höhe der Mitte von `under` liegt. */
+async function alignHeight(page: Page, button: Locator, under: Locator): Promise<void> {
   const centerY = async (target: Locator) => {
     const box = (await target.boundingBox())!
     return box.y + box.height / 2
@@ -42,12 +67,4 @@ export async function putOver(page: Page, button: Locator, under: Locator): Prom
   expect(slope, 'der Knopf ist fest am Bildschirm').toBeGreaterThan(0)
   const wanted = Math.round(height - 100 + ((await centerY(under)) - smaller) / slope)
   await page.setViewportSize({ width, height: wanted })
-
-  const [b, u] = [(await button.boundingBox())!, (await under.boundingBox())!]
-  const [x, y] = [u.x + u.width / 2, u.y + u.height / 2]
-  expect(x, 'Mitte des unteren Knopfs liegt waagrecht im oberen').toBeGreaterThanOrEqual(b.x)
-  expect(x).toBeLessThanOrEqual(b.x + b.width)
-  expect(y, 'Mitte des unteren Knopfs liegt senkrecht im oberen').toBeGreaterThanOrEqual(b.y)
-  expect(y).toBeLessThanOrEqual(b.y + b.height)
-  return (x - b.x) / b.width
 }

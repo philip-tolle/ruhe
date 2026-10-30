@@ -5,6 +5,7 @@
   import SprintCard from '../components/energy/SprintCard.svelte'
   import WeekCard from '../components/energy/WeekCard.svelte'
   import MorningStartCard from '../components/morning/MorningStartCard.svelte'
+  import EveningStartCard from '../components/evening/EveningStartCard.svelte'
   import { headerLine } from '../lib/energy/insights'
   import { stats } from '../lib/stats/store.svelte'
   import { appNow } from '../lib/ui/tageszeit.svelte'
@@ -21,6 +22,7 @@
   </header>
 
   <MorningStartCard />
+  <EveningStartCard />
   <AkkuCard />
   <ResetCard />
   <SprintCard />

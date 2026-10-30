@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   EVENING_FROM,
   chosenLine, dominoLine, eveningCard, eveningCount, eveningCountLine, eveningEntry, hasReview, logbookDay,
-  morningReminder, ownFocus, ownTags, shiftDay, tagCountLine, weekRangeLine, weekReview,
+  morningEntry, morningReminder, ownFocus, ownTags, shiftDay, tagCountLine, weekRangeLine, weekReview,
 } from '../../src/lib/evening/logic'
 import { eveningSteps } from '../../src/lib/evening/steps'
 import { isSunday } from '../../src/lib/stats/summary'
@@ -84,6 +84,12 @@ describe('Schritte und Rückblick', () => {
     expect(eveningSteps(true, false)).toEqual(['checkin', 'geber', 'raeuber', 'rueckblick', 'gelernt', 'besser'])
     expect(eveningSteps(false, true)).toEqual(['checkin', 'geber', 'raeuber', 'gelernt', 'besser', 'woche'])
     expect(eveningSteps(true, true)).toEqual(['checkin', 'geber', 'raeuber', 'rueckblick', 'gelernt', 'besser', 'woche'])
+  })
+  test('morningEntry: der Morgen-Eintrag eines Tages, bei zwei der mit späterem at', () => {
+    const a = morning('2026-10-29', { domino: 'früh' })
+    const b = { ...morning('2026-10-29', { domino: 'spät' }), at: '2026-10-29T08:00:00.000Z' }
+    expect(morningEntry([b, a], '2026-10-29')).toBe(b)
+    expect(morningEntry([a], '2026-10-28')).toBeNull()
   })
   test('hasReview: Big Domino oder Intention des Morgen-Eintrags dieses Tages', () => {
     expect(hasReview([morning('2026-10-29', { domino: 'Konzept' })], '2026-10-29')).toBe(true)

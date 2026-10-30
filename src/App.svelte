@@ -6,6 +6,7 @@
   import CheckInSheet from './components/energy/CheckInSheet.svelte'
   import HackCard from './components/energy/HackCard.svelte'
   import MorningFlow from './components/morning/MorningFlow.svelte'
+  import EveningFlow from './components/evening/EveningFlow.svelte'
   import BreathPlayer from './components/player/BreathPlayer.svelte'
   import GuidedPlayer from './components/player/GuidedPlayer.svelte'
   import HackPlayer from './components/player/HackPlayer.svelte'
@@ -22,6 +23,7 @@
   import { pwa } from './lib/pwa/update.svelte'
   import { closeCheckIn, closeHackCard, energyUi } from './lib/ui/energy-ui.svelte'
   import { morningUi } from './lib/ui/morning-ui.svelte'
+  import { eveningUi } from './lib/ui/evening-ui.svelte'
   import { anyPlayerOpen, playerOpen } from './lib/ui/player-state'
   import { sessionUi } from './lib/ui/session-ui.svelte'
   import type { TabId } from './lib/ui/tabs'
@@ -38,7 +40,7 @@
   const hackPlayerVisible = $derived(playerOpen('hack'))
   const sprintPlayerVisible = $derived(playerOpen('focus'))
   const guidedPlayerVisible = $derived(playerOpen('guided'))
-  const appInert = $derived(anyPlayerOpen() || morningUi.open)
+  const appInert = $derived(anyPlayerOpen() || morningUi.open || eveningUi.open)
 
   // Der Hack, dessen Karte offen ist; eine unbekannte Kennung zeigt keine.
   const cardHack = $derived(energyUi.hackCard ? hackById(energyUi.hackCard) : null)
@@ -97,9 +99,13 @@
 
 <!-- Der Morgen-Start (Vollbild) steht vor den Playern im Dokument: Übung und Meditation des Ablaufs öffnen ihren Player
      auf derselben Ebene, und der liegt dann darüber. Der Ablauf bleibt dabei eingehängt, nur verborgen (`hidden`, `inert`):
-     So liegt seine Ebene im Stapel der Zurück-Geste unter der des Players. Außerhalb von `inert`, wie die Player. -->
+     So liegt seine Ebene im Stapel der Zurück-Geste unter der des Players. Außerhalb von `inert`, wie die Player. Das
+     Abend-Logbuch (Vollbild, Spec M11) startet keinen Player. -->
 {#if morningUi.open}
   <MorningFlow />
+{/if}
+{#if eveningUi.open}
+  <EveningFlow />
 {/if}
 
 {#if timerPlayerVisible}

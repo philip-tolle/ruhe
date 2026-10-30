@@ -72,9 +72,14 @@ export function eveningCard(evenings: readonly EveningEntry[], now: Date): 'tag-
   return h >= EVENING_FROM || h < DAY_START ? 'tag-abschliessen' : null
 }
 
+/** Der Morgen-Eintrag eines Tages (für Rückblick und „Dein Abend“) oder `null`. */
+export function morningEntry(mornings: readonly MorningEntry[], day: string): MorningEntry | null {
+  return latestOf(mornings, day)
+}
+
 /** Ob der Morgen-Eintrag von `day` etwas zum Zurückblicken hat: einen Big Domino oder eine Intention. */
 export function hasReview(mornings: readonly MorningEntry[], day: string): boolean {
-  const entry = latestOf(mornings, day)
+  const entry = morningEntry(mornings, day)
   return Boolean(entry && (entry.domino || entry.intention))
 }
 
