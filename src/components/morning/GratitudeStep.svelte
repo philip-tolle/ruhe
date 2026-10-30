@@ -1,5 +1,5 @@
 <script lang="ts">
-  import WordPicker from './WordPicker.svelte'
+  import WordPicker from '../flow/WordPicker.svelte'
   import { ownValues } from '../../lib/morning/logic'
   import { limitedInput } from '../../lib/morning/limited-input'
   import { GRATITUDE_MAX, VALUES, VALUE_MAX } from '../../lib/morning/words'

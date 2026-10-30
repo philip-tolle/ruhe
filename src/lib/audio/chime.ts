@@ -14,6 +14,8 @@ import { assetUrl, EFFECTS } from '../sounds/catalog'
 
 /** Lautstärke des Anschlags: etwas unter voll, damit er den ruhigen Abschluss nicht übertönt. */
 const VOLUME = 0.8
+/** Der Anschlag im Abschluss des Abend-Logbuchs (Spec M11 §2.3): halb so laut wie am Morgen. */
+export const CHIME_EVENING = 0.4
 
 let context: AudioContext | null = null
 // Die dekodierte Aufnahme, einmal je Seite. Ein gescheitertes Laden wird nicht gemerkt, damit der nächste Aufruf
@@ -43,7 +45,7 @@ function park(ctx: AudioContext): void {
   }
 }
 
-async function play(makeContext: () => AudioContext): Promise<void> {
+async function play(makeContext: () => AudioContext, volume: number): Promise<void> {
   // Vor dem ersten `await`: Der Kontext entsteht noch im Tipp.
   const ctx = (context ??= makeContext())
   // Ein Kontext, den wir selbst nach dem letzten Anschlag angehalten haben oder den das System angehalten hat
@@ -64,7 +66,7 @@ async function play(makeContext: () => AudioContext): Promise<void> {
   const source = ctx.createBufferSource()
   source.buffer = decoded
   const gain = ctx.createGain()
-  gain.gain.value = VOLUME
+  gain.gain.value = volume
   source.connect(gain)
   gain.connect(ctx.destination)
   source.onended = () => {
@@ -77,10 +79,11 @@ async function play(makeContext: () => AudioContext): Promise<void> {
 
 /**
  * Spielt einen Anschlag der Klangschale. Gehört in den Tipp, der den Abschluss auslöst (Autoplay-Regel). `makeContext`
- * ist für Tests: Sie reichen einen Ersatz ein; im Betrieb entsteht der Kontext beim ersten Aufruf selbst.
+ * ist für Tests: Sie reichen einen Ersatz ein; im Betrieb entsteht der Kontext beim ersten Aufruf selbst. `volume` ist die
+ * Lautstärke: 0,8 am Morgen, `CHIME_EVENING` im Abend-Logbuch.
  */
-export function playChime(makeContext: () => AudioContext = () => new AudioContext()): void {
-  play(makeContext).catch(() => {})
+export function playChime(makeContext: () => AudioContext = () => new AudioContext(), volume = VOLUME): void {
+  play(makeContext, volume).catch(() => {})
 }
 
 /** Nur für Tests: vergisst Kontext und Aufnahme, damit jeder Test mit seinem eigenen Ersatz beginnt. */

@@ -2,9 +2,9 @@
   import { untrack } from 'svelte'
   import { limitedInput } from '../../lib/morning/limited-input'
 
-  // Die Wahl eines Worts im Morgen-Start (Spec M10 §2.3): eine Radiogruppe aus Vorschlägen, darunter „Deine Wörter“ (die
-  // eigenen aus früheren Durchgängen, nur wenn es welche gibt) und ein freies Feld. Es gilt genau ein Wort, und das steht
-  // im Entwurf (`value`):
+  // Die Wahl eines Worts in geführten Abläufen (Morgen-Start Spec M10 §2.3, Wochenfokus Spec M11 §2.3): eine Radiogruppe
+  // aus Vorschlägen, darunter „Deine Wörter“ (die eigenen aus früheren Durchgängen, nur wenn es welche gibt) und ein freies
+  // Feld. Es gilt genau ein Wort, und das steht im Entwurf (`value`):
   // - Ein Tipp auf ein Wort wählt es; derselbe Tipp noch einmal nimmt die Wahl zurück. Eine Wahl leert das Feld.
   // - Tippen im Feld hebt die Wahl auf (das Wort im Feld gilt).
   // Dieselbe Komponente wählt Intention und Wert; sie kennt nur die Beschriftungen und die Längengrenze.

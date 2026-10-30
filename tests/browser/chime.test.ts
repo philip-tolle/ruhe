@@ -1,7 +1,7 @@
 // Die Klangschale im Abschluss des Morgen-Starts (`playChime`): „Feuer und vergiss“ mit eigenem Audio-Kontext, den
 // die Tests als Ersatz einreichen. Fetch ist ersetzt, damit kein Test ans Netz geht.
 import { afterEach, beforeEach, expect, test, vi, type MockInstance } from 'vitest'
-import { playChime, resetChimeForTests } from '../../src/lib/audio/chime'
+import { CHIME_EVENING, playChime, resetChimeForTests } from '../../src/lib/audio/chime'
 import { EFFECTS } from '../../src/lib/sounds/catalog'
 
 let fetchMock: MockInstance<typeof fetch>
@@ -176,4 +176,12 @@ test('ein Anhalten, das scheitert, bleibt still', async () => {
   await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
   expect(() => source.onended!()).not.toThrow()
   await wait(30) // Ein unbehandelter Fehler käme hier zum Vorschein.
+})
+
+test('playChime mit eigener Lautstärke: der Abend-Anschlag ist halb so laut (0,4)', async () => {
+  const { ctx, source, gain } = fakeContext()
+  playChime(() => ctx, CHIME_EVENING)
+  await vi.waitFor(() => expect(source.start).toHaveBeenCalledTimes(1))
+  expect(CHIME_EVENING).toBe(0.4)
+  expect(gain.gain.value).toBe(0.4)
 })

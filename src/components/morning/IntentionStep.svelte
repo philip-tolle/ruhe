@@ -1,9 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import WordPicker from './WordPicker.svelte'
+  import WordPicker from '../flow/WordPicker.svelte'
   import { AREA_INFO } from '../../lib/energy/areas'
   import { freshCheckin, weakestArea } from '../../lib/energy/insights'
-  import { ownWords, suggestions } from '../../lib/morning/logic'
+  import { intentionSentence, ownWords, suggestions } from '../../lib/morning/logic'
   import { INTENTION_MAX } from '../../lib/morning/words'
   import { stats } from '../../lib/stats/store.svelte'
   import { tapArming } from '../../lib/ui/arming.svelte'
@@ -31,7 +31,7 @@
   // Die Zeile über „Weiter“ steht immer da; ansagen soll sie nur, wenn ein Wort gewählt wurde (Tipp auf einen Vorschlag),
   // nicht bei jedem Tastendruck im Feld. Darum sagt eine eigene, unsichtbare Live-Zeile an: Sie bekommt den Satz bei der Wahl
   // und leert sich, sobald im Feld getippt wird.
-  const sentence = (chosen: string) => (chosen ? `Heute will ich ${chosen} sein.` : 'Wähle ein Wort oder tippe ein eigenes.')
+  const sentence = (chosen: string) => (chosen ? intentionSentence(chosen) : 'Wähle ein Wort oder tippe ein eigenes.')
   let announced = $state('')
 </script>
 

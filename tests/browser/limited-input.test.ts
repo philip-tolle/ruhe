@@ -143,3 +143,18 @@ test('update swaps the limit and the callback; destroy detaches the listeners', 
   expect(field.value).toBe('abcdefghijk') // niemand greift mehr ein
   expect(later).toHaveBeenCalledTimes(1)
 })
+
+test('with onEnter, Return calls onEnter instead of closing the keyboard; never during a composition', () => {
+  field.value = 'Kochen'
+  const onEnter = vi.fn()
+  action = limitedInput(field, { max: 30, onChange: (v) => seen.push(v), onEnter }) as ActionReturn<LimitedInputOptions>
+  field.focus()
+  const composing = new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true })
+  field.dispatchEvent(composing)
+  expect(onEnter).not.toHaveBeenCalled()
+  const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+  field.dispatchEvent(enter)
+  expect(enter.defaultPrevented).toBe(true)
+  expect(onEnter).toHaveBeenCalledTimes(1)
+  expect(document.activeElement).toBe(field)
+})

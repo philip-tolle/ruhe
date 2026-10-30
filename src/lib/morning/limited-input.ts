@@ -62,12 +62,14 @@ export interface LimitedInputOptions {
   max: number
   /** Bekommt den Wert des Felds nach jeder Änderung (bei einer Komposition den rohen Zwischenstand). */
   onChange: (value: string) => void
+  /** Wenn gesetzt, ruft „Return“ (außerhalb einer Komposition) dies auf, statt die Tastatur zu schließen. */
+  onEnter?: () => void
 }
 
 /**
  * Svelte-Action für ein `<input type="text">` oder `<textarea>`: begrenzt, bereinigt (siehe `limitEdit`) und gibt den Wert an
- * `onChange`. „Return“ schließt die Tastatur (`blur`), statt einen Zeilenumbruch zu schreiben; das gilt nicht, solange eine
- * Komposition läuft (dort bestätigt „Return“ den Vorschlag). Den Wert des Felds (`value`) setzt weiter der Aufrufer.
+ * `onChange`. „Return“ schließt die Tastatur (`blur`) oder ruft `onEnter`, statt einen Zeilenumbruch zu schreiben; das gilt
+ * nicht, solange eine Komposition läuft (dort bestätigt „Return“ den Vorschlag). Den Wert des Felds (`value`) setzt weiter der Aufrufer.
  */
 export const limitedInput: Action<HTMLInputElement | HTMLTextAreaElement, LimitedInputOptions> = (node, options) => {
   let current = options
@@ -113,7 +115,8 @@ export const limitedInput: Action<HTMLInputElement | HTMLTextAreaElement, Limite
     const key = event as KeyboardEvent
     if (key.key !== 'Enter' || key.isComposing || composing) return
     key.preventDefault()
-    node.blur()
+    if (current.onEnter) current.onEnter()
+    else node.blur()
   }
 
   node.addEventListener('beforeinput', onBeforeInput)

@@ -4,12 +4,14 @@
   import { saveCheckin } from '../../lib/stats/store.svelte'
   import { tapArming } from '../../lib/ui/arming.svelte'
   import { energyUi } from '../../lib/ui/energy-ui.svelte'
-  import { morningUi, nextStep } from '../../lib/ui/morning-ui.svelte'
 
-  // Schritt 1, „Check-in“ (Spec M10 §2.3): dieselben vier Reihen wie im Check-in-Blatt (M9 §3.3). „Weiter“ gilt erst mit
-  // allen vier Bereichen, speichert einen normalen Energie-Check-in und gibt ihn dem Ablauf mit: Er liefert den Bereich
-  // der Intention und den Vorher-Wert der Übung. Der Schritt ist der erste: Ein Doppeltipp auf „Kurz“ oder „Lang“ träfe
-  // mit dem zweiten Tipp sonst einen Punkt, der sich gerade an dieselbe Stelle legt (siehe `tapArming`).
+  // Der Check-in als Schritt eines geführten Ablaufs (Morgen-Start M10 §2.3, Abend-Logbuch M11 §2.3): dieselben vier
+  // Reihen wie im Check-in-Blatt (M9 §3.3). „Weiter“ gilt erst mit allen vier Bereichen, speichert einen normalen
+  // Energie-Check-in und gibt ihn an den Ablauf weiter (`onSaved`), der dann zum nächsten Schritt geht. Der Schritt ist der
+  // erste eines Ablaufs: Ein Doppeltipp auf den Knopf, der ihn öffnet, träfe mit dem zweiten Tipp sonst einen Punkt, der
+  // sich gerade an dieselbe Stelle legt (siehe `tapArming`).
+  let { title, onSaved }: { title: string; onSaved: (levels: Record<EnergyArea, EnergyLevel>) => void } = $props()
+
   const arming = tapArming()
 
   let picked = $state<Partial<Record<EnergyArea, EnergyLevel>>>({})
@@ -25,8 +27,7 @@
     saveCheckin(levels)
     // Ein neuer Check-in ist eine neue Grundlage des Jetzt-Resets: Die Vorschläge fangen von vorn an.
     energyUi.resetSkip = 0
-    morningUi.checkin = { ...levels }
-    nextStep()
+    onSaved({ ...levels })
   }
 </script>
 
@@ -34,7 +35,7 @@
   <div class="content">
     <header class="head">
       <p class="kicker">Check-in</p>
-      <h2 class="title" tabindex="-1" data-step-title>Wie voll ist dein Akku?</h2>
+      <h2 class="title" tabindex="-1" data-step-title>{title}</h2>
       <p class="lead">Ein Tipp je Bereich, 1 = leer, 5 = voll.</p>
     </header>
 
