@@ -110,7 +110,8 @@ test('streak and quick start', async ({ page }) => {
   await expect(last.getByRole('button', { name: 'Erneut starten' })).toBeVisible()
 
   // Reihenfolge: Dein Akku (ohne frischen Check-in), Vorschlag des Tages, Zuletzt genutzt, Aktivitäten.
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Dein Akku', 'Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
+  // M11: Um 20 Uhr steht ohne Logbuch „Tag abschließen“ über allen Karten (Spec M11 §2.1); die Reihenfolge darunter bleibt.
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Tag abschließen', 'Dein Akku', 'Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
   await expect(atemuebungRow(page)).toContainText('3 Min kohärent atmen')
 
   await atemuebungRow(page).click()
@@ -139,7 +140,8 @@ test('empty state', async ({ page }) => {
   await expect(last.getByText(/^Ankommen im Atem · \d+ Min$/)).toBeVisible()
   await expect(last.getByRole('button', { name: 'Jetzt starten' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Erneut starten' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Dein Akku', 'Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
+  // M11: Um 20 Uhr steht ohne Logbuch „Tag abschließen“ über allen Karten (Spec M11 §2.1); die Reihenfolge darunter bleibt.
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Tag abschließen', 'Dein Akku', 'Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
   await expect(meditierenRow(page)).toBeVisible()
   await expect(atemuebungRow(page)).toBeVisible()
   await expect(klaengeRow(page)).toBeVisible()
@@ -190,7 +192,8 @@ test('with a fresh check-in the battery card is one button with four batteries, 
   await expectBetweenGreetingAndSuggestion(page, button)
   // Die schmale Karte ersetzt die Frage: weder „Check-in“ noch eine Überschrift „Dein Akku“.
   await expect(page.getByRole('button', { name: 'Check-in', exact: true })).toHaveCount(0)
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
+  // M11: Um 20 Uhr steht ohne Logbuch „Tag abschließen“ über allen Karten (Spec M11 §2.1); die Reihenfolge darunter bleibt.
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Tag abschließen', 'Vorschlag des Tages', 'Zuletzt genutzt', 'Aktivitäten'])
 
   await button.click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Energie')
@@ -265,7 +268,9 @@ for (const { name, viewport, above } of SIZES) {
     if (viewport) test.use({ viewport })
 
     test('a double tap on „Check-in“ leaves the sheet open with no dot checked', async ({ page }) => {
-      await open(page, null)
+      // M11: um 17:30 (noch Abendstimmung, aber vor „Tag abschließen“), damit „Dein Akku“ oben steht wie bisher: Ab 18 Uhr
+      // schiebt die Abend-Karte „Check-in“ so weit nach unten, dass er auch auf dem hohen Bildschirm im Blatt liegt.
+      await open(page, null, new Date('2026-10-21T17:30:00+02:00'))
       const trigger = akkuCard(page).getByRole('button', { name: 'Check-in', exact: true })
       const triggerBox = (await trigger.boundingBox())!
       await doubleTap(page, trigger, 0.5)
