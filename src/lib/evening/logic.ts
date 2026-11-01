@@ -35,7 +35,7 @@ export function logbookDay(now: Date): string {
 }
 
 /** Die sieben Tage bis einschließlich `day`, der älteste zuerst. */
-function weekDays(day: string): string[] {
+export function weekDays(day: string): string[] {
   const from = shiftDay(day, -(WEEK_DAYS - 1))
   return Array.from({ length: WEEK_DAYS }, (_, i) => shiftDay(from, i))
 }
