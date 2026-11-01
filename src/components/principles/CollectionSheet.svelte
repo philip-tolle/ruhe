@@ -75,8 +75,11 @@
     return item.source ? `Quelle: ${item.source}` : undefined
   }
 
+  // Nur, wenn die Sammlung oben liegt: Bei offenem Editor oder Einfügen bleiben Zeilen und Knöpfe darunter per Tastatur
+  // erreichbar (Blätter fangen den Fokus nicht). Ein zweiter Editor hängte den offenen still auf einen anderen Eintrag um,
+  // und „Speichern“ oder „Löschen“ träfe dann den falschen.
   function openEditor(kind: CollectionKind, item: CollectionItem | null, el: HTMLElement) {
-    if (!arming.armed) return
+    if (!arming.armed || !top()) return
     status = ''
     returnTo = { el, kind }
     editing = { kind, item }
@@ -88,7 +91,7 @@
   }
 
   function openPaste(el: HTMLElement) {
-    if (!arming.armed) return
+    if (!arming.armed || !top()) return
     status = ''
     returnTo = { el, kind: 'erkenntnis' }
     pasting = true

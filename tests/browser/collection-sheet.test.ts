@@ -347,3 +347,23 @@ test('mehr als 50 000 Zeichen: das Feld kürzt nichts, erst die Vorschau nennt e
   const text = dialog('Notizen einfügen')!.textContent!
   for (const line of ['Der Text ist sehr lang. Verwendet werden die ersten 50 000 Zeichen.', '2 neue Erkenntnisse', '1 gekürzt auf 500 Zeichen.']) expect(text).toContain(line)
 })
+
+// Gesamtreview: Bei offenem Editor liegen die Zeilen der Sammlung weiter im Fokus-Weg (Tastatur, Umschalt+Tab). Sie dürfen
+// keinen zweiten Editor und kein Einfügen öffnen; sonst schriebe „Speichern“ den Entwurf des ersten Eintrags still in den
+// anderen.
+test('bei offenem Editor öffnen Zeilen und Knöpfe der Sammlung nichts; „Speichern“ trifft den geöffneten Eintrag', async () => {
+  show({ collection: [P, E] })
+  await armed()
+  button(section('Prinzipien'), 'Mehrweg statt Einweg bearbeiten')!.click()
+  flushSync()
+  await armed() // die Sperre der Sammlung ist nach dem Öffnen des Editors wieder vorbei
+  button(section('Erkenntnisse'), `${E.text} bearbeiten`)!.click()
+  button(section('Erkenntnisse'), 'Notizen einfügen')!.click()
+  flushSync()
+  expect([dialogs().length, dialog('Prinzip bearbeiten') !== null, dialog('Notizen einfügen')]).toEqual([2, true, null])
+  fill(dialog('Prinzip bearbeiten')!.querySelector('input')!, 'Mehrweg statt Einweg im Alltag')
+  flushSync()
+  button(dialog('Prinzip bearbeiten')!, 'Speichern')!.click()
+  flushSync()
+  expect(stats.data.collection).toEqual([{ ...P, text: 'Mehrweg statt Einweg im Alltag' }, E])
+})
