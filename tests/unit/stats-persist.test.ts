@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest'
-import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withEvening, withMorning, withoutBreathPattern, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
-import { emptyData } from '../../src/lib/stats/schema'
+import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withCollectionItem, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withEvening, withInsights, withMorning, withoutBreathPattern, withoutCollectionItem, withSession, STORAGE_KEY, CORRUPT_KEY } from '../../src/lib/stats/persist'
+import { emptyData, type AppData, type EveningInput } from '../../src/lib/stats/schema'
+import type { CollectionItem } from '../../src/lib/principles/collection'
 const mem = () => { const m = new Map<string, string>(); return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) } }
 
 test('missing data gives an empty state', () => expect(loadData(mem())).toEqual(emptyData()))
@@ -276,4 +277,59 @@ test('Logbuch-Einträge überstehen Speichern und Laden', () => {
   const d = withEvening(two(), { day: '2026-11-01', gave: ['Bewegung'], cost: ['Lärm'], intentionScore: 'teils', learned: 'Pausen helfen.', better: 'Früher ins Bett', weekFocus: 'Mehr Schlaf' }, at(21))
   expect(saveData(s, d)).toBe(true)
   expect(loadData(s)).toEqual(d)
+})
+
+// Spec M12 §4.4: Sammlung speichern und die neuen Logbuch-Felder.
+const P = { id: 's-0000000a', kind: 'prinzip', text: 'Mehrweg statt Einweg', note: 'Dann fällt weniger Müll an.', ifThen: 'Wenn ich einkaufen gehe, dann nehme ich eine Stofftasche mit.' } as const
+const F = { id: 's-0000000b', kind: 'feld', text: 'Schach lernen', step: 'Jeden Abend eine Eröffnung nachspielen.' } as const
+const E = { id: 's-0000000c', kind: 'erkenntnis', text: 'Wer im Schach früh die Mitte besetzt, hat mehr Möglichkeiten.', source: 'Ein Schachkurs' } as const
+const hex = (n: number) => `s-${n.toString(16).padStart(8, '0')}`
+const base: AppData = { ...emptyData(), collection: [P, F, E] }
+test('withCollectionItem ersetzt bei gleicher Kennung an der Stelle; andere Art oder ungültig ergibt data; Eingang bleibt', () => {
+  const before = JSON.stringify(base)
+  expect(withCollectionItem(base, { ...F, text: 'Schach spielen' }).collection!.map((i) => i.text)).toEqual([P.text, 'Schach spielen', E.text])
+  expect(withCollectionItem(base, { ...F, kind: 'prinzip' })).toBe(base)
+  expect(withCollectionItem(base, { ...P, id: 'x' })).toBe(base)
+  expect(withCollectionItem(base, { ...P, text: '  ' })).toBe(base)
+  expect(JSON.stringify(base)).toBe(before)
+})
+test('withCollectionItem: neue Erkenntnis vorn, neues Prinzip und Feld hinten', () => {
+  expect(withCollectionItem(base, { id: hex(1), kind: 'erkenntnis', text: 'Wer im Schach die Mitte besetzt, hat mehr Zeit.' }).collection![0].id).toBe(hex(1))
+  expect(withCollectionItem(base, { id: hex(2), kind: 'feld', text: 'Mehrweg im Alltag' }).collection!.at(-1)!.id).toBe(hex(2))
+  expect(withCollectionItem(base, { id: hex(3), kind: 'prinzip', text: 'Dranbleiben' }).collection!.at(-1)!.id).toBe(hex(3))
+})
+test('withCollectionItem kürzt und lässt leere und fremde Felder weg', () => {
+  const item = { id: hex(4), kind: 'prinzip', text: ` ${'L'.repeat(70)} `, note: ' ', step: 'fremd' } as CollectionItem
+  expect(withCollectionItem(emptyData(), item).collection).toEqual([{ id: hex(4), kind: 'prinzip', text: 'L'.repeat(60) }])
+})
+test('withoutCollectionItem: ohne Einträge fehlt das Feld, Logbücher bleiben, unbekannte Kennung ergibt data', () => {
+  const evenings = [{ day: '2026-11-01', at: '2026-11-01T20:00:00.000Z', weekPrinciple: P.id }]
+  const one: AppData = { ...emptyData(), collection: [P], evenings }
+  expect(withoutCollectionItem(one, P.id)).toEqual({ ...emptyData(), evenings })
+  expect(withoutCollectionItem(one, 's-000000ff')).toBe(one)
+})
+test('withInsights stellt neue Erkenntnisse in ihrer Reihenfolge vor die vorhandenen; Ungültiges entfällt', () => {
+  const fresh = [{ id: hex(5), kind: 'erkenntnis', text: 'Eins' }, { id: hex(6), kind: 'erkenntnis', text: 'Zwei' }, { id: 'kaputt', kind: 'erkenntnis', text: 'Drei' }] as CollectionItem[]
+  expect(withInsights(base, fresh).collection!.map((i) => i.id)).toEqual([hex(5), hex(6), P.id, F.id, E.id])
+})
+test('withEvening: weekPrinciple nur sonntags und nur auf ein vorhandenes Prinzip, dann ohne weekFocus', () => {
+  const sunday = new Date(2026, 10, 1, 21)
+  const save = (input: Partial<EveningInput>) => withEvening(base, { day: '2026-11-01', ...input }, sunday).evenings![0]
+  expect(save({ weekFocus: 'Dranbleiben', weekPrinciple: P.id })).toEqual({ day: '2026-11-01', at: sunday.toISOString(), weekPrinciple: P.id })
+  expect(save({ weekFocus: 'Dranbleiben', weekPrinciple: F.id })).toEqual({ day: '2026-11-01', at: sunday.toISOString(), weekFocus: 'Dranbleiben' })
+  expect(save({ weekPrinciple: 's-000000ff' })).not.toHaveProperty('weekPrinciple')
+  expect(withEvening(base, { day: '2026-11-02', weekPrinciple: P.id }, new Date(2026, 10, 2, 21)).evenings![0]).not.toHaveProperty('weekPrinciple')
+})
+test('withEvening: ein Sonntags-Logbuch, das Mo 0:30 endet, behält sein Prinzip (Review Focus 3)', () => {
+  expect(withEvening(base, { day: '2026-11-01', weekPrinciple: P.id }, new Date(2026, 10, 2, 0, 30)).evenings![0]).toMatchObject({ day: '2026-11-01', weekPrinciple: P.id })
+})
+test('withEvening: growthField nur mit Satz und vorhandenem Feld', () => {
+  const save = (input: Partial<EveningInput>) => withEvening(base, { day: '2026-10-29', ...input }, new Date(2026, 9, 29, 21)).evenings![0]
+  expect(save({ better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: F.id })).toMatchObject({ growthField: F.id })
+  for (const input of [{ better: '  ', growthField: F.id }, { better: 'x', growthField: P.id }, { better: 'x', growthField: null }]) expect(save(input)).not.toHaveProperty('growthField')
+})
+test('withInsights überspringt schon vergebene Kennungen (Sammlung und eben übernommene), damit keine doppelt im Stand steht', () => {
+  const fresh = [{ id: P.id, kind: 'erkenntnis', text: 'Eins' }, { id: hex(9), kind: 'erkenntnis', text: 'Zwei' }, { id: hex(9), kind: 'erkenntnis', text: 'Drei' }] as CollectionItem[]
+  expect(withInsights(base, fresh).collection!.map((i) => i.id)).toEqual([hex(9), P.id, F.id, E.id])
+  expect(withInsights(base, [fresh[0]])).toBe(base)
 })

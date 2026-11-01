@@ -6,7 +6,8 @@ import type { CustomBreathPattern } from '../breath/custom'
 import type { EnergyArea, EnergyLevel } from '../energy/areas'
 import { focusSprintFrom, hackRunFrom } from '../energy/record'
 import { appNow } from '../ui/tageszeit.svelte'
-import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withEvening, withMorning, withoutBreathPattern, withSession, type StorageLike } from './persist'
+import { loadData, saveData, withBreathPattern, withCalm, withCheckin, withCollectionItem, withDominoToggled, withFocusSprint, withHackEffect, withHackRun, withEvening, withInsights, withMorning, withoutBreathPattern, withoutCollectionItem, withSession, type StorageLike } from './persist'
+import { newCollectionId, type CollectionItem } from '../principles/collection'
 import type { AppData, CalmLevel, EveningEntry, EveningInput, LastUsed, MorningEntry, MorningInput, SessionResult, Settings } from './schema'
 import { dayKey } from './summary'
 
@@ -110,6 +111,44 @@ export function saveBreathPattern(pattern: CustomBreathPattern): void {
 /** Eigenes Atemmuster löschen; Sitzungen und „Zuletzt genutzt“ bleiben. */
 export function deleteBreathPattern(id: string): void {
   commit(withoutBreathPattern(stats.data, id))
+}
+
+/**
+ * Vergebene Kennungen (Spec M12 §4.1): die der Sammlung und alle Verweise in Logbüchern, damit ein neuer Eintrag nie
+ * die Verweise eines gelöschten erbt.
+ */
+function takenIds(): Set<string> {
+  const taken = new Set((stats.data.collection ?? []).map(i => i.id))
+  for (const e of stats.data.evenings ?? []) {
+    if (e.weekPrinciple) taken.add(e.weekPrinciple)
+    if (e.growthField) taken.add(e.growthField)
+  }
+  return taken
+}
+
+/** Eintrag der Sammlung anlegen (ohne `id`, mit neuer Kennung) oder ändern (gleiche Kennung). */
+export function saveCollectionItem(item: Omit<CollectionItem, 'id'> & { id?: string }): void {
+  const id = item.id ?? newCollectionId(takenIds())
+  commit(withCollectionItem(stats.data, { ...item, id }))
+}
+
+/** Eintrag der Sammlung löschen; Logbücher behalten ihre Verweise. */
+export function deleteCollectionItem(id: string): void {
+  commit(withoutCollectionItem(stats.data, id))
+}
+
+/**
+ * Erkenntnisse mit gemeinsamer Quelle vorn anlegen, in einem Stand. Jede bekommt eine neue Kennung; Trimmen, Kürzen
+ * der Quelle und das Weglassen einer leeren übernimmt `withInsights`.
+ */
+export function addInsights(texts: readonly string[], source: string): void {
+  const taken = takenIds()
+  const items = texts.map((text): CollectionItem => {
+    const id = newCollectionId(taken)
+    taken.add(id)
+    return { id, kind: 'erkenntnis', text, source }
+  })
+  commit(withInsights(stats.data, items))
 }
 
 /** Flaches Zusammenführen; `timer` wird als Ganzes ersetzt. */

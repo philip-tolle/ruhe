@@ -8,6 +8,13 @@ import { isEnergyArea, isEnergyLevel, AREAS, type EnergyArea, type EnergyLevel }
 import { DOMINO_MAX, GRATITUDE_MAX, INTENTION_MAX, VALUE_MAX } from '../morning/words'
 import { BETTER_MAX, FOCUS_MAX, LEARNED_MAX, TAG_MAX, TAGS_MAX } from '../evening/words'
 import { isSunday } from './summary'
+import { clipChars, clipText } from '../text'
+import { parseCollection, type CollectionItem } from '../principles/collection'
+import { COLLECTION_ID } from '../principles/words'
+
+// `clipChars` und `clipText` wohnen seit Spec M12 §5 in text.ts; schema.ts reicht sie weiter, damit bestehende
+// Importe gültig bleiben.
+export { clipChars, clipText }
 
 export type SessionKind = 'guided' | 'timer' | 'breath'
 
@@ -103,8 +110,9 @@ export function isIntentionScore(v: unknown): v is IntentionScore {
 }
 
 /**
- * Ein Abend-Logbuch (Spec M11 §4.1): je Logbuch-Tag höchstens eines. Stichworte und Texte sind getrimmt und gekürzt,
- * leere fehlen; `weekFocus` gibt es nur an einem Sonntag.
+ * Ein Abend-Logbuch (Spec M11 §4.1, M12 §4.2): je Logbuch-Tag höchstens eines. Stichworte und Texte sind getrimmt und
+ * gekürzt, leere fehlen; `weekFocus` und `weekPrinciple` gibt es nur an einem Sonntag, nie beide; `growthField` nur
+ * zusammen mit `better`.
  */
 export interface EveningEntry {
   /** Logbuch-Tag `JJJJ-MM-TT` (vor 4 Uhr der Vortag). */
@@ -117,6 +125,10 @@ export interface EveningEntry {
   learned?: string
   better?: string
   weekFocus?: string
+  /** Kennung eines Prinzips der Sammlung (Spec M12 §4.2); ersetzt `weekFocus`. */
+  weekPrinciple?: string
+  /** Kennung eines Wachstumsfelds der Sammlung, an dem der 1-%-Satz hängt (Spec M12 §4.2). */
+  growthField?: string
 }
 
 /** Was der Ablauf am Ende meldet; den Zeitpunkt setzt `withEvening`, die Werte prüft und kürzt es. */
@@ -128,6 +140,8 @@ export interface EveningInput {
   learned?: string
   better?: string
   weekFocus?: string
+  weekPrinciple?: string | null
+  growthField?: string | null
 }
 
 /** Was der Ablauf am Ende meldet; Tag und Zeitpunkt setzt `withMorning`, die Texte prüft und kürzt es. */
@@ -190,6 +204,8 @@ export interface AppData {
   mornings?: MorningEntry[]
   /** Abend-Logbücher (Spec M11 §4.1), nach Tag sortiert, je Tag eines; fehlt, solange es keines gibt. */
   evenings?: EveningEntry[]
+  /** Prinzipien, Wachstumsfelder und Erkenntnisse (Spec M12 §4.1); fehlt, solange sie leer ist. */
+  collection?: CollectionItem[]
 }
 
 function defaultSettings(): Settings {
@@ -219,25 +235,9 @@ export function isMorningVariant(v: unknown): v is MorningVariant {
   return v === 'kurz' || v === 'lang'
 }
 
-// Gezählt werden Unicode-Zeichen (Codepunkte), damit kein Ersatzpaar zerreißt. Der Morgen-Start kürzt damit auch beim
-// Tippen (ohne zu trimmen, ein Leerzeichen zwischen zwei Wörtern muss sich tippen lassen), damit Feld und Speicher
-// dieselbe Grenze haben; `maxlength` zählte UTF-16-Einheiten und schnitte ein Emoji nach der Hälfte der Zeichen ab.
-export function clipChars(text: string, max: number): string {
-  const chars = Array.from(text)
-  return chars.length > max ? chars.slice(0, max).join('') : text
-}
-
 /** Kürzt eine Aufgabe auf `MAX_TASK_LENGTH` Zeichen; sie trimmt nicht (das tun die Aufrufer). */
 export function clipTask(text: string): string {
   return clipChars(text, MAX_TASK_LENGTH)
-}
-
-/**
- * Trimmt und kürzt auf `max` Zeichen; leer ergibt `''`. Der Schnitt kann auf einem Leerzeichen landen, darum wird
- * danach noch einmal hinten getrimmt: Gespeichert ist immer ein getrimmter Text (Spec M10 §4.1).
- */
-export function clipText(text: string, max: number): string {
-  return clipChars(text.trim(), max).trimEnd()
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -489,9 +489,18 @@ function parseEvening(raw: unknown): EveningEntry | null {
   if (learned) entry.learned = learned
   const better = parseText(raw.better, BETTER_MAX)
   if (better) entry.better = better
-  const weekFocus = isSunday(day) ? parseText(raw.weekFocus, FOCUS_MAX) : undefined
-  if (weekFocus) entry.weekFocus = weekFocus
+  // Spec M12 §4.3: geprüft wird nur die Form; ob es den Eintrag der Sammlung gibt, prüft erst die Anzeige.
+  if (isSunday(day) && isCollectionId(raw.weekPrinciple)) entry.weekPrinciple = raw.weekPrinciple
+  else {
+    const weekFocus = isSunday(day) ? parseText(raw.weekFocus, FOCUS_MAX) : undefined
+    if (weekFocus) entry.weekFocus = weekFocus
+  }
+  if (better && isCollectionId(raw.growthField)) entry.growthField = raw.growthField
   return entry
+}
+
+function isCollectionId(v: unknown): v is string {
+  return typeof v === 'string' && COLLECTION_ID.test(v)
 }
 
 function parseEvenings(raw: unknown): EveningEntry[] {
@@ -506,7 +515,7 @@ export function sortByDay<T extends { day: string }>(list: readonly T[]): T[] {
 /**
  * Strenge Strukturprüfung. Eine ungültige Sitzung macht alles ungültig (`null`);
  * fehlende oder ungültige Einstellungen werden aufgefüllt, ein ungültiges `lastUsed`, ungültige eigene
- * Atemmuster sowie ungültige Check-ins, Hack-Läufe, Sprints und Morgen-Einträge entfallen einzeln.
+ * Atemmuster sowie ungültige Check-ins, Hack-Läufe, Sprints, Morgen-Einträge und Einträge der Sammlung entfallen einzeln.
  */
 export function parseData(raw: unknown): AppData | null {
   if (!isRecord(raw) || raw.version !== 1) return null
@@ -532,5 +541,7 @@ export function parseData(raw: unknown): AppData | null {
   if (mornings.length > 0) data.mornings = mornings
   const evenings = parseEvenings(raw.evenings)
   if (evenings.length > 0) data.evenings = evenings
+  const collection = parseCollection(raw.collection)
+  if (collection.length > 0) data.collection = collection
   return data
 }

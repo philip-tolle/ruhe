@@ -1,6 +1,8 @@
 // Laden und Speichern unter einem einzigen localStorage-Schlüssel. Der Speicher wird
 // hineingereicht (testbar); jeder Zugriff steht in try/catch, Fehler gelangen nie nach oben.
 import type { CustomBreathPattern } from '../breath/custom'
+import { parseCollectionItem, type CollectionItem } from '../principles/collection'
+import type { CollectionKind } from '../principles/words'
 import type { EnergyLevel } from '../energy/areas'
 import { DOMINO_MAX, GRATITUDE_MAX, INTENTION_MAX, VALUE_MAX } from '../morning/words'
 import { BETTER_MAX, FOCUS_MAX, LEARNED_MAX } from '../evening/words'
@@ -114,6 +116,54 @@ export function withoutBreathPattern(data: AppData, id: string): AppData {
   return left.length > 0 ? { ...rest, breathPatterns: left } : rest
 }
 
+/**
+ * Speichert einen Eintrag der Sammlung in einem neuen Stand (Spec M12 §4.4), geprüft und gekürzt wie beim Laden;
+ * ungültig ergibt `data`. Gleiche Kennung: Ersatz an derselben Stelle, bei anderer Art bleibt `data`. Neu: eine
+ * Erkenntnis vorn, ein Prinzip oder Feld hinten.
+ */
+export function withCollectionItem(data: AppData, item: CollectionItem): AppData {
+  const clean = parseCollectionItem(item)
+  if (!clean) return data
+  const list = data.collection ?? []
+  const index = list.findIndex(i => i.id === clean.id)
+  if (index !== -1) {
+    if (list[index].kind !== clean.kind) return data
+    return { ...data, collection: list.map((i, n) => (n === index ? clean : i)) }
+  }
+  return { ...data, collection: clean.kind === 'erkenntnis' ? [clean, ...list] : [...list, clean] }
+}
+
+/** Entfernt einen Eintrag der Sammlung; ohne Einträge entfällt das Feld. Logbücher bleiben, unbekannt ergibt `data`. */
+export function withoutCollectionItem(data: AppData, id: string): AppData {
+  if (!data.collection?.some(i => i.id === id)) return data
+  const { collection, ...rest } = data
+  const left = collection.filter(i => i.id !== id)
+  return left.length > 0 ? { ...rest, collection: left } : rest
+}
+
+/**
+ * Stellt neue Erkenntnisse in ihrer Reihenfolge vor die vorhandenen, in einem Stand (Spec M12 §4.4). Jeder Eintrag
+ * wird wie beim Laden geprüft; Ungültiges, andere Arten und schon vergebene Kennungen entfallen, ohne Gültige
+ * bleibt `data`.
+ */
+export function withInsights(data: AppData, items: readonly CollectionItem[]): AppData {
+  const list = data.collection ?? []
+  const taken = new Set(list.map(i => i.id))
+  const fresh: CollectionItem[] = []
+  for (const item of items) {
+    const clean = parseCollectionItem(item)
+    if (!clean || clean.kind !== 'erkenntnis' || taken.has(clean.id)) continue
+    taken.add(clean.id)
+    fresh.push(clean)
+  }
+  return fresh.length > 0 ? { ...data, collection: [...fresh, ...list] } : data
+}
+
+/** Gibt es in der Sammlung einen Eintrag dieser Art mit dieser Kennung? */
+function hasItem(data: AppData, kind: CollectionKind, id: string | null | undefined): id is string {
+  return !!id && !!data.collection?.some(i => i.id === id && i.kind === kind)
+}
+
 /** Hängt einen Energie-Check-in an einen neuen Stand an (`data` bleibt unverändert). */
 export function withCheckin(data: AppData, checkin: EnergyCheckin): AppData {
   return { ...data, energyCheckins: [...(data.energyCheckins ?? []), checkin] }
@@ -184,7 +234,9 @@ export function withDominoToggled(data: AppData, day: string, now: Date): AppDat
 /**
  * Speichert ein Abend-Logbuch in einem neuen Stand (`data` bleibt unverändert). Der Tag ist der Logbuch-Tag aus dem
  * Eingang, `at` ist `now`; ein Eintrag desselben Tags wird ganz ersetzt. Stichworte und Texte werden bereinigt und
- * gekürzt, Leeres entfällt, der Wochenfokus gilt nur an einem Sonntag.
+ * gekürzt, Leeres entfällt, der Wochenfokus gilt nur an einem Sonntag. Das Prinzip der Woche (Spec M12 §4.4) gilt
+ * nur an einem Sonntag als Logbuch-Tag und nur, wenn die Sammlung ein Prinzip mit dieser Kennung hat; dann entfällt
+ * der Wochenfokus. Das Wachstumsfeld bleibt nur mit Satz und vorhandenem Feld.
  */
 export function withEvening(data: AppData, input: EveningInput, now: Date): AppData {
   const { day } = input
@@ -198,7 +250,11 @@ export function withEvening(data: AppData, input: EveningInput, now: Date): AppD
   if (learned !== '') entry.learned = learned
   const better = clipText(input.better ?? '', BETTER_MAX)
   if (better !== '') entry.better = better
-  const weekFocus = isSunday(day) ? clipText(input.weekFocus ?? '', FOCUS_MAX) : ''
-  if (weekFocus !== '') entry.weekFocus = weekFocus
+  if (isSunday(day) && hasItem(data, 'prinzip', input.weekPrinciple)) entry.weekPrinciple = input.weekPrinciple
+  else {
+    const weekFocus = isSunday(day) ? clipText(input.weekFocus ?? '', FOCUS_MAX) : ''
+    if (weekFocus !== '') entry.weekFocus = weekFocus
+  }
+  if (better !== '' && hasItem(data, 'feld', input.growthField)) entry.growthField = input.growthField
   return { ...data, evenings: sortByDay([...(data.evenings ?? []).filter(e => e.day !== day), entry]) }
 }

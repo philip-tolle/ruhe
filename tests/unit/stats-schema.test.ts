@@ -432,3 +432,49 @@ test('Logbuch: je Tag der Eintrag mit späterem at; leer fehlt die Liste', () =>
   expect(withEvenings(undefined)).not.toHaveProperty('evenings')
   expect(withEvenings([{ day: '2026-10-29', at: '2026-10-29T19:30:00.000Z' }])?.evenings).toEqual([{ day: '2026-10-29', at: '2026-10-29T19:30:00.000Z' }])
 })
+
+// Spec M12 §4.1–§4.3: Sammlung und neue Logbuch-Felder beim Laden.
+const P = { id: 's-0000000a', kind: 'prinzip', text: 'Mehrweg statt Einweg', note: 'Dann fällt weniger Müll an.', ifThen: 'Wenn ich einkaufen gehe, dann nehme ich eine Stofftasche mit.' } as const
+const F = { id: 's-0000000b', kind: 'feld', text: 'Schach lernen', step: 'Jeden Abend eine Eröffnung nachspielen.' } as const
+const E = { id: 's-0000000c', kind: 'erkenntnis', text: 'Wer im Schach früh die Mitte besetzt, hat mehr Möglichkeiten.', source: 'Ein Schachkurs' } as const
+const hex = (n: number) => `s-${n.toString(16).padStart(8, '0')}`
+const withCollection = (collection: unknown) => parseData({ version: 1, sessions: [], settings: {}, collection })!
+const evenings = (list: object[]) => parseData({ version: 1, sessions: [], settings: {}, evenings: list })!.evenings
+test('Sammlung: gültige Einträge je Art bleiben in ihrer Reihenfolge; leer oder kaputt fehlt das Feld', () => {
+  expect(withCollection([P, F, E]).collection).toEqual([P, F, E])
+  expect(withCollection([])).not.toHaveProperty('collection')
+  expect(withCollection('kaputt')).not.toHaveProperty('collection')
+})
+test('Sammlung: kein Objekt, falsche Kennung, unbekannte Art, fehlender oder leerer Text: nur der Eintrag entfällt', () => {
+  const bad = [42, null, [], { ...P, id: 'eigen-0000000a' }, { ...P, id: 's-0000000G' }, { ...F, kind: 'wert' }, { ...E, text: '   ' }, { ...E, text: 7 }, { id: hex(9), kind: 'feld' }]
+  expect(withCollection([...bad, F]).collection).toEqual([F])
+})
+test('Sammlung: je Feld gekürzt, leere freiwillige und fremde Felder entfallen', () => {
+  const [p, f, e] = withCollection([
+    { ...P, text: ` ${'L'.repeat(70)} `, note: 'N'.repeat(170), ifThen: 'W'.repeat(130), source: 'fremd', step: 'fremd', extra: 1 },
+    { ...F, text: 'F'.repeat(45), step: '  ', note: 'fremd' },
+    { ...E, text: 'E'.repeat(510), source: 'Q'.repeat(90), ifThen: 'fremd' },
+  ]).collection!
+  expect(p).toEqual({ id: P.id, kind: 'prinzip', text: 'L'.repeat(60), note: 'N'.repeat(160), ifThen: 'W'.repeat(120) })
+  expect(f).toEqual({ id: F.id, kind: 'feld', text: 'F'.repeat(40) })
+  expect(e).toEqual({ id: E.id, kind: 'erkenntnis', text: 'E'.repeat(500), source: 'Q'.repeat(80) })
+})
+test('Sammlung: bei doppelter Kennung gilt der erste', () => {
+  expect(withCollection([P, { ...P, text: 'Mehrweg statt Einweg im Büro' }]).collection).toEqual([P])
+})
+test('Sammlung: Lade-Grenzen je Art in Listenfolge (50, 20, 600), viele Erkenntnisse verdrängen nichts', () => {
+  const many = (kind: string, from: number, n: number) => Array.from({ length: n }, (_, i) => ({ id: hex(from + i), kind, text: `Zeile ${i + 1}` }))
+  const list = withCollection([...many('erkenntnis', 1, 700), ...many('prinzip', 1001, 60), ...many('feld', 2001, 25)]).collection!
+  const count = (kind: string) => list.filter((i) => i.kind === kind).length
+  expect([count('erkenntnis'), count('prinzip'), count('feld')]).toEqual([600, 50, 20])
+  expect(list[599].text).toBe('Zeile 600')
+})
+test('Logbuch: weekPrinciple nur sonntags mit gültiger Kennung, dann ohne weekFocus; growthField nur mit better', () => {
+  const at = '2026-11-01T20:00:00.000Z'
+  const better = 'Morgen zehn Minuten Schachaufgaben lösen.'
+  expect(evenings([{ day: '2026-11-01', at, weekFocus: 'Dranbleiben', weekPrinciple: P.id }])).toEqual([{ day: '2026-11-01', at, weekPrinciple: P.id }])
+  expect(evenings([{ day: '2026-11-01', at, weekFocus: 'Dranbleiben', weekPrinciple: 'eigen-0000000a' }])).toEqual([{ day: '2026-11-01', at, weekFocus: 'Dranbleiben' }])
+  expect(evenings([{ day: '2026-11-02', at, weekPrinciple: P.id }])).toEqual([{ day: '2026-11-02', at }])
+  expect(evenings([{ day: '2026-11-02', at, better, growthField: F.id }])).toEqual([{ day: '2026-11-02', at, better, growthField: F.id }])
+  expect(evenings([{ day: '2026-11-03', at, growthField: F.id }, { day: '2026-11-04', at, better, growthField: 'feld-1' }])).toEqual([{ day: '2026-11-03', at }, { day: '2026-11-04', at, better }])
+})

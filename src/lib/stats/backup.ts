@@ -2,6 +2,8 @@
 // Dateiauswahl gehören zur Oberfläche.
 import { parseData, sortByDay, type AppData, type Session } from './schema'
 import { dayKey, MIN_SECONDS } from './summary'
+import type { CollectionItem } from '../principles/collection'
+import { KIND_LOAD_MAX, textKey, type CollectionKind } from '../principles/words'
 
 const INVALID_BACKUP = 'Diese Datei ist kein gültiges Ruhe-Backup.'
 
@@ -11,12 +13,12 @@ export function backupFileName(now: Date): string {
 }
 
 /**
- * Sitzungen, Einstellungen, eigene Atemmuster, Energie-Daten (Check-ins, Hack-Läufe, Sprints) und Morgen-Starts
- * (jeweils falls vorhanden); `lastUsed` gehört nicht ins Backup.
+ * Sitzungen, Einstellungen, eigene Atemmuster, Energie-Daten (Check-ins, Hack-Läufe, Sprints), Morgen-Starts,
+ * Abend-Logbücher und die Sammlung (jeweils falls vorhanden); `lastUsed` gehört nicht ins Backup.
  */
 export function serializeBackup(data: AppData): string {
-  const { version, sessions, settings, breathPatterns, energyCheckins, hackRuns, focusSprints, mornings, evenings } = data
-  const optional = { ...(breathPatterns && { breathPatterns }), ...(energyCheckins && { energyCheckins }), ...(hackRuns && { hackRuns }), ...(focusSprints && { focusSprints }), ...(mornings && { mornings }), ...(evenings && { evenings }) }
+  const { version, sessions, settings, breathPatterns, energyCheckins, hackRuns, focusSprints, mornings, evenings, collection } = data
+  const optional = { ...(breathPatterns && { breathPatterns }), ...(energyCheckins && { energyCheckins }), ...(hackRuns && { hackRuns }), ...(focusSprints && { focusSprints }), ...(mornings && { mornings }), ...(evenings && { evenings }), ...(collection && { collection }) }
   return JSON.stringify({ version, sessions, settings, ...optional }, null, 2)
 }
 
@@ -59,13 +61,39 @@ function mergeByDay<T extends { day: string; at: string }>(own: readonly T[] | u
 }
 
 /**
+ * Sammlung zusammenführen (Spec M12 §4.11): Die Liste des Geräts bleibt, wie sie ist. Einträge der Datei kommen in
+ * ihrer Reihenfolge hinten dazu, wenn ihre Kennung neu ist (sonst gewinnt das Gerät), eine Erkenntnis zudem nur mit
+ * neuem Text (`textKey`, verglichen mit denen des Geräts und den eben übernommenen), und nur, solange ihre Art unter
+ * `KIND_LOAD_MAX` liegt; so verschwindet beim Neuladen nichts still.
+ */
+function mergeCollection(own: readonly CollectionItem[] | undefined, incoming: readonly CollectionItem[] | undefined): CollectionItem[] {
+  const list = [...(own ?? [])]
+  const ids = new Set(list.map(i => i.id))
+  const insightKeys = new Set(list.filter(i => i.kind === 'erkenntnis').map(i => textKey(i.text)))
+  const count: Record<CollectionKind, number> = { prinzip: 0, feld: 0, erkenntnis: 0 }
+  for (const item of list) count[item.kind]++
+  for (const item of incoming ?? []) {
+    if (ids.has(item.id)) continue
+    const key = item.kind === 'erkenntnis' ? textKey(item.text) : null
+    if (key !== null && insightKeys.has(key)) continue
+    if (count[item.kind] >= KIND_LOAD_MAX[item.kind]) continue
+    ids.add(item.id)
+    if (key !== null) insightKeys.add(key)
+    count[item.kind]++
+    list.push(item)
+  }
+  return list
+}
+
+/**
  * Führt den Inhalt einer Backup-Datei mit dem aktuellen Stand zusammen: neue Sitzungen kommen
  * dazu (vorhandene IDs entfallen, ebenso Sitzungen unter 60 s, die nie gezählt hätten),
  * Einstellungen stammen aus der Datei, `lastUsed` bleibt. Eigene Atemmuster kommen dazu, wenn ihre
  * Kennung neu ist; ein Muster des Geräts bleibt, wie es ist. Ebenso Check-ins, Hack-Läufe und Sprints:
  * nur unbekannte Kennungen kommen dazu (`addedEnergy` zählt sie), und ein Backup ohne Energie-Felder lässt die
  * des Geräts unverändert. Morgen-Starts und Abend-Logbücher kommen je Tag zusammen (`mergeByDay`) und zählen ebenfalls in `addedEnergy`,
- * damit die Meldung nach dem Import dieselbe bleibt. Bei ungültiger Datei kommt nur ein Fehlertext zurück;
+ * damit die Meldung nach dem Import dieselbe bleibt. Die Sammlung kommt nach `mergeCollection` dazu und zählt nirgends;
+ * ein Backup ohne Sammlung lässt die des Geräts unverändert. Bei ungültiger Datei kommt nur ein Fehlertext zurück;
  * `current` wird nie verändert.
  */
 export function mergeBackup(current: AppData, text: string): { data: AppData; added: number; addedEnergy: number } | { error: string } {
@@ -100,5 +128,7 @@ export function mergeBackup(current: AppData, text: string): { data: AppData; ad
   if (sprints.list.length > 0) data.focusSprints = sprints.list
   if (mornings.list.length > 0) data.mornings = mornings.list
   if (evenings.list.length > 0) data.evenings = evenings.list
+  const collection = mergeCollection(current.collection, incoming.collection)
+  if (collection.length > 0) data.collection = collection
   return { data, added: added.length, addedEnergy: checkins.added + runs.added + sprints.added + mornings.added + evenings.added }
 }

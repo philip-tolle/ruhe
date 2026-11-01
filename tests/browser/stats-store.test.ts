@@ -1,7 +1,8 @@
-import { beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { serializeBackup } from '../../src/lib/stats/backup'
 import { emptyData, type SessionResult } from '../../src/lib/stats/schema'
-import { importBackup, recordResult, saveCheckin, saveEvening, saveMorning, setHackEffect, stats, toggleDomino } from '../../src/lib/stats/store.svelte'
+import { addInsights, deleteCollectionItem, importBackup, recordResult, saveCheckin, saveCollectionItem, saveEvening, saveMorning, setHackEffect, stats, toggleDomino } from '../../src/lib/stats/store.svelte'
+import { COLLECTION_ID } from '../../src/lib/principles/words'
 import { dayKey } from '../../src/lib/stats/summary'
 
 // Der Speicher ist ein Modul mit einem Zustand: pro Test auf den leeren Stand zurücksetzen.
@@ -127,4 +128,43 @@ test('saveEvening speichert in localStorage, gibt den Eintrag zurück und löst 
   // Ein zweiter Durchgang am selben Logbuch-Tag ersetzt den Eintrag.
   const second = saveEvening({ day: '2026-10-29', better: 'Früher ins Bett' })
   expect(stats.data.evenings).toEqual([second])
+})
+
+// Spec M12 §4.4: Sammlung im Store, je Aktion ein commit.
+test('saveCollectionItem ohne id vergibt eine Kennung nach COLLECTION_ID und speichert; mit id ersetzt es an der Stelle', () => {
+  saveCollectionItem({ kind: 'prinzip', text: 'Mehrweg statt Einweg' })
+  saveCollectionItem({ kind: 'feld', text: 'Schach lernen' })
+  const [p] = stats.data.collection!
+  expect(p.id).toMatch(COLLECTION_ID) // echte Zufallsquelle: fängt auch ein ungebundenes crypto.randomUUID
+  expect(JSON.parse(localStorage.getItem('ruhe.v1')!).collection).toEqual(stats.data.collection)
+  saveCollectionItem({ ...p, text: 'Mehrweg statt Einweg im Alltag' })
+  expect(stats.data.collection!.map((i) => i.text)).toEqual(['Mehrweg statt Einweg im Alltag', 'Schach lernen'])
+})
+test('deleteCollectionItem entfernt den Eintrag; ohne Einträge fehlt collection', () => {
+  saveCollectionItem({ kind: 'feld', text: 'Schach lernen' })
+  deleteCollectionItem(stats.data.collection![0].id)
+  expect(stats.data).not.toHaveProperty('collection')
+  expect(JSON.parse(localStorage.getItem('ruhe.v1')!)).not.toHaveProperty('collection')
+})
+test('addInsights: n Einträge mit n Kennungen vorn, Quelle getrimmt und auf 80 gekürzt, ein commit', () => {
+  saveCollectionItem({ kind: 'erkenntnis', text: 'Alt' })
+  const setItem = vi.spyOn(Storage.prototype, 'setItem')
+  addInsights(['Eins', 'Zwei', 'Drei'], `  ${'Q'.repeat(90)} `)
+  expect(setItem).toHaveBeenCalledTimes(1)
+  setItem.mockRestore()
+  const list = stats.data.collection!
+  expect(list.map((i) => i.text)).toEqual(['Eins', 'Zwei', 'Drei', 'Alt'])
+  expect(new Set(list.map((i) => i.id)).size).toBe(4)
+  expect(list.slice(0, 3).map((i) => i.source)).toEqual(Array(3).fill('Q'.repeat(80)))
+  addInsights(['Vier'], '   ')
+  expect(stats.data.collection![0]).not.toHaveProperty('source')
+})
+test('neue Kennungen meiden Verweise aus evenings und die eben gezogenen derselben Einfügung', () => {
+  stats.data = { ...emptyData(), evenings: [{ day: '2026-11-01', at: '2026-11-01T19:00:00.000Z', weekPrinciple: 's-bbbbbbbb' }] } // Verweis eines gelöschten Prinzips
+  const uuid = vi.spyOn(crypto, 'randomUUID')
+  for (const head of ['bbbbbbbb', 'cccccccc', 'dddddddd', 'dddddddd', 'eeeeeeee']) uuid.mockReturnValueOnce(`${head}-1111-4111-8111-111111111111`)
+  saveCollectionItem({ kind: 'prinzip', text: 'Mehrweg statt Einweg' })
+  addInsights(['Eins', 'Zwei'], '')
+  uuid.mockRestore()
+  expect(stats.data.collection!.map((i) => i.id)).toEqual(['s-dddddddd', 's-eeeeeeee', 's-cccccccc'])
 })
