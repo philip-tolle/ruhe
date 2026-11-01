@@ -67,6 +67,20 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
 
+## Handy-Checkliste Meilenstein 12
+
+1. **Karte und Sammlung:** Unter „Energie“ steht nach „Fokus-Sprint“ die Karte „Deine Prinzipien“. „Sammlung öffnen“ zeigt „Deine Sammlung“ mit Prinzipien, Wachstumsfeldern und Erkenntnissen.
+2. **Prinzip pflegen:** Ein Prinzip mit Leitsatz, Erklärung und Wenn-dann anlegen, ändern und mit Rückfrage löschen („Behalten“ bricht ab). Die Zurück-Geste schließt erst den Editor, dann die Sammlung.
+3. **Notizen einfügen:** Vor dem ersten großen Einfügen ein Backup exportieren. Dann mehrere Zeilen aus einer Notiz-App kopieren, bei „Notizen einfügen“ einfügen und „Vorschau zeigen“ tippen: Jede Zeile steht nummeriert da, ohne Aufzählungszeichen und Leerzeilen; die Zurück-Geste führt zurück zum Text. „… Erkenntnisse übernehmen“ legt sie an.
+4. **Erkenntnis des Tages:** Die Karte zeigt eine „Erkenntnis des Tages“, am nächsten Tag eine andere, auch wenn die App über Mitternacht offen bleibt.
+5. **Wachstumsfeld am Abend:** Ein Wachstumsfeld mit nächstem kleinen Schritt anlegen und abends bei „1 % besser“ antippen; ein zweiter Tipp nimmt es zurück.
+6. **Sonntags das Prinzip der Woche:** Sonntags im Logbuch unter „Deine Prinzipien“ ein Prinzip wählen; Abschluss und „Dein Abend“ zeigen „Für die neue Woche: …“.
+7. **Ab Montag:** Ab Montag steht es mit Wenn-dann im Morgen-Start bei der Intention (kurz und lang) und unter „Deine Woche“; dort je Feld „Vorgenommen an … der letzten 7 Tage“ und „Zuletzt: …“.
+8. **Große Schrift:** Mit großer Systemschrift passen Karte, Sammlung, Editor, Einfügen, Wochenseite, „1 % besser“, Morgen-Kasten, „Dein Abend“ und „Deine Woche“; nichts läuft seitlich hinaus.
+9. **Backup:** Backup exportieren und importieren: Die Sammlung ist da, nichts doppelt. Ein gelöschter Eintrag kommt mit einem älteren Backup zurück. Bringt die Datei nur Einträge der Sammlung, meldet „Ich“ „0 neue Sitzungen importiert.“; das ist richtig.
+
+> Hinweis: Prinzipien, Erkenntnisse und Wachstumsfelder liegen nur auf dem Handy (und im Backup), nie im Repo. Die Sammlung zählt nicht in Serie, Minuten, Kalender und „Zuletzt genutzt“.
+
 ## Handy-Checkliste Meilenstein 11
 
 1. **Abend-Karte ab 18 Uhr:** Vor 18 Uhr steht auf „Heute“ keine Abend-Karte. Ab 18 Uhr steht direkt unter der Begrüßung die Karte mit der Kleinüberschrift „Tag abschließen“, dem Titel „Wie war dein Tag?“ und dem Knopf „Starten · 3 Min“. Lass die App kurz vor 18 Uhr im Hintergrund und öffne sie danach wieder: Die Karte ist da, auch ohne dass du neu lädst. Unter „Energie“ steht die Karte „Abend-Logbuch“ mit „Starten“, jederzeit.
@@ -76,7 +90,7 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 5. **„Dein Abend“ bis 3:59 Uhr:** Nach dem letzten Schritt klingt die Klangschale (leiser als am Morgen), der Abschluss zeigt „Gute Nacht.“ und eine Zusammenfassung, „Fertig“ schließt. Danach ersetzt „Dein Abend“ („Tag abgeschlossen“) auf „Heute“ die Karte „Tag abschließen“ und „Dein Tag“, mit „Hat Energie gegeben“, „Hat Energie gekostet“, Big Domino, „Gelernt:“, „Morgen 1 % besser:“ und als letzte Zeile „Logbuch an … der letzten 7 Tage“. Die Karte bleibt bis 3:59 Uhr, auch nach dem Neuladen.
 6. **Erinnerung am Morgen:** Am nächsten Morgen den Morgen-Start bis zur Intention durchgehen: Oben steht „Gestern vorgenommen“ mit deinem 1-%-Satz.
 7. **Sonntags die Woche:** Am Sonntagabend heißt der Knopf „Mit Wochenrückblick · 5 Min“. Am Ende kommt die Seite „Deine Woche“ mit den häufigsten Gebern und Räubern, den Big Dominos („… von … geschafft“) und dem Gelernten der letzten 7 Tage; darunter wählst du unter „Dein Fokus für nächste Woche“ ein Wort. Ab Montag steht es im Morgen-Start bei der Intention unter „Wochenfokus“.
-8. **Wochenrückblick unter „Energie“:** „Energie“ → „Deine Woche“ zeigt den Abschnitt „Wochenrückblick“, sobald es in den letzten 7 Tagen ein Logbuch gibt, darunter „Wochenfokus: …“.
+8. **Wochenrückblick unter „Energie“:** „Energie“ → „Deine Woche“ zeigt den Abschnitt „Wochenrückblick“, sobald es in den letzten 7 Tagen ein Logbuch gibt. Direkt dahinter steht, solange er gilt, der gewählte Fokus („Wochenfokus: …“, bei einem Prinzip „Prinzip der Woche: …“), auch ohne Logbuch in diesen Tagen.
 9. **Backup:** Unter „Ich“ exportieren und wieder importieren (oder auf einem anderen Gerät): Die Logbuch-Einträge sind da, die Meldung nennt die neuen Energie-Einträge. Ein zweiter Import derselben Datei fügt nichts doppelt hinzu und meldet keine neuen Einträge.
 10. **Abend-Wecker:** Wie unter „Erinnerungen einrichten“ einen Abend-Wecker anlegen (z. B. 21:30 Uhr, Bezeichnung „Tag abschließen“). Er klingelt, ein Tipp auf das Startbildschirm-Symbol öffnet Ruhe, und „Heute“ zeigt oben „Tag abschließen“ mit „Starten · 3 Min“.
 
@@ -232,8 +246,8 @@ Die Karten im Reiter „Energie“ stehen in `content/hacks.json` (derzeit 19: s
 - **Eigene Worte:** Keine Texte, Übungen im Wortlaut oder Gliederungen aus Büchern; das Repo ist öffentlich. Ideen und allgemeine Prinzipien werden mit eigenen Worten beschrieben.
 - **Eine Quelle je Karte:** `source` ist nie leer, z. B. eine Studie („Balban u. a., Cell Reports Medicine 2023“) oder „angelehnt an …“.
 - **Keine Versprechen:** Die Karte sagt, warum etwas wirken kann, nicht dass es heilt; wo etwas schiefgehen kann (Kälte, schnelles Atmen), steht ein `caution`.
-- **Hildebrandt:** Henry Hildebrandts „Brainhacks“ (2025) erscheint nur als Leseempfehlung, `further` mit dem Wortlaut „Henry Hildebrandt, Brainhacks (2025)“, und nur bei den vier Geist-Hacks, bis Buchnotizen von dir vorliegen.
-- **Nichts Persönliches:** Check-ins, Läufe und Sprints bleiben auf dem Handy; in Beispielen und Tests stehen nur ausgedachte Werte.
+- **Hildebrandt:** Henry Hildebrandts „Brainhacks“ (2025) erscheint nur als Leseempfehlung, `further` mit dem Wortlaut „Henry Hildebrandt, Brainhacks (2025)“, und nur bei den vier Geist-Hacks. Das bleibt so, bis aus deinen Buchnotizen Karten in eigenen Worten entstehen und du sie freigibst; das ist ein eigener späterer Inhalts-Schritt nach Meilenstein 12. Deine Notizen selbst kommen nie ins Repo; in der App liegen sie nur auf dem Handy.
+- **Nichts Persönliches:** Check-ins, Läufe und Sprints sowie deine Prinzipien, Erkenntnisse und Wachstumsfelder bleiben auf dem Handy; in Beispielen und Tests stehen nur ausgedachte Werte.
 
 **Prüfen:** `npm test` prüft jeden Eintrag nach diesen Regeln (`tests/unit/energy-hacks.test.ts`; eine Summe, die nicht zu `minutes` passt, meldet z. B. `steps: zusammen 100 s statt 120 s`). Dieselben Tests halten den Bestand fest: 19 Karten (sieben Körper, je vier Gefühl, Geist und Sinn), Titel, Dauer und Führung, Fenster, Hinweise und Verweise, Hildebrandt nur bei Geist. Mit einer neuen Karte müssen diese Zahlen und die Tabelle im Test (und die 19 Kacheln in `tests/e2e/energie.spec.ts`) mitwachsen. An einzelnen Karten hängen weitere Tests:
 - `tests/unit/morning-words.test.ts` verlangt, dass die drei Morgen-Übungen (`strecken`, `wasser-licht`, `wach-klopfen`) Körper-Karten mit Führung `schritte` bleiben; `tests/unit/morning-logic.test.ts` hält ihre Reihenfolge fest.
