@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { expectMotiv } from './motiv'
 import { alignOverSheet, doubleTap } from './taps'
 
@@ -509,4 +510,167 @@ test('5 Montag: Prinzip der Woche im Morgen-Kasten und in „Deine Woche“; umb
   await expect(collection(page)).toHaveCount(0)
   await expect(weekCard(page)).not.toContainText('Prinzip der Woche:')
   await expect(weekCard(page)).not.toContainText('Wochenfokus:')
+})
+
+// ── Backup ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+const HINT = 'Sichere deine Sitzungen, Energie-Einträge, Prinzipien und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen dazu, die Einstellungen werden aus der Datei übernommen.'
+const backupFile = (data: object = {}) => JSON.stringify({ version: 1, sessions: [], settings: SETTINGS, ...data })
+const backupStatus = (page: Page) =>
+  page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Backup', exact: true }) }).getByRole('status')
+
+async function chooseFile(page: Page, content: string) {
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Backup importieren' }).click()])
+  await chooser.setFiles({ name: 'ruhe-backup.json', mimeType: 'application/json', buffer: Buffer.from(content) })
+}
+
+test('6 Backup: Sammlung und Verweise überstehen Export und Import ohne Doppelte', async ({ page }) => {
+  const EVENING = { day: '2026-11-01', at: '2026-11-01T19:00:00.000Z', better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: F.id, weekPrinciple: P.id }
+  await open(page, MONDAY, { collection: [P, F, E], evenings: [EVENING] }, 'Ich')
+  const ids = async () => ((await stored(page))?.collection ?? []).map((item: { id: string }) => item.id)
+
+  // 1. Der Hinweis nennt die Prinzipien.
+  await expect(page.getByText(HINT, { exact: true })).toBeVisible()
+
+  // 2. Export
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Backup exportieren' }).click()])
+  const file = readFileSync((await download.path())!, 'utf8')
+  expect(JSON.parse(file)).toMatchObject({ collection: [P, F, E], evenings: [EVENING] })
+
+  // 3. Leeres Gerät, Import: Sammlung und Verweise sind zurück, die Meldung zählt nur das Logbuch.
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await nav(page).getByRole('button', { name: 'Ich' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ich')
+  await chooseFile(page, file)
+  await expect(backupStatus(page)).toHaveText('0 neue Sitzungen importiert. Dazu 1 neuer Energie-Eintrag.')
+  expect(await stored(page)).toMatchObject({ collection: [P, F, E], evenings: [EVENING] })
+  await nav(page).getByRole('button', { name: 'Energie' }).click()
+  await expect(weekCard(page)).toContainText('Prinzip der Woche: Mehrweg statt Einweg')
+  await expect(weekCard(page)).toContainText('Vorgenommen an 1 der letzten 7 Tage')
+
+  // 4. Dieselbe Datei noch einmal: nichts doppelt.
+  await nav(page).getByRole('button', { name: 'Ich' }).click()
+  await chooseFile(page, file)
+  await expect(backupStatus(page)).toHaveText('0 neue Sitzungen importiert.')
+  await expect.poll(ids).toEqual([P.id, F.id, E.id])
+
+  // 5. Ein altes Backup ohne Sammlung lässt die Sammlung stehen.
+  await chooseFile(page, backupFile())
+  await expect(backupStatus(page)).toHaveText('0 neue Sitzungen importiert.')
+  expect((await stored(page)).collection).toEqual([P, F, E])
+
+  // 6. Eine neue Erkenntnis aus der Datei kommt hinten dazu.
+  await chooseFile(page, backupFile({ collection: [{ id: 's-00000020', kind: 'erkenntnis', text: 'Wer im Schach die Mitte besetzt, hat mehr Zeit.' }] }))
+  await expect(backupStatus(page)).toHaveText('0 neue Sitzungen importiert.')
+  await expect.poll(ids).toEqual([P.id, F.id, E.id, 's-00000020'])
+})
+
+// ── Große Schrift ───────────────────────────────────────────────────────────────────────────────────────────────
+
+test.describe('360 px', () => {
+  test.use({ viewport: { width: 360, height: 640 } })
+
+  test('7 360 px und 130 %: lange Texte ohne Leerzeichen laufen nirgends seitlich hinaus', async ({ page }) => {
+    test.setTimeout(60_000) // zehn Ansichten samt Logbuch und Morgen-Start, keine Echtzeit
+    const long = (stem: string, n: number) => stem.repeat(Math.ceil(n / stem.length)).slice(0, n)
+    const LP = { id: 's-0000000a', kind: 'prinzip', text: long('Mehrweg', 60), note: long('Müll', 160), ifThen: long('Stofftasche', 120) }
+    const LF = { id: 's-0000000b', kind: 'feld', text: long('Schach', 40), step: long('Eröffnung', 120) }
+    const LE = { id: 's-0000000c', kind: 'erkenntnis', text: long('Mitte', 500), source: long('Schachkurs', 80) }
+    await open(page, at('20:00:00', '2026-11-01'), { collection: [LP, LF, LE] })
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '130%'
+    })
+
+    async function expectTargets(scope: Locator) {
+      for (const target of await scope.getByRole('button').all()) {
+        const box = (await target.boundingBox())!
+        const name = (await target.getAttribute('aria-label')) ?? (await target.innerText())
+        expect(box.height, name).toBeGreaterThanOrEqual(48)
+        expect(box.width, name).toBeGreaterThanOrEqual(48)
+      }
+      for (const field of await scope.getByRole('textbox').all()) {
+        const box = (await field.boundingBox())!
+        expect(box.height, (await field.getAttribute('id')) ?? 'Textfeld').toBeGreaterThanOrEqual(52)
+      }
+    }
+
+    // 1. Karte, Sammlung, Editor, Rückfrage
+    await expectNoSideways(page, card(page))
+    await openCollection(page)
+    await expectTargets(collection(page))
+    await expectNoSideways(page, collection(page))
+    await row(page, LP.text).click()
+    await settle(page)
+    await expectTargets(editor(page))
+    await expectNoSideways(page, editor(page))
+    await editor(page).getByRole('button', { name: 'Löschen', exact: true }).click()
+    const confirm = page.getByRole('alertdialog')
+    await expect(confirm).toBeVisible()
+    await expectNoSideways(page, confirm)
+    await confirm.getByRole('button', { name: 'Behalten', exact: true }).click()
+    await expect(confirm).toHaveCount(0)
+    await settle(page)
+    await page.keyboard.press('Escape')
+    await expect(editor(page)).toHaveCount(0)
+
+    // 2. Notizen einfügen: Text und Vorschau
+    await settle(page)
+    await collection(page).getByRole('button', { name: 'Notizen einfügen', exact: true }).click()
+    await settle(page)
+    await paste(page).getByRole('textbox', { name: 'Deine Notizen', exact: true }).fill(long('Zentrum', 520))
+    await paste(page).getByRole('textbox', { name: 'Quelle für alle (freiwillig)', exact: true }).fill(long('Schachkurs', 80))
+    await expectTargets(paste(page))
+    await expectNoSideways(page, paste(page))
+    await paste(page).getByRole('button', { name: 'Vorschau zeigen', exact: true }).click()
+    const items = paste(page).getByRole('listitem')
+    await expect(items).toHaveCount(1)
+    await expect(items.first()).toContainText('gekürzt')
+    await expect(paste(page).getByText('1 gekürzt auf 500 Zeichen.', { exact: true })).toBeVisible()
+    await expect(paste(page).getByRole('button', { name: '1 Erkenntnis übernehmen', exact: true })).toBeVisible()
+    await expectTargets(paste(page))
+    await expectNoSideways(page, paste(page))
+    await page.keyboard.press('Escape')
+    await expect(paste(page).getByRole('button', { name: 'Vorschau zeigen', exact: true })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(paste(page)).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(collection(page)).toHaveCount(0)
+
+    // 3. Logbuch: „1 % besser“ mit Feld, Wochenseite mit Prinzip, Abschluss
+    const startCard = page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Tag abschließen', exact: true }) })
+    await startCard.getByRole('button', { name: 'Starten', exact: true }).click()
+    await expect(flow(page)).toBeVisible()
+    await skipTo(page, 'Was machst du morgen 1 % besser?')
+    await flow(page).getByRole('textbox', { name: 'Was machst du morgen 1 % besser?', exact: true }).fill(long('Schachaufgaben', 80))
+    await flow(page).getByRole('radio', { name: LF.text, exact: true }).click()
+    await expectNoSideways(page, flow(page))
+    await flow(page).getByRole('button', { name: 'Weiter', exact: true }).click()
+    await expect(title(page, 'Deine Woche')).toBeFocused()
+    await flow(page).getByRole('radio', { name: LP.text, exact: true }).click()
+    await expectNoSideways(page, flow(page))
+    await flow(page).getByRole('button', { name: 'Weiter', exact: true }).click()
+    await expect(flow(page)).toContainText(`Für die neue Woche: ${LP.text}`)
+    await expectNoSideways(page, flow(page))
+    await flow(page).getByRole('button', { name: 'Fertig', exact: true }).click()
+    await expect(flow(page)).toHaveCount(0)
+
+    // 4. Nach Mitternacht: „Dein Abend“ und „Deine Woche“
+    await resume(page, at('00:30:00', '2026-11-02'))
+    await nav(page).getByRole('button', { name: 'Heute' }).click()
+    const eveningCard = page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Dein Abend', exact: true }) })
+    await expect(eveningCard).toBeVisible()
+    await expectNoSideways(page, eveningCard)
+    await nav(page).getByRole('button', { name: 'Energie' }).click()
+    await expect(weekCard(page).getByRole('heading', { level: 3, name: 'Wachstumsfelder', exact: true })).toBeVisible()
+    await expectNoSideways(page, weekCard(page))
+
+    // 5. Der Morgen-Kasten
+    await resume(page, at('07:00:00', '2026-11-02'))
+    await nav(page).getByRole('button', { name: 'Heute' }).click()
+    const morning = await toIntention(page)
+    const box = morning.getByRole('region', { name: 'Von gestern Abend', exact: true })
+    await expect(box).toBeVisible()
+    await expectNoSideways(page, box)
+  })
 })
