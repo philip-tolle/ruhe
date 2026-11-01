@@ -2,6 +2,7 @@
   import { tick } from 'svelte'
   import Sheet from '../Sheet.svelte'
   import ItemEditor from './ItemEditor.svelte'
+  import PasteSheet from './PasteSheet.svelte'
   import type { CollectionItem } from '../../lib/principles/collection'
   import { KIND_MAX, type CollectionKind } from '../../lib/principles/words'
   import { stats } from '../../lib/stats/store.svelte'
@@ -9,8 +10,8 @@
 
   // Blatt „Deine Sammlung“ (Spec M12 §2.3, §2.10): drei Abschnitte in fester Reihenfolge, je mit h3, Knopf zum Anlegen (an der
   // Grenze ein Satz) und den Zeilen aller Einträge der Art in Listenfolge, auch über der Grenze (nach einem Import). Der Editor
-  // ist ein eigenes Blatt als Geschwister dahinter; schließt er, geht der Fokus an die auslösende Zeile bzw. den Knopf, gibt
-  // es sie nicht mehr, an die h3 des Abschnitts.
+  // und „Notizen einfügen“ (Spec M12 §2.5) sind eigene Blätter als Geschwister dahinter; schließt eines, geht der Fokus an die
+  // auslösende Zeile bzw. den Knopf, gibt es sie nicht mehr, an die h3 des Abschnitts.
   let { onClose }: { onClose: () => void } = $props()
 
   const id = $props.id()
@@ -49,14 +50,17 @@
 
   /** Der offene Editor: Art und Eintrag (`null` = neu). */
   let editing = $state<{ kind: CollectionKind; item: CollectionItem | null } | null>(null)
+  /** „Notizen einfügen“ ist offen. */
+  let pasting = $state(false)
   /** Die Statuszeile der Erkenntnisse; leert sich, sobald eine Ebene über der Sammlung öffnet. */
   let status = $state('')
   /** Wohin der Fokus geht, wenn die Ebene darüber schließt. */
   let returnTo: { el: HTMLElement; kind: CollectionKind } | null = null
 
-  // Knöpfe, Zeilen und das Danebentippen sind kurz nach dem Öffnen gesperrt und neu, wenn der Editor öffnet oder schließt
-  // (Spec M12 §2.10). Die Sperre gilt nur für Tipps; Knöpfe und Zeilen bleiben fokussierbar.
-  const arming = tapArming(() => editing === null)
+  // Knöpfe, Zeilen und das Danebentippen sind kurz nach dem Öffnen gesperrt und neu, wenn Editor oder Einfügen öffnen oder
+  // schließen (Spec M12 §2.10). Die Sperre gilt nur für Tipps; Knöpfe und Zeilen bleiben fokussierbar.
+  const top = () => editing === null && !pasting
+  const arming = tapArming(top)
 
   const items = $derived(stats.data.collection ?? [])
 
@@ -83,6 +87,20 @@
     void restoreFocus()
   }
 
+  function openPaste(el: HTMLElement) {
+    if (!arming.armed) return
+    status = ''
+    returnTo = { el, kind: 'erkenntnis' }
+    pasting = true
+  }
+
+  /** `added`: übernommene Erkenntnisse, 0 beim Abbrechen; dann bleibt die Statuszeile leer. */
+  function closePaste(added: number) {
+    pasting = false
+    if (added > 0) status = added === 1 ? '1 Erkenntnis übernommen.' : `${added} Erkenntnisse übernommen.`
+    void restoreFocus()
+  }
+
   /**
    * Nach `tick()` an das gemerkte Ziel, wenn es noch im Dokument steht, sonst an die h3 seines Abschnitts; nie an `body`.
    * Mit `.then` statt `await`: Im Entwicklungs-Build umhüllt Svelte jedes `await` in Komponenten (Warnung bei verlorener
@@ -99,7 +117,7 @@
   }
 </script>
 
-<Sheet title="Deine Sammlung" rearm={() => editing === null} {onClose}>
+<Sheet title="Deine Sammlung" rearm={top} {onClose}>
   <p class="intro">Alles hier bleibt auf diesem Gerät und in deinem Backup.</p>
 
   {#if stats.saveFailed}
@@ -120,6 +138,9 @@
       {#if list.length < KIND_MAX[section.kind]}
         <div class="actions">
           <button type="button" class="button-line" onclick={(event) => openEditor(section.kind, null, event.currentTarget)}>{section.add}</button>
+          {#if section.kind === 'erkenntnis'}
+            <button type="button" class="button-line" onclick={(event) => openPaste(event.currentTarget)}>Notizen einfügen</button>
+          {/if}
         </div>
       {:else}
         <p class="limit">{section.limit}</p>
@@ -159,9 +180,13 @@
   {/each}
 </Sheet>
 
-<!-- Eigenes Blatt hinter dem der Sammlung: Das spätere im DOM liegt oben, seine Abdunklung über der ersten. -->
+<!-- Eigene Blätter hinter dem der Sammlung: Das spätere im DOM liegt oben, seine Abdunklung über der ersten. -->
 {#if editing}
   <ItemEditor kind={editing.kind} item={editing.item} onClose={closeEditor} />
+{/if}
+
+{#if pasting}
+  <PasteSheet onClose={closePaste} />
 {/if}
 
 <style>

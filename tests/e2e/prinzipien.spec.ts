@@ -240,5 +240,119 @@ test('2 Ebenen, Fokus und Doppeltipps', async ({ page }) => {
   await page.touchscreen.tap(x, y)
   await page.waitForTimeout(500)
   await expect(collection(page)).toHaveCount(0)
+
+  // 8. Ein Doppeltipp auf „… übernehmen“ über der kurzen Sammlung übernimmt einmal und lässt die Sammlung offen.
+  await openCollection(page)
+  await collection(page).getByRole('button', { name: 'Notizen einfügen', exact: true }).click()
+  await settle(page)
+  await paste(page).getByRole('textbox', { name: 'Deine Notizen', exact: true }).fill('Pausen helfen beim Lernen.\nMorgens zuerst ein Glas Wasser trinken.')
+  await paste(page).getByRole('button', { name: 'Vorschau zeigen', exact: true }).click()
+  await settle(page)
+  await doubleTap(page, paste(page).getByRole('button', { name: '2 Erkenntnisse übernehmen', exact: true }), 0.5)
+  await expect(paste(page)).toHaveCount(0)
+  await expect(collection(page)).toBeVisible()
+  await expect(editor(page)).toHaveCount(0)
+  expect((await stored(page)).collection).toHaveLength(3)
+})
+
+// ── Notizen einfügen ────────────────────────────────────────────────────────────────────────────────────────────
+
+const NOTES = [
+  '- Wer im Schach früh die Mitte besetzt, hat mehr Möglichkeiten.',
+  '- [ ] Morgens zuerst ein Glas Wasser trinken.',
+  '-5 Grad am Morgen, trotzdem eine Runde gehen.',
+  '1.',
+  '',
+  '---',
+  '• Pausen helfen beim Lernen.',
+  'Wer im Schach früh die Mitte besetzt, hat mehr Möglichkeiten.',
+  'Heute lerne ich etwas Neues. '.repeat(20),
+].join('\n')
+const LINES = [
+  'Wer im Schach früh die Mitte besetzt, hat mehr Möglichkeiten.',
+  'Morgens zuerst ein Glas Wasser trinken.',
+  '-5 Grad am Morgen, trotzdem eine Runde gehen.',
+  'Pausen helfen beim Lernen.',
+  `${'Heute lerne ich etwas Neues. '.repeat(17)}Heute l`,
+]
+
+test('3 Notizen einfügen: Vorschau, Zurück, Übernehmen, Statuszeile, Erkenntnis des Tages', async ({ page }) => {
+  await open(page, MONDAY)
+  const notes = paste(page).getByRole('textbox', { name: 'Deine Notizen', exact: true })
+  const show = paste(page).getByRole('button', { name: 'Vorschau zeigen', exact: true })
+  const pasteButton = collection(page).getByRole('button', { name: 'Notizen einfügen', exact: true })
+  const preview = paste(page).getByRole('heading', { level: 3, name: 'Vorschau', exact: true })
+
+  // 1. Die Textansicht
+  await openCollection(page)
+  await pasteButton.click()
+  await expect(paste(page)).toContainText('Kopiere Text aus deiner Notiz-App und füge ihn hier ein. Jede Zeile wird eine Erkenntnis. Alles bleibt auf diesem Gerät.')
+  await expect(notes).toHaveAttribute('placeholder', 'Eine Erkenntnis pro Zeile')
+  await settle(page)
+
+  // 2. Die Vorschau
+  await notes.fill(NOTES)
+  await paste(page).getByRole('textbox', { name: 'Quelle für alle (freiwillig)', exact: true }).fill('Ein Schachkurs')
+  await show.click()
+  await expect(preview).toBeFocused()
+  for (const line of ['5 neue Erkenntnisse', '1 doppelt oder schon vorhanden, übersprungen.', '1 gekürzt auf 500 Zeichen.', 'Quelle: Ein Schachkurs']) {
+    await expect(paste(page).getByText(line, { exact: true })).toBeVisible()
+  }
+  const items = paste(page).getByRole('listitem')
+  await expect(items).toHaveCount(5)
+  await expect(items.first()).toHaveText(LINES[0])
+  for (let i = 0; i < 4; i++) await expect(items.nth(i)).not.toContainText('gekürzt')
+  await expect(items.nth(4)).toContainText('gekürzt')
+
+  // 3. Die Zurück-Geste führt zum Text; Text bleibt, der Fokus auf „Vorschau zeigen“.
+  await page.goBack()
+  await expect(notes).toHaveValue(NOTES)
+  await expect(show).toBeFocused()
+
+  // 4. Übernehmen
+  await settle(page)
+  await show.click()
+  await settle(page)
+  await paste(page).getByRole('button', { name: '5 Erkenntnisse übernehmen', exact: true }).click()
+  await expect(paste(page)).toHaveCount(0)
+  await expect(collection(page).getByRole('status')).toHaveText('5 Erkenntnisse übernommen.')
+  await expect(pasteButton).toBeFocused()
+  const saved = (await stored(page)).collection
+  expect(saved.map((item: { text: string }) => item.text)).toEqual(LINES)
+  for (const item of saved) expect(item).toMatchObject({ kind: 'erkenntnis', source: 'Ein Schachkurs' })
+
+  // 5. Der Editor leert die Statuszeile; Escape schließt ihn, eine Zurück-Geste die Sammlung.
+  await settle(page)
+  await row(page, LINES[0]).click()
+  await expect(editor(page)).toHaveAccessibleName('Erkenntnis bearbeiten')
+  await expect(collection(page).getByRole('status')).toHaveText('')
+  await page.keyboard.press('Escape')
+  await expect(editor(page)).toHaveCount(0)
+  await expect.poll(() => depth(page)).toBe(1)
+  await page.goBack()
+  await expect(collection(page)).toHaveCount(0)
+  await expect.poll(() => depth(page)).toBe(0)
+
+  // 6. Die Erkenntnis des Tages auf der Karte, am nächsten Tag eine andere
+  const today = (await card(page).locator('.insight').textContent())!
+  expect(LINES.some((line) => today.includes(line))).toBe(true)
+  expect(today).toContain('Quelle: Ein Schachkurs')
+  await resume(page, at('10:00:00', '2026-11-03'))
+  await expect(card(page).locator('.insight')).not.toHaveText(today)
+
+  // 7. Neuladen mitten im Einfügen (Spec M12 §6): nichts gespeichert, kein Blatt offen, der Rohtext nirgends im Speicher.
+  await openCollection(page)
+  await pasteButton.click()
+  await settle(page)
+  await notes.fill('Mehrweg statt Einweg im Büro')
+  await show.click()
+  await expect(preview).toBeFocused()
+  await page.reload()
+  await nav(page).getByRole('button', { name: 'Energie' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Energie')
+  await expect(collection(page)).toHaveCount(0)
+  await expect(paste(page)).toHaveCount(0)
+  expect((await stored(page)).collection.map((item: { text: string }) => item.text)).toEqual(LINES)
+  expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain('Mehrweg statt Einweg im Büro')
 })
 

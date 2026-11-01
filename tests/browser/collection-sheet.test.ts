@@ -201,3 +201,149 @@ test('Danebentippen sperrt neu: das des Editors, wenn die Rückfrage schließt; 
   await armed()
   expect(lastBackdrop().disabled).toBe(false)
 })
+
+// ── Notizen einfügen (Spec M12 §2.5) ─────────────────────────────────────────────────────────────────────────────
+
+const notes = () => dialog('Notizen einfügen')!.querySelector<HTMLTextAreaElement>('textarea')!
+const source = () => dialog('Notizen einfügen')!.querySelector<HTMLInputElement>('input')!
+
+/** Setzt den Text von „Deine Notizen“ wie ein Einfügen (das Feld kürzt nichts, darum genügt `input`). */
+function setNotes(text: string): void {
+  notes().value = text
+  notes().dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+async function openPaste(): Promise<void> {
+  await armed()
+  button(section('Erkenntnisse'), 'Notizen einfügen')!.click()
+  flushSync()
+  await armed()
+}
+
+test('mit 299 Erkenntnissen drei neue Zeilen einfügen: „1 neue Erkenntnis“, „2 passen nicht mehr …“, danach die Grenze und der Fokus auf der h3', async () => {
+  show({ collection: Array.from({ length: 299 }, (_, i) => ({ id: hex(i + 1), kind: 'erkenntnis' as const, text: `Zeile ${i + 1}` })) })
+  await openPaste()
+  setNotes('Neu 1\nNeu 2\nNeu 3')
+  flushSync()
+  button(dialog('Notizen einfügen')!, 'Vorschau zeigen')!.click()
+  flushSync()
+  const paste = dialog('Notizen einfügen')!
+  expect(paste.textContent).toContain('1 neue Erkenntnis')
+  expect(paste.textContent).toContain('2 passen nicht mehr (höchstens 300 Erkenntnisse).')
+  await armed()
+  button(paste, '1 Erkenntnis übernehmen')!.click()
+  flushSync()
+  await tick()
+  expect(dialog('Notizen einfügen')).toBeNull()
+  expect(section('Erkenntnisse').textContent).toContain('Höchstens 300 Erkenntnisse.')
+  expect([button(section('Erkenntnisse'), 'Neue Erkenntnis'), button(section('Erkenntnisse'), 'Notizen einfügen')]).toEqual([null, null])
+  expect(section('Erkenntnisse').querySelector('[role="status"]')!.textContent).toBe('1 Erkenntnis übernommen.')
+  expect(document.activeElement).toBe(section('Erkenntnisse').querySelector('h3'))
+})
+
+test('Escape, Danebentippen und „Zurück zum Text“ in der Vorschau führen zum Text; Text und Quelle bleiben (Review Focus 1)', async () => {
+  show({})
+  await openPaste()
+  setNotes('Mehrweg statt Einweg')
+  fill(source(), 'Ein Schachkurs')
+  flushSync()
+  expect(JSON.stringify({ ...localStorage, ...sessionStorage })).not.toContain('Mehrweg statt Einweg') // Rohtext nie im Speicher
+  const toPreview = async () => {
+    button(dialog('Notizen einfügen')!, 'Vorschau zeigen')!.click()
+    flushSync()
+    await armed()
+  }
+  const atText = () => [notes().value, source().value, document.activeElement, stats.data.collection]
+  const textView = () => ['Mehrweg statt Einweg', 'Ein Schachkurs', button(dialog('Notizen einfügen')!, 'Vorschau zeigen'), undefined]
+  await toPreview()
+  dialog('Notizen einfügen')!.dispatchEvent(keydown('Escape'))
+  flushSync()
+  await tick()
+  expect(atText()).toEqual(textView())
+  await armed()
+  await toPreview()
+  lastBackdrop().click()
+  flushSync()
+  await tick()
+  expect(atText()).toEqual(textView())
+  await armed()
+  await toPreview()
+  button(dialog('Notizen einfügen')!, 'Zurück zum Text')!.click()
+  flushSync()
+  await tick()
+  expect(atText()).toEqual(textView())
+})
+
+test('Return in „Quelle für alle“ fokussiert das Einfügen; Escape schließt dann nur es, der Fokus geht an „Notizen einfügen“', async () => {
+  show({})
+  await openPaste()
+  source().focus()
+  source().dispatchEvent(keydown('Enter'))
+  expect(document.activeElement).toBe(dialog('Notizen einfügen'))
+  dialog('Notizen einfügen')!.dispatchEvent(keydown('Escape'))
+  flushSync()
+  await tick()
+  expect([dialog('Notizen einfügen'), dialog('Deine Sammlung') !== null, document.activeElement]).toEqual([null, true, button(section('Erkenntnisse'), 'Notizen einfügen')])
+})
+
+test('Danebentippen sperrt neu: das des Einfügens bei jedem Wechsel der Ansicht, das der Sammlung, wenn das Einfügen schließt', async () => {
+  show({})
+  await openPaste()
+  setNotes('Mehrweg statt Einweg')
+  flushSync()
+  button(dialog('Notizen einfügen')!, 'Vorschau zeigen')!.click()
+  flushSync()
+  expect(lastBackdrop().disabled).toBe(true)
+  await armed()
+  button(dialog('Notizen einfügen')!, 'Zurück zum Text')!.click()
+  flushSync()
+  expect(lastBackdrop().disabled).toBe(true)
+  await armed()
+  dialog('Notizen einfügen')!.dispatchEvent(keydown('Escape'))
+  flushSync()
+  expect([dialog('Notizen einfügen'), lastBackdrop().disabled]).toEqual([null, true]) // jetzt das der Sammlung
+  await armed()
+  expect(lastBackdrop().disabled).toBe(false)
+})
+
+test('ein Tipp auf „… übernehmen“ gleich nach „Vorschau zeigen“ übernimmt nichts (Review Focus 4)', async () => {
+  show({})
+  await openPaste()
+  setNotes('Pausen helfen beim Lernen.')
+  flushSync()
+  button(dialog('Notizen einfügen')!, 'Vorschau zeigen')!.click()
+  flushSync()
+  button(dialog('Notizen einfügen')!, '1 Erkenntnis übernehmen')!.click()
+  flushSync()
+  expect([stats.data.collection, dialog('Notizen einfügen')!.textContent!.includes('Vorschau')]).toEqual([undefined, true])
+  await armed()
+  button(dialog('Notizen einfügen')!, '1 Erkenntnis übernehmen')!.click()
+  flushSync()
+  expect(stats.data.collection).toHaveLength(1)
+})
+
+test('dieselben Notizen noch einmal: „Keine neue Erkenntnis dabei.“ und kein Knopf zum Übernehmen', async () => {
+  show({ collection: [E] })
+  await openPaste()
+  setNotes(`- ${E.text}`)
+  flushSync()
+  button(dialog('Notizen einfügen')!, 'Vorschau zeigen')!.click()
+  flushSync()
+  const paste = dialog('Notizen einfügen')!
+  expect(paste.textContent).toContain('Keine neue Erkenntnis dabei.')
+  expect(paste.textContent).toContain('1 doppelt oder schon vorhanden, übersprungen.')
+  expect([...paste.querySelectorAll('button')].some((b) => b.textContent!.includes('übernehmen'))).toBe(false)
+})
+
+test('mehr als 50 000 Zeichen: das Feld kürzt nichts, erst die Vorschau nennt es (Review Focus 5)', async () => {
+  const long = `Zeile 1\n${'x'.repeat(50_100)}`
+  show({})
+  await openPaste()
+  setNotes(long)
+  flushSync()
+  expect([notes().value, notes().hasAttribute('maxlength')]).toEqual([long, false])
+  button(dialog('Notizen einfügen')!, 'Vorschau zeigen')!.click()
+  flushSync()
+  const text = dialog('Notizen einfügen')!.textContent!
+  for (const line of ['Der Text ist sehr lang. Verwendet werden die ersten 50 000 Zeichen.', '2 neue Erkenntnisse', '1 gekürzt auf 500 Zeichen.']) expect(text).toContain(line)
+})
