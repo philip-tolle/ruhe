@@ -1,11 +1,13 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte'
   import { limitedInput } from '../../lib/morning/limited-input'
   import { tapArming } from '../../lib/ui/arming.svelte'
   import { eveningUi, nextEveningStep } from '../../lib/ui/evening-ui.svelte'
 
   // Ein Satz als Schritt des Abend-Logbuchs (Spec M11 §2.3): „Gelernt“ (Schritt 5) und „1 % besser“ (Schritt 6). Das Feld
   // trägt die Frage der Überschrift als Namen. Gezählt und gekürzt wird nach Unicode-Zeichen; ein Zeilenumbruch wird zum
-  // Leerzeichen, „Return“ schließt nur die Tastatur (das alles tut `limitedInput`).
+  // Leerzeichen, „Return“ schließt nur die Tastatur (das alles tut `limitedInput`). `children` steht unter Feld und Zähler
+  // (Spec M12 §2.6: das Wachstumsfeld bei „1 % besser“); der Schritt selbst weiß nichts davon.
   let {
     field,
     kicker,
@@ -13,7 +15,8 @@
     lead,
     placeholder,
     max,
-  }: { field: 'learned' | 'better'; kicker: string; title: string; lead: string; placeholder: string; max: number } = $props()
+    children,
+  }: { field: 'learned' | 'better'; kicker: string; title: string; lead: string; placeholder: string; max: number; children?: Snippet } = $props()
 
   const id = $props.id()
   const arming = tapArming()
@@ -42,6 +45,8 @@
       ></textarea>
       <p class="count" id="{id}-count">{count} / {max}</p>
     </div>
+
+    {@render children?.()}
   </div>
 
   <div class="foot">

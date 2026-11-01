@@ -64,3 +64,33 @@ test('mit Logbuch in den 7 Tagen steht die Anker-Zeile direkt hinter dem Abschni
   expect(review.textContent).not.toContain('Prinzip der Woche:')
   expect(review.nextElementSibling!.textContent).toContain('Prinzip der Woche: Mehrweg statt Einweg')
 })
+
+// Spec M12 §2.8, §4.9: die Wachstumsfelder vor „Was bei dir wirkt“.
+test('Wachstumsfelder: bei n ≥ 1 Zählung und jüngster Satz, bei n = 0 nur Name und Schritt (Review Focus 2)', () => {
+  const F = { id: 's-0000000b', kind: 'feld' as const, text: 'Schach lernen', step: 'Jeden Abend eine Eröffnung nachspielen.' }
+  const F2 = { id: 's-0000000e', kind: 'feld' as const, text: 'Mehrweg im Alltag', step: 'Eine Stofftasche einpacken.' }
+  setClock(new Date(2026, 10, 2, 10))
+  stats.data = {
+    ...emptyData(),
+    collection: [F, F2],
+    evenings: [
+      { day: '2026-10-30', at: '2026-10-30T20:00:00.000Z', better: 'Morgen eine Eröffnung üben.', growthField: F.id },
+      { day: '2026-11-01', at: '2026-11-01T20:00:00.000Z', better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: F.id },
+    ],
+  }
+  show()
+  expect(h3s().slice(-2)).toEqual(['Wachstumsfelder', 'Was bei dir wirkt'])
+  const [first, second] = [...section('Wachstumsfelder').querySelectorAll('li')].map((li) => li.textContent!)
+  for (const text of ['Schach lernen', 'Vorgenommen an 2 der letzten 7 Tage', 'Zuletzt: Morgen zehn Minuten Schachaufgaben lösen.']) expect(first).toContain(text)
+  expect(first).not.toContain('Nächster kleiner Schritt')
+  expect(second).toContain('Mehrweg im Alltag')
+  expect(second).toContain('Nächster kleiner Schritt: Eine Stofftasche einpacken.')
+  expect(second).not.toMatch(/Vorgenommen an|Zuletzt:/)
+})
+
+test('ohne Felder kein Abschnitt „Wachstumsfelder“', () => {
+  setClock(new Date(2026, 10, 2, 10))
+  stats.data = emptyData()
+  show()
+  expect(h3s()).not.toContain('Wachstumsfelder')
+})

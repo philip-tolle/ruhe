@@ -404,6 +404,12 @@ test('4 Sonntag: Prinzip der Woche wählen, Abschluss, alter Anker bis Mitternac
   await expect(flow(page)).toBeVisible()
   await skipTo(page, 'Was machst du morgen 1 % besser?')
   await flow(page).getByRole('textbox', { name: 'Was machst du morgen 1 % besser?', exact: true }).fill('Morgen zehn Minuten Schachaufgaben lösen.')
+  const fields = flow(page).getByRole('radiogroup', { name: 'Wachstumsfeld (freiwillig)', exact: true })
+  const chess = fields.getByRole('radio', { name: 'Schach lernen', exact: true })
+  for (const checked of ['true', 'false', 'true']) {
+    await chess.click()
+    await expect(chess).toHaveAttribute('aria-checked', checked)
+  }
   await next.click()
 
   // 2. Die Wochenseite: „Deine Prinzipien“ zuerst, der Vorschlag „Dranbleiben“ steht nur als Prinzip da.
@@ -420,7 +426,7 @@ test('4 Sonntag: Prinzip der Woche wählen, Abschluss, alter Anker bis Mitternac
   await next.click()
   await expect(flow(page)).toContainText('Für die neue Woche: Mehrweg statt Einweg')
   const saved = (await stored(page)).evenings.find((e: { day: string }) => e.day === '2026-11-01')
-  expect(saved).toMatchObject({ better: 'Morgen zehn Minuten Schachaufgaben lösen.', weekPrinciple: P.id })
+  expect(saved).toMatchObject({ better: 'Morgen zehn Minuten Schachaufgaben lösen.', weekPrinciple: P.id, growthField: F.id })
   expect(saved).not.toHaveProperty('weekFocus')
   await flow(page).getByRole('button', { name: 'Fertig', exact: true }).click()
   await expect(flow(page)).toHaveCount(0)
@@ -445,7 +451,18 @@ test('4 Sonntag: Prinzip der Woche wählen, Abschluss, alter Anker bis Mitternac
 })
 
 test('5 Montag: Prinzip der Woche im Morgen-Kasten und in „Deine Woche“; umbenennen, löschen', async ({ page }) => {
-  await open(page, at('07:00:00', '2026-11-02'), { collection: [P, F], evenings: [{ day: '2026-11-01', at: '2026-11-01T19:00:00.000Z', weekPrinciple: P.id }] }, 'Heute')
+  await open(
+    page,
+    at('07:00:00', '2026-11-02'),
+    {
+      collection: [P, F],
+      evenings: [
+        { day: '2026-10-30', at: '2026-10-30T19:00:00.000Z', better: 'Morgen eine Eröffnung üben.', growthField: F.id },
+        { day: '2026-11-01', at: '2026-11-01T19:00:00.000Z', weekPrinciple: P.id, better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: F.id },
+      ],
+    },
+    'Heute',
+  )
   const RENAMED = 'Mehrweg statt Einweg im Alltag'
 
   // 1. Der Morgen-Kasten: Leitsatz und Wenn-dann, ohne Erklärung
@@ -462,6 +479,8 @@ test('5 Montag: Prinzip der Woche im Morgen-Kasten und in „Deine Woche“; umb
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Energie')
   await expect(weekCard(page)).toContainText('Prinzip der Woche: Mehrweg statt Einweg')
   await expect(weekCard(page)).toContainText(P.ifThen)
+  await expect(weekCard(page).getByRole('heading', { level: 3, name: 'Wachstumsfelder', exact: true })).toBeVisible()
+  for (const text of ['Schach lernen', 'Vorgenommen an 2 der letzten 7 Tage', 'Zuletzt: Morgen zehn Minuten Schachaufgaben lösen.']) await expect(weekCard(page)).toContainText(text)
 
   // 3. Umbenennen folgt sofort
   await openCollection(page)

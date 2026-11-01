@@ -175,3 +175,24 @@ test('ein Sonntags-Logbuch, das nach Mitternacht endet, behält das Prinzip (Rev
   walkToEnd()
   expect(stats.data.evenings![0]).toMatchObject({ day: '2026-11-01', weekPrinciple: PRINZIP.id })
 })
+
+// Spec M12 §2.6, §4.4: das Wachstumsfeld am 1-%-Satz.
+test('1 % besser: ein Satz mit Feld speichert growthField; Überspringen leert Satz und Feld; ein Feld ohne Satz wird nicht gespeichert', () => {
+  const FELD = { id: 's-0000000b', kind: 'feld' as const, text: 'Schach lernen' }
+  setClock(new Date(2026, 9, 29, 20, 0))
+  stats.data = { ...emptyData(), collection: [FELD] }
+  openEvening()
+  Object.assign(eveningUi.draft, { better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: FELD.id })
+  walkToEnd()
+  expect(stats.data.evenings![0]).toMatchObject({ better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: FELD.id })
+  openEvening()
+  Object.assign(eveningUi.draft, { better: 'Morgen eine Eröffnung üben.', growthField: FELD.id })
+  while (eveningUi.step !== 'besser') nextEveningStep()
+  skipEveningStep()
+  expect(eveningUi.draft).toMatchObject({ better: '', growthField: null })
+  expect(stats.data.evenings![0]).not.toHaveProperty('growthField')
+  openEvening()
+  eveningUi.draft.growthField = FELD.id
+  walkToEnd()
+  expect(stats.data.evenings![0]).not.toHaveProperty('growthField')
+})

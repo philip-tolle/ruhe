@@ -6,6 +6,7 @@
   import TagsStep from './TagsStep.svelte'
   import TextStep from './TextStep.svelte'
   import WeekStep from './WeekStep.svelte'
+  import FieldChoice from '../principles/FieldChoice.svelte'
   import { BETTER_MAX, LEARNED_MAX } from '../../lib/evening/words'
   import { closeEvening, eveningUi, nextEveningStep, skipEveningStep } from '../../lib/ui/evening-ui.svelte'
 
@@ -49,7 +50,9 @@
       lead="Klein und konkret. Der Morgen-Start erinnert dich daran."
       placeholder="z. B. Erst der Big Domino, dann Mails."
       max={BETTER_MAX}
-    />
+    >
+      <FieldChoice />
+    </TextStep>
   {:else if eveningUi.step === 'woche'}
     <WeekStep />
   {:else}

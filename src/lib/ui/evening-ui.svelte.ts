@@ -72,7 +72,16 @@ export function openEvening(): void {
  */
 function inputFromDraft(): EveningInput {
   const { day, sunday, draft } = eveningUi
-  const input: EveningInput = { day, gave: [...draft.gave], cost: [...draft.cost], intentionScore: draft.intentionScore, learned: draft.learned, better: draft.better }
+  // Das Wachstumsfeld geht immer mit; ohne Satz oder ohne Feld in der Sammlung verwirft es `withEvening` (Spec M12 §4.4).
+  const input: EveningInput = {
+    day,
+    gave: [...draft.gave],
+    cost: [...draft.cost],
+    intentionScore: draft.intentionScore,
+    learned: draft.learned,
+    better: draft.better,
+    growthField: draft.growthField,
+  }
   if (sunday) {
     input.weekFocus = draft.weekFocus
     input.weekPrinciple = draft.weekPrinciple
@@ -118,6 +127,7 @@ export function skipEveningStep(): void {
       break
     case 'besser':
       draft.better = ''
+      draft.growthField = null
       break
     case 'woche':
       draft.weekFocus = ''
