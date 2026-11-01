@@ -265,7 +265,7 @@ test('on a Sunday the week page sums up the week including tonight, and the chos
   await next(page).click()
 
   await expect(title(page, DONE)).toBeFocused()
-  await expect(flow(page)).toContainText('Wochenfokus: Mehr Schlaf')
+  await expect(flow(page)).toContainText('Für die neue Woche: Mehr Schlaf')
   const saved = (await stored(page)).evenings.find((e: { day: string }) => e.day === '2026-11-01')
   expect(saved).toMatchObject({ gave: ['Musik'], weekFocus: 'Mehr Schlaf' })
 })

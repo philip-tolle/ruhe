@@ -1,13 +1,20 @@
 <script lang="ts">
   import type { EveningEntry, MorningEntry } from '../../lib/stats/schema'
+  import { stats } from '../../lib/stats/store.svelte'
 
   // Die Zeilen von „Dein Abend“ (Spec M11 §2.1): auf der Karte auf „Heute“ und im Abschluss des Ablaufs. Jede Zeile
   // erscheint nur, wenn sie etwas zu sagen hat; ohne jede Angabe steht „Logbuch erledigt.“. Der Big Domino kommt aus dem
-  // Morgen-Eintrag desselben Logbuch-Tages, so zeigt die Zeile immer den aktuellen Stand des Hakens.
+  // Morgen-Eintrag desselben Logbuch-Tages, so zeigt die Zeile immer den aktuellen Stand des Hakens. Die Wahl des Sonntags
+  // heißt „Für die neue Woche: …“ (Spec M12 §2.6), mit einem Wort oder dem Leitsatz eines Prinzips; das Prinzip wird über
+  // die Sammlung aufgelöst (Kennung und Art), so folgt die Zeile dem Umbenennen, und ein gelöschtes zeigt keine Zeile.
   let { entry, morning }: { entry: EveningEntry; morning: MorningEntry | null } = $props()
 
   const domino = $derived(morning?.domino ?? null)
-  const empty = $derived(!entry.gave && !entry.cost && !domino && !entry.learned && !entry.better && !entry.weekFocus)
+  const principle = $derived(
+    entry.weekPrinciple ? (stats.data.collection ?? []).find((item) => item.id === entry.weekPrinciple && item.kind === 'prinzip') : undefined,
+  )
+  const anchor = $derived(principle?.text ?? entry.weekFocus ?? null)
+  const empty = $derived(!entry.gave && !entry.cost && !domino && !entry.learned && !entry.better && !anchor)
 </script>
 
 <div class="summary-lines">
@@ -36,8 +43,8 @@
   {#if entry.better}
     <p class="line">Morgen 1 % besser: {entry.better}</p>
   {/if}
-  {#if entry.weekFocus}
-    <p class="line">Wochenfokus: {entry.weekFocus}</p>
+  {#if anchor}
+    <p class="line">Für die neue Woche: {anchor}</p>
   {/if}
   {#if empty}
     <p class="line">Logbuch erledigt.</p>

@@ -56,6 +56,41 @@ async function resume(page: Page, now: Date) {
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
 }
 
+const flow = (page: Page) => page.getByRole('dialog', { name: 'Abend-Logbuch', exact: true })
+const title = (page: Page, name: string) => flow(page).getByRole('heading', { level: 2, name, exact: true })
+
+async function skipTo(page: Page, until: string) {
+  for (let i = 0; i < 8 && (await title(page, until).count()) === 0; i++) await flow(page).getByRole('button', { name: 'Überspringen', exact: true }).click()
+  await expect(title(page, until)).toBeFocused()
+}
+
+/** Auf „Heute“: „Kurz · 5 Min“ der Karte „Morgen-Start“, dann „Überspringen“ bis zur Intention. */
+async function toIntention(page: Page) {
+  const morning = page.getByRole('dialog', { name: 'Morgen-Start', exact: true })
+  const startCard = page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Morgen-Start', exact: true }) })
+  await startCard.getByRole('button', { name: 'Kurz · 5 Min', exact: true }).click()
+  const intention = morning.getByRole('heading', { level: 2, name: 'Wie willst du heute sein?', exact: true })
+  for (let i = 0; i < 4 && (await intention.count()) === 0; i++) await morning.getByRole('button', { name: 'Überspringen', exact: true }).click()
+  await expect(intention).toBeVisible()
+  return morning
+}
+
+/** Öffnet die Zeile, tippt „Löschen“, liest den Satz der Rückfrage, tippt „Behalten“ und schließt den Editor mit Escape. */
+async function confirmText(page: Page, text: string): Promise<string> {
+  await settle(page)
+  await row(page, text).click()
+  await settle(page)
+  await editor(page).getByRole('button', { name: 'Löschen', exact: true }).click()
+  const confirm = page.getByRole('alertdialog')
+  const sentence = (await confirm.locator('p').textContent())!.trim()
+  await confirm.getByRole('button', { name: 'Behalten', exact: true }).click()
+  await expect(confirm).toHaveCount(0)
+  await settle(page)
+  await page.keyboard.press('Escape')
+  await expect(editor(page)).toHaveCount(0)
+  return sentence
+}
+
 async function openCollection(page: Page) {
   await settle(page)
   await openButton(page).click()
@@ -356,3 +391,103 @@ test('3 Notizen einfügen: Vorschau, Zurück, Übernehmen, Statuszeile, Erkenntn
   expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain('Mehrweg statt Einweg im Büro')
 })
 
+
+// ── Prinzip der Woche ───────────────────────────────────────────────────────────────────────────────────────────
+
+test('4 Sonntag: Prinzip der Woche wählen, Abschluss, alter Anker bis Mitternacht, ab Montag der neue', async ({ page }) => {
+  await open(page, at('20:00:00', '2026-11-01'), { collection: [D, P, F], evenings: [{ day: '2026-10-25', at: '2026-10-25T19:00:00.000Z', weekPrinciple: D.id }] })
+  const next = flow(page).getByRole('button', { name: 'Weiter', exact: true })
+
+  // 1. Bis „1 % besser“, ein Satz
+  const startCard = page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Tag abschließen', exact: true }) })
+  await startCard.getByRole('button', { name: 'Starten', exact: true }).click()
+  await expect(flow(page)).toBeVisible()
+  await skipTo(page, 'Was machst du morgen 1 % besser?')
+  await flow(page).getByRole('textbox', { name: 'Was machst du morgen 1 % besser?', exact: true }).fill('Morgen zehn Minuten Schachaufgaben lösen.')
+  await next.click()
+
+  // 2. Die Wochenseite: „Deine Prinzipien“ zuerst, der Vorschlag „Dranbleiben“ steht nur als Prinzip da.
+  await expect(title(page, 'Deine Woche')).toBeFocused()
+  const groupNames = await flow(page)
+    .locator('[role="radiogroup"]')
+    .evaluateAll((groups) => groups.map((g) => g.getAttribute('aria-label') ?? document.getElementById(g.getAttribute('aria-labelledby') ?? '')?.textContent?.trim() ?? ''))
+  expect(groupNames).toEqual(['Deine Prinzipien', 'Vorschläge'])
+  await expect(flow(page).getByRole('radiogroup', { name: 'Deine Prinzipien', exact: true }).getByRole('radio')).toHaveText(['Dranbleiben', 'Mehrweg statt Einweg'])
+  await expect(flow(page).getByRole('radio', { name: 'Dranbleiben', exact: true })).toHaveCount(1)
+
+  // 3. Das Prinzip wählen und abschließen
+  await flow(page).getByRole('radio', { name: 'Mehrweg statt Einweg', exact: true }).click()
+  await next.click()
+  await expect(flow(page)).toContainText('Für die neue Woche: Mehrweg statt Einweg')
+  const saved = (await stored(page)).evenings.find((e: { day: string }) => e.day === '2026-11-01')
+  expect(saved).toMatchObject({ better: 'Morgen zehn Minuten Schachaufgaben lösen.', weekPrinciple: P.id })
+  expect(saved).not.toHaveProperty('weekFocus')
+  await flow(page).getByRole('button', { name: 'Fertig', exact: true }).click()
+  await expect(flow(page)).toHaveCount(0)
+
+  // 4. Sonntagabend: der alte Anker gilt noch; die Rückfrage kennt beide Prinzipien.
+  await resume(page, at('21:00:00', '2026-11-01'))
+  await expect(weekCard(page)).toContainText('Prinzip der Woche: Dranbleiben')
+  await openCollection(page)
+  expect(await confirmText(page, P.text)).toBe('„Mehrweg statt Einweg“ verschwindet aus deiner Sammlung. Es ist dein Prinzip für die neue Woche. Ab Montag steht dann keines da.')
+  expect(await confirmText(page, D.text)).toBe('„Dranbleiben“ verschwindet aus deiner Sammlung. Es ist gerade dein Prinzip der Woche.')
+  await settle(page)
+  await page.keyboard.press('Escape')
+  await expect(collection(page)).toHaveCount(0)
+
+  // 5. Ab Mitternacht gilt das neue Prinzip überall.
+  await resume(page, at('00:30:00', '2026-11-02'))
+  await nav(page).getByRole('button', { name: 'Heute' }).click()
+  const eveningCard = page.locator('.card').filter({ has: page.getByRole('heading', { level: 2, name: 'Dein Abend', exact: true }) })
+  await expect(eveningCard).toContainText('Für die neue Woche: Mehrweg statt Einweg')
+  await nav(page).getByRole('button', { name: 'Energie' }).click()
+  await expect(weekCard(page)).toContainText('Prinzip der Woche: Mehrweg statt Einweg')
+})
+
+test('5 Montag: Prinzip der Woche im Morgen-Kasten und in „Deine Woche“; umbenennen, löschen', async ({ page }) => {
+  await open(page, at('07:00:00', '2026-11-02'), { collection: [P, F], evenings: [{ day: '2026-11-01', at: '2026-11-01T19:00:00.000Z', weekPrinciple: P.id }] }, 'Heute')
+  const RENAMED = 'Mehrweg statt Einweg im Alltag'
+
+  // 1. Der Morgen-Kasten: Leitsatz und Wenn-dann, ohne Erklärung
+  const morning = await toIntention(page)
+  const box = morning.getByRole('region', { name: 'Von gestern Abend', exact: true })
+  for (const text of ['Prinzip der Woche', P.text, P.ifThen]) await expect(box).toContainText(text)
+  await expect(box).not.toContainText(P.note)
+  await morning.getByRole('button', { name: 'Morgen-Start beenden', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Beenden', exact: true }).click()
+  await expect(morning).toHaveCount(0)
+
+  // 2. „Deine Woche“
+  await nav(page).getByRole('button', { name: 'Energie' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Energie')
+  await expect(weekCard(page)).toContainText('Prinzip der Woche: Mehrweg statt Einweg')
+  await expect(weekCard(page)).toContainText(P.ifThen)
+
+  // 3. Umbenennen folgt sofort
+  await openCollection(page)
+  await row(page, P.text).click()
+  await editor(page).getByRole('textbox', { name: 'Leitsatz', exact: true }).fill(RENAMED)
+  await settle(page)
+  await editor(page).getByRole('button', { name: 'Speichern', exact: true }).click()
+  await expect(editor(page)).toHaveCount(0)
+  await settle(page)
+  await page.keyboard.press('Escape')
+  await expect(collection(page)).toHaveCount(0)
+  await expect(weekCard(page)).toContainText(`Prinzip der Woche: ${RENAMED}`)
+
+  // 4. Löschen: die Rückfrage nennt die Folge, danach steht kein Anker da.
+  await openCollection(page)
+  await row(page, RENAMED).click()
+  await settle(page)
+  await editor(page).getByRole('button', { name: 'Löschen', exact: true }).click()
+  const confirm = page.getByRole('alertdialog', { name: 'Prinzip löschen?', exact: true })
+  await expect(confirm).toContainText(`„${RENAMED}“ verschwindet aus deiner Sammlung. Es ist gerade dein Prinzip der Woche. Bis du sonntags ein neues wählst, steht keines da.`)
+  await settle(page)
+  await confirm.getByRole('button', { name: 'Löschen', exact: true }).click()
+  await expect(editor(page)).toHaveCount(0)
+  await settle(page)
+  await page.keyboard.press('Escape')
+  await expect(collection(page)).toHaveCount(0)
+  await expect(weekCard(page)).not.toContainText('Prinzip der Woche:')
+  await expect(weekCard(page)).not.toContainText('Wochenfokus:')
+})
