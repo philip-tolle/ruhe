@@ -5,14 +5,16 @@
 
   // `kicker`: Der Titel ist eine kleine Überschrift in Versalien über dem eigentlichen Titel im Inhalt (die Hack-Karte:
   // „Brain Hack“ über dem Namen des Hacks). Er bleibt der Name des Dialogs; nur die Schrift ist leiser.
-  let { title, kicker = false, onClose, children }: { title: string; kicker?: boolean; onClose: () => void; children: Snippet } = $props()
+  // `rearm`: Wechselt das Blatt seine Ansicht (die Sammlung zeigt Liste, Editor und Rückfrage im selben Blatt), beginnt die
+  // Sperre gegen das Tippen daneben mit jedem neuen Wert von vorn. Ohne `rearm` gilt sie nur nach dem Öffnen.
+  let { title, kicker = false, rearm, onClose, children }: { title: string; kicker?: boolean; rearm?: () => unknown; onClose: () => void; children: Snippet } = $props()
 
   const headingId = $props.id()
   // Ein Doppeltipp auf den Knopf, der ein Blatt öffnet, träfe mit dem zweiten Tipp die Fläche daneben, wenn der Knopf über
   // dem Blatt liegt (die Karte „Dein Akku“ auf „Heute“ bei hohem Bildschirm): Das Blatt ginge sofort wieder zu. Das Tippen
   // daneben nimmt deshalb erst nach kurzer Zeit an (siehe `tapArming`). Nur dieser Knopf: Escape und die Zurück-Geste
   // rufen `onClose` ohne Sperre.
-  const arming = tapArming()
+  const arming = tapArming(() => rearm?.())
   let heading = $state<HTMLElement>()
 
   // Das Sheet ist eine Ebene: Die Zurück-Geste ruft onClose; beim Entfernen gibt die zurückgegebene
