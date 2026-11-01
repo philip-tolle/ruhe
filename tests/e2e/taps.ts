@@ -68,3 +68,18 @@ async function alignHeight(page: Page, button: Locator, under: Locator): Promise
   const wanted = Math.round(height - 100 + ((await centerY(under)) - smaller) / slope)
   await page.setViewportSize({ width, height: wanted })
 }
+
+// Wie `putOver` für eine Rückfrage über einem Blatt von unten: Beide wandern mit der Höhe, und die Knöpfe am Fuß der Rückfrage
+// erreichen die am Fuß des Blatts erst, wenn die Rückfrage den Bildschirm fast füllt. Stellt die Höhe auf die der Rückfrage
+// plus 40 px, holt `under` im Blatt ins Bild und prüft, dass die Mitte jedes der beiden Knöpfe im anderen liegt; dann trifft
+// `doubleTap(page, …, 0.5)` auf den einen mit dem zweiten Tipp den anderen.
+export async function alignOverSheet(page: Page, dialog: Locator, button: Locator, under: Locator): Promise<void> {
+  const { width } = page.viewportSize()!
+  await page.setViewportSize({ width, height: Math.ceil((await dialog.boundingBox())!.height) + 40 })
+  await under.scrollIntoViewIfNeeded()
+  const [b, u] = [(await button.boundingBox())!, (await under.boundingBox())!]
+  for (const [inner, outer] of [[b, u], [u, b]]) {
+    const [x, y] = [inner.x + inner.width / 2, inner.y + inner.height / 2]
+    expect(x >= outer.x && x <= outer.x + outer.width && y >= outer.y && y <= outer.y + outer.height, 'die Knöpfe überdecken sich').toBe(true)
+  }
+}
