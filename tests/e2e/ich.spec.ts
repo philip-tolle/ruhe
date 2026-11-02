@@ -677,7 +677,7 @@ test('import merges new sessions, skips known ones and takes over the settings',
   // Der Hinweis sagt vorher, dass die Einstellungen aus der Datei kommen.
   await expect(
     page.getByText(
-      'Sichere deine Sitzungen, Energie-Einträge und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen dazu, die Einstellungen werden aus der Datei übernommen.',
+      'Sichere deine Sitzungen, Energie-Einträge, Prinzipien und Einstellungen in einer Datei. Beim Importieren kommen neue Sitzungen dazu, die Einstellungen werden aus der Datei übernommen.',
     ),
   ).toBeVisible()
   const status = backupStatus(page)

@@ -12,16 +12,19 @@
     whatWorks,
     WHAT_WORKS_HINT,
   } from '../../lib/energy/insights'
-  import { logbookDay, morningReminder, weekReview } from '../../lib/evening/logic'
+  import { logbookDay, weekReview } from '../../lib/evening/logic'
   import { morningCount, morningCountLine } from '../../lib/morning/logic'
+  import { growthLine, growthWeek, weekAnchor } from '../../lib/principles/logic'
   import WeekSummary from '../evening/WeekSummary.svelte'
   import { stats } from '../../lib/stats/store.svelte'
   import { appNow } from '../../lib/ui/tageszeit.svelte'
 
   // „Deine Woche“ (Spec M9 §3.2 Punkt 6, §6.3–§6.6): das Raster der letzten 7 Tage mit den vier Bereichen, darunter die
   // Muster-Sätze (oder der Hinweis, wann sie kommen), die Fokus-Zeile, die Zeile zum Morgen-Start (Spec M10 §2.2), den
-  // Wochenrückblick des Abend-Logbuchs (Spec M11 §2.2) und „Was bei dir wirkt“. „Jetzt“ ist die Zeit der App (`appNow`):
-  // neu bei jeder Änderung der Daten, mit jeder vollen Minute und bei der Rückkehr in die App.
+  // Wochenrückblick des Abend-Logbuchs (Spec M11 §2.2), direkt dahinter den Anker der Woche (Spec M12 §2.8: Prinzip mit
+  // Wenn-dann oder Wort, auch ohne Wochenrückblick), die Wachstumsfelder (Spec M12 §2.8: Vorsätze der letzten 7 Tage, kein
+  // Fortschritt) und „Was bei dir wirkt“. „Jetzt“ ist die Zeit der App (`appNow`): neu bei
+  // jeder Änderung der Daten, mit jeder vollen Minute und bei der Rückkehr in die App.
   const id = $props.id()
 
   const view = $derived.by(() => {
@@ -35,7 +38,8 @@
       focus: focusLine(stats.data.focusSprints ?? [], now),
       morning: morningCount(stats.data.mornings ?? [], now),
       review: weekReview(stats.data.evenings ?? [], stats.data.mornings ?? [], logbookDay(now)),
-      focusWord: morningReminder(stats.data.evenings ?? [], now).weekFocus,
+      anchor: weekAnchor(stats.data.evenings ?? [], stats.data.collection ?? [], now),
+      growth: growthWeek(stats.data.collection ?? [], stats.data.evenings ?? [], logbookDay(now)),
       works: whatWorks(stats.data.hackRuns ?? []),
     }
   })
@@ -92,9 +96,43 @@
     <div class="review">
       <h3>Wochenrückblick</h3>
       <WeekSummary review={view.review} level={4} />
-      {#if view.focusWord}
-        <p class="focus-word">Wochenfokus: {view.focusWord}</p>
+    </div>
+  {/if}
+
+  <!-- Spec M12 §2.8: der Anker der Woche direkt hinter dem Wochenrückblick, auch an Tagen ohne Logbuch in den 7 Tagen. -->
+  {#if view.anchor?.kind === 'prinzip'}
+    <div class="anchor">
+      <p class="focus-word">Prinzip der Woche: {view.anchor.item.text}</p>
+      {#if view.anchor.item.ifThen}
+        <p class="focus-note">{view.anchor.item.ifThen}</p>
       {/if}
+    </div>
+  {:else if view.anchor?.kind === 'wort'}
+    <div class="anchor">
+      <p class="focus-word">Wochenfokus: {view.anchor.text}</p>
+    </div>
+  {/if}
+
+  <!-- Spec M12 §2.8: je Feld der Name; bei mindestens einem Vorsatz Zählung und jüngster Satz, sonst nur der nächste Schritt.
+       Keine Zeile mit 0, keine Balken, Prozente oder Rangfolge. -->
+  {#if view.growth.length > 0}
+    <div class="growth">
+      <h3>Wachstumsfelder</h3>
+      <ul role="list">
+        {#each view.growth as row (row.item.id)}
+          <li>
+            <p class="growth-name">{row.item.text}</p>
+            {#if row.count >= 1}
+              <p class="growth-count">{growthLine(row.count)}</p>
+              {#if row.last}
+                <p class="growth-detail">Zuletzt: {row.last}</p>
+              {/if}
+            {:else if row.item.step}
+              <p class="growth-detail">Nächster kleiner Schritt: {row.item.step}</p>
+            {/if}
+          </li>
+        {/each}
+      </ul>
     </div>
   {/if}
 
@@ -178,6 +216,7 @@
   }
 
   .review,
+  .growth,
   .works {
     display: flex;
     flex-direction: column;
@@ -185,7 +224,56 @@
     width: 100%;
   }
 
+  .anchor {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+  }
+
   .focus-word {
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .growth ul {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .growth li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .growth-name {
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .growth-count,
+  .growth-detail {
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .growth-detail {
+    color: var(--text-muted);
+  }
+
+  /* Das Wenn-dann leise unter dem Leitsatz, gedämpft wie der Hinweis. */
+  .focus-note {
+    color: var(--text-muted);
     font-size: 0.9375rem;
     line-height: 1.4;
     overflow-wrap: anywhere;

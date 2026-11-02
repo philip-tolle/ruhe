@@ -202,3 +202,19 @@ test('without a logbook there is no box', () => {
   show()
   expect(box()).toBeNull()
 })
+
+// Spec M12 §2.7: das Prinzip der Woche im Kasten, mit Wenn-dann und ohne Erklärung.
+test('der Kasten zeigt das Prinzip der Woche mit Leitsatz und Wenn-dann, ohne Erklärung; ein gelöschtes zeigt keinen Kasten', () => {
+  const P = { id: 's-0000000a', kind: 'prinzip' as const, text: 'Mehrweg statt Einweg', note: 'Dann fällt weniger Müll an.', ifThen: 'Wenn ich einkaufen gehe, dann nehme ich eine Stofftasche mit.' }
+  const evenings = [{ day: '2026-11-01', at: '2026-11-01T20:00:00.000Z', weekPrinciple: P.id }]
+  setClock(new Date(2026, 10, 2, 7, 0))
+  stats.data = { ...emptyData(), collection: [P], evenings }
+  show()
+  for (const text of ['Prinzip der Woche', P.text, P.ifThen]) expect(box()?.textContent).toContain(text)
+  expect(box()?.textContent).not.toContain(P.note)
+  void unmount(instance!)
+  target!.remove()
+  stats.data = { ...emptyData(), evenings }
+  show()
+  expect(box()).toBeNull()
+})

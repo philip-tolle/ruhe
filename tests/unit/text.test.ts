@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest'
-import { softBreaks } from '../../src/lib/text'
+import { clipChars, clipText, softBreaks } from '../../src/lib/text'
+import * as schema from '../../src/lib/stats/schema'
 
 const shy = '\u00ad'
 const BREAKS = { Meeresrauschen: `Meeres${shy}rauschen`, Kohärentes: `Kohä${shy}rentes` }
@@ -25,4 +26,12 @@ test('only whole words match, never a part of a longer word', () => {
 
 test('names inherited from Object are not words of the list', () => {
   expect(softBreaks('constructor toString', BREAKS)).toBe('constructor toString')
+})
+
+// Spec M12 §5: clipChars und clipText ziehen nach text.ts um, schema.ts reicht sie weiter.
+test('clipChars und clipText wohnen in text.ts; schema.ts reicht dieselben Funktionen weiter', () => {
+  expect(schema.clipChars).toBe(clipChars)
+  expect(schema.clipText).toBe(clipText)
+  expect(clipText('  Mehrweg statt Einweg  ', 7)).toBe('Mehrweg')
+  expect(clipChars('😀😀', 1)).toBe('😀')
 })

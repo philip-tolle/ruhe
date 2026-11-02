@@ -1,5 +1,5 @@
-// Der Zustand des Abend-Logbuchs (Spec M11 §2.3, §4.2): offen, Logbuch-Tag, Sonntag, Schritte, aktueller Schritt, Entwurf
-// der Eingaben und der gespeicherte Eintrag des Abschlusses. Logbuch-Tag, Sonntag und Rückblick werden beim Öffnen
+// Der Zustand des Abend-Logbuchs (Spec M11 §2.3, §4.2; M12 §4.2): offen, Logbuch-Tag, Sonntag, Schritte, aktueller Schritt,
+// Entwurf der Eingaben (mit Prinzip der Woche und Wachstumsfeld) und der gespeicherte Eintrag des Abschlusses. Logbuch-Tag, Sonntag und Rückblick werden beim Öffnen
 // festgelegt und gelten bis zum Schließen, auch wenn die Uhr währenddessen über Mitternacht oder 4:00 geht. Der Ablauf
 // startet keinen Player; der Check-in und der Haken am Big Domino speichern sich in ihren Schritten selbst.
 import { CHIME_EVENING, playChime } from '../audio/chime'
@@ -17,6 +17,10 @@ export interface EveningDraft {
   learned: string
   better: string
   weekFocus: string
+  /** Kennung des gewählten Prinzips der Woche (nur sonntags); schließt `weekFocus` aus. */
+  weekPrinciple: string | null
+  /** Kennung des Wachstumsfelds, dem der 1-%-Satz zugeordnet ist. */
+  growthField: string | null
 }
 
 export interface EveningState {
@@ -34,7 +38,7 @@ export interface EveningState {
   confirming: boolean
 }
 
-const emptyDraft = (): EveningDraft => ({ gave: [], cost: [], intentionScore: null, learned: '', better: '', weekFocus: '' })
+const emptyDraft = (): EveningDraft => ({ gave: [], cost: [], intentionScore: null, learned: '', better: '', weekFocus: '', weekPrinciple: null, growthField: null })
 
 export const eveningUi: EveningState = $state({
   open: false,
@@ -62,11 +66,26 @@ export function openEvening(): void {
   eveningUi.confirming = false
 }
 
-/** Der Entwurf als Eingang des Speicherns; den Wochenfokus gibt es nur sonntags. */
+/**
+ * Der Entwurf als Eingang des Speicherns; Wochenfokus und Prinzip der Woche gibt es nur sonntags (Sonntag des Logbuch-Tags,
+ * beim Öffnen festgelegt). Ob es das Prinzip noch gibt, prüft `withEvening`.
+ */
 function inputFromDraft(): EveningInput {
   const { day, sunday, draft } = eveningUi
-  const input: EveningInput = { day, gave: [...draft.gave], cost: [...draft.cost], intentionScore: draft.intentionScore, learned: draft.learned, better: draft.better }
-  if (sunday) input.weekFocus = draft.weekFocus
+  // Das Wachstumsfeld geht immer mit; ohne Satz oder ohne Feld in der Sammlung verwirft es `withEvening` (Spec M12 §4.4).
+  const input: EveningInput = {
+    day,
+    gave: [...draft.gave],
+    cost: [...draft.cost],
+    intentionScore: draft.intentionScore,
+    learned: draft.learned,
+    better: draft.better,
+    growthField: draft.growthField,
+  }
+  if (sunday) {
+    input.weekFocus = draft.weekFocus
+    input.weekPrinciple = draft.weekPrinciple
+  }
   return input
 }
 
@@ -108,9 +127,11 @@ export function skipEveningStep(): void {
       break
     case 'besser':
       draft.better = ''
+      draft.growthField = null
       break
     case 'woche':
       draft.weekFocus = ''
+      draft.weekPrinciple = null
       break
   }
   nextEveningStep()

@@ -6,6 +6,7 @@
   import { freshCheckin, weakestArea } from '../../lib/energy/insights'
   import { intentionSentence, ownWords, suggestions } from '../../lib/morning/logic'
   import { INTENTION_MAX } from '../../lib/morning/words'
+  import { weekAnchor } from '../../lib/principles/logic'
   import { stats } from '../../lib/stats/store.svelte'
   import { tapArming } from '../../lib/ui/arming.svelte'
   import { morningUi, nextStep } from '../../lib/ui/morning-ui.svelte'
@@ -26,9 +27,10 @@
   })
   const words = suggestions(area)
 
-  // Der Kasten aus dem Abend-Logbuch (Spec M11 §2.4): der 1-%-Satz von gestern und der Wochenfokus, ebenfalls beim
-  // Einblenden festgehalten. Ohne beides entfällt er.
+  // Der Kasten aus dem Abend-Logbuch (Spec M11 §2.4, M12 §2.7): der 1-%-Satz von gestern und der Anker der Woche, ein Prinzip
+  // mit Leitsatz und Wenn-dann (ohne Erklärung) oder ein Wort, ebenfalls beim Einblenden festgehalten. Ohne beides entfällt er.
   const reminder = untrack(() => morningReminder(stats.data.evenings ?? [], appNow()))
+  const anchor = untrack(() => weekAnchor(stats.data.evenings ?? [], stats.data.collection ?? [], appNow()))
   const own = $derived(ownWords(stats.data.mornings ?? []))
 
   const word = $derived(morningUi.draft.intention.trim())
@@ -42,7 +44,7 @@
 
 <div class="step">
   <div class="content">
-    {#if reminder.better || reminder.weekFocus}
+    {#if reminder.better || anchor}
       <section class="reminder" aria-label="Von gestern Abend">
         {#if reminder.better}
           <div class="reminder-row">
@@ -50,10 +52,18 @@
             <p class="reminder-text">{reminder.better}</p>
           </div>
         {/if}
-        {#if reminder.weekFocus}
+        {#if anchor?.kind === 'prinzip'}
+          <div class="reminder-row">
+            <p class="reminder-label">Prinzip der Woche</p>
+            <p class="reminder-text accent">{anchor.item.text}</p>
+            {#if anchor.item.ifThen}
+              <p class="reminder-note">{anchor.item.ifThen}</p>
+            {/if}
+          </div>
+        {:else if anchor?.kind === 'wort'}
           <div class="reminder-row">
             <p class="reminder-label">Wochenfokus</p>
-            <p class="reminder-text accent">{reminder.weekFocus}</p>
+            <p class="reminder-text accent">{anchor.text}</p>
           </div>
         {/if}
       </section>
@@ -125,5 +135,14 @@
 
   .reminder-text.accent {
     color: var(--accent);
+  }
+
+  /* Das Wenn-dann unter dem Leitsatz: normal und etwas kleiner. */
+  .reminder-note {
+    margin-top: 2px;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
   }
 </style>

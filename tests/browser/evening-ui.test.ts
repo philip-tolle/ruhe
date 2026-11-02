@@ -47,7 +47,7 @@ test('Werktag ohne Morgen-Eintrag: fünf Schritte, erster ist der Check-in, leer
   expect(eveningUi.sunday).toBe(false)
   expect(eveningUi.steps).toEqual(['checkin', 'geber', 'raeuber', 'gelernt', 'besser'])
   expect(eveningUi.step).toBe('checkin')
-  expect(eveningUi.draft).toEqual({ gave: [], cost: [], intentionScore: null, learned: '', better: '', weekFocus: '' })
+  expect(eveningUi.draft).toEqual({ gave: [], cost: [], intentionScore: null, learned: '', better: '', weekFocus: '', weekPrinciple: null, growthField: null })
   expect(eveningUi.entry).toBeNull()
 })
 
@@ -136,4 +136,63 @@ test('draftEntry: der Entwurf als Eintrag des Logbuch-Tages', () => {
   openEvening()
   Object.assign(eveningUi.draft, { gave: ['Musik'], learned: 'Heute' })
   expect(draftEntry()).toMatchObject({ day: '2026-10-29', gave: ['Musik'], learned: 'Heute' })
+})
+
+// Spec M12 §2.6, §4.2: das Prinzip der Woche im Entwurf und im gespeicherten Eintrag.
+const PRINZIP = { id: 's-0000000a', kind: 'prinzip' as const, text: 'Mehrweg statt Einweg' }
+
+test('sonntags wird weekPrinciple statt weekFocus gespeichert, werktags nicht', () => {
+  setClock(new Date(2026, 10, 1, 21, 0))
+  stats.data = { ...emptyData(), collection: [PRINZIP] }
+  openEvening()
+  eveningUi.draft.weekPrinciple = PRINZIP.id
+  walkToEnd()
+  expect(stats.data.evenings![0]).toEqual({ day: '2026-11-01', at: expect.any(String), weekPrinciple: PRINZIP.id })
+  setClock(new Date(2026, 9, 29, 20, 0))
+  openEvening()
+  eveningUi.draft.weekPrinciple = PRINZIP.id
+  walkToEnd()
+  expect(stats.data.evenings!.find((e) => e.day === '2026-10-29')).not.toHaveProperty('weekPrinciple')
+})
+
+test('Überspringen auf der Wochenseite leert Wort und Prinzip', () => {
+  setClock(new Date(2026, 10, 1, 21, 0))
+  stats.data = { ...emptyData(), collection: [PRINZIP] }
+  openEvening()
+  Object.assign(eveningUi.draft, { weekFocus: 'Dranbleiben', weekPrinciple: PRINZIP.id })
+  while (eveningUi.step !== 'woche') nextEveningStep()
+  skipEveningStep()
+  expect(eveningUi.draft).toMatchObject({ weekFocus: '', weekPrinciple: null })
+  expect(stats.data.evenings![0]).toEqual({ day: '2026-11-01', at: expect.any(String) })
+})
+
+test('ein Sonntags-Logbuch, das nach Mitternacht endet, behält das Prinzip (Review Focus 3)', () => {
+  setClock(new Date(2026, 10, 1, 23, 50))
+  stats.data = { ...emptyData(), collection: [PRINZIP] }
+  openEvening()
+  eveningUi.draft.weekPrinciple = PRINZIP.id
+  setClock(new Date(2026, 10, 2, 0, 35))
+  walkToEnd()
+  expect(stats.data.evenings![0]).toMatchObject({ day: '2026-11-01', weekPrinciple: PRINZIP.id })
+})
+
+// Spec M12 §2.6, §4.4: das Wachstumsfeld am 1-%-Satz.
+test('1 % besser: ein Satz mit Feld speichert growthField; Überspringen leert Satz und Feld; ein Feld ohne Satz wird nicht gespeichert', () => {
+  const FELD = { id: 's-0000000b', kind: 'feld' as const, text: 'Schach lernen' }
+  setClock(new Date(2026, 9, 29, 20, 0))
+  stats.data = { ...emptyData(), collection: [FELD] }
+  openEvening()
+  Object.assign(eveningUi.draft, { better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: FELD.id })
+  walkToEnd()
+  expect(stats.data.evenings![0]).toMatchObject({ better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: FELD.id })
+  openEvening()
+  Object.assign(eveningUi.draft, { better: 'Morgen eine Eröffnung üben.', growthField: FELD.id })
+  while (eveningUi.step !== 'besser') nextEveningStep()
+  skipEveningStep()
+  expect(eveningUi.draft).toMatchObject({ better: '', growthField: null })
+  expect(stats.data.evenings![0]).not.toHaveProperty('growthField')
+  openEvening()
+  eveningUi.draft.growthField = FELD.id
+  walkToEnd()
+  expect(stats.data.evenings![0]).not.toHaveProperty('growthField')
 })

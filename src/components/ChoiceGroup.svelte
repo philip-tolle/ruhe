@@ -14,7 +14,8 @@
 
   const selected = $derived(options.findIndex((option) => option.value === value))
 
-  // Pfeiltasten wählen wie bei einer Radiogruppe und bewegen den Fokus mit.
+  // Pfeiltasten wählen wie bei einer Radiogruppe und bewegen den Fokus mit. Zeigt die Taste auf die gewählte Option, bewegt
+  // sie nur den Fokus (wie `WordPicker`).
   function onKeydown(event: KeyboardEvent & { currentTarget: HTMLElement }, index: number) {
     const last = options.length - 1
     let next: number
@@ -37,7 +38,7 @@
         return
     }
     event.preventDefault()
-    onSelect(options[next].value)
+    if (options[next].value !== value) onSelect(options[next].value)
     event.currentTarget.parentElement!.querySelectorAll<HTMLElement>('[role="radio"]')[next].focus()
   }
 </script>
@@ -68,17 +69,21 @@
     gap: 10px;
   }
 
-  /* Deckende Fläche, leicht im Akzent getönt: Sonne oder Mond scheinen beim Scrollen nicht durch. */
+  /* Deckende Fläche, leicht im Akzent getönt: Sonne oder Mond scheinen beim Scrollen nicht durch. Ein langes Wort ohne
+     Leerzeichen (ein Wachstumsfeld) bricht im Chip um, statt ihn über den Rand zu schieben; ein einzeiliger Chip bleibt
+     auch bei großer Schrift 48 px hoch. */
   button {
     flex: var(--choice-flex, 1 1 auto);
     min-width: var(--choice-min, 5.5rem);
     min-height: 48px;
-    padding: 0 var(--choice-padding, 16px);
+    padding: 8px var(--choice-padding, 16px);
     border: 1px solid var(--surface-border);
     border-radius: 999px;
     background: color-mix(in srgb, var(--accent) 8%, var(--sky-mid));
     color: var(--text);
     font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
   }
 
   /* Ohne color-mix() bliebe der Chip durchsichtig: dann der Himmel der Stimmung, deckend. */

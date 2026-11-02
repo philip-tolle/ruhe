@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { backupFileName, serializeBackup, mergeBackup } from '../../src/lib/stats/backup'
-import { emptyData, type AppData } from '../../src/lib/stats/schema'
+import { emptyData, parseData, type AppData } from '../../src/lib/stats/schema'
 const sess = (id: string, start: string) => ({ id, start, kind: 'timer' as const, ref: 'timer', seconds: 600 })
 const INVALID = { error: 'Diese Datei ist kein gültiges Ruhe-Backup.' }
 
@@ -287,4 +287,44 @@ test('Logbuch im Backup: ein altes Backup ohne evenings lässt die des Geräts u
   const r = merge(mine, serializeBackup(mornings()))
   expect(r.data.evenings).toEqual(mine.evenings)
   expect(r.addedEnergy).toBe(2) // nur die beiden Morgen-Einträge
+})
+
+// Spec M12 §4.11: Sammlung und neue Logbuch-Felder im Backup.
+const P = { id: 's-0000000a', kind: 'prinzip', text: 'Mehrweg statt Einweg', note: 'Dann fällt weniger Müll an.', ifThen: 'Wenn ich einkaufen gehe, dann nehme ich eine Stofftasche mit.' } as const
+const F = { id: 's-0000000b', kind: 'feld', text: 'Schach lernen', step: 'Jeden Abend eine Eröffnung nachspielen.' } as const
+const E = { id: 's-0000000c', kind: 'erkenntnis', text: 'Wer im Schach früh die Mitte besetzt, hat mehr Möglichkeiten.', source: 'Ein Schachkurs' } as const
+const hex = (n: number) => `s-${n.toString(16).padStart(8, '0')}`
+const merged = (mine: AppData, theirs: object) => { const r = mergeBackup(mine, JSON.stringify(theirs)); if ('error' in r) throw new Error(r.error); return r }
+test('Sammlung im Backup: Export enthält collection, ohne Einträge fehlt das Feld', () => {
+  expect(JSON.parse(serializeBackup({ ...emptyData(), collection: [P] })).collection).toEqual([P])
+  expect(JSON.parse(serializeBackup(emptyData()))).not.toHaveProperty('collection')
+})
+test('Sammlung im Backup: Gerät bleibt, Datei in ihrer Reihenfolge hinten, das Gerät gewinnt; gleicher Text nur bei Erkenntnissen übersprungen; nichts zählt', () => {
+  const mine: AppData = { ...emptyData(), collection: [{ ...P, text: 'Mehrweg statt Einweg im Alltag' }, E] }
+  const file = { ...JSON.parse(serializeBackup(emptyData())), collection: [{ ...E, id: hex(7), text: 'wer im Schach früh die Mitte besetzt,  hat mehr Möglichkeiten.' }, F, P, { ...P, id: hex(8) }] }
+  const r = merged(mine, file)
+  expect(r.data.collection!.map((i) => i.id)).toEqual([P.id, E.id, F.id, hex(8)])
+  expect(r.data.collection![0].text).toBe('Mehrweg statt Einweg im Alltag')
+  expect(Object.keys(r)).toEqual(['data', 'added', 'addedEnergy'])
+  expect([r.added, r.addedEnergy]).toEqual([0, 0])
+})
+test('Sammlung im Backup: Gelöschtes kehrt zurück, ein zweiter Import ändert nichts, ein altes Backup lässt die Sammlung stehen', () => {
+  const file = JSON.parse(serializeBackup({ ...emptyData(), collection: [P, F] }))
+  const once = merged({ ...emptyData(), collection: [P] }, file).data
+  expect(once.collection).toEqual([P, F])
+  expect(merged(once, file).data.collection).toEqual([P, F])
+  expect(merged(once, JSON.parse(serializeBackup(emptyData()))).data.collection).toEqual([P, F])
+})
+test('Sammlung im Backup: Kappung je Art schon beim Zusammenführen; Neuladen verliert nichts', () => {
+  const insights = (from: number, n: number) => Array.from({ length: n }, (_, i) => ({ id: hex(from + i), kind: 'erkenntnis' as const, text: `Zeile ${from + i}` }))
+  const data = merged({ ...emptyData(), collection: insights(101, 590) }, { ...JSON.parse(serializeBackup(emptyData())), collection: [...insights(1001, 20), F] }).data
+  expect(data.collection!.filter((i) => i.kind === 'erkenntnis')).toHaveLength(600)
+  expect(data.collection!.at(-1)).toEqual(F)
+  expect(parseData(JSON.parse(JSON.stringify(data)))!.collection).toEqual(data.collection)
+})
+test('Logbuch im Backup: weekPrinciple und growthField reisen mit, ein neues Logbuch zählt weiter in addedEnergy', () => {
+  const evening = { day: '2026-11-01', at: '2026-11-01T20:00:00.000Z', better: 'Morgen zehn Minuten Schachaufgaben lösen.', growthField: F.id, weekPrinciple: P.id }
+  const r = merged(emptyData(), JSON.parse(serializeBackup({ ...emptyData(), collection: [P, F], evenings: [evening] })))
+  expect(r.data.evenings).toEqual([evening])
+  expect(r.addedEnergy).toBe(1)
 })
