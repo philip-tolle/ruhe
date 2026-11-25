@@ -30,7 +30,7 @@
     position: fixed;
     inset: auto 0 calc(var(--tabbar-offset) + var(--miniplayer-gap));
     z-index: 9;
-    padding: 0 var(--gutter);
+    padding: 0 var(--column-gutter);
     pointer-events: none;
   }
 

@@ -15,7 +15,7 @@
     z-index: 9;
     display: flex;
     justify-content: center;
-    padding: 0 var(--gutter);
+    padding: 0 var(--column-gutter);
     pointer-events: none;
   }
 

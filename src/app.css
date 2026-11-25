@@ -140,9 +140,11 @@
   --font-display: 'Fraunces Variable';
   --font-body: 'Nunito Sans Variable';
 
-  /* Maße */
+  /* Maße. `--gutter` ist der Rand zum Bildschirm, `--column-gutter` der Rand der Inhaltsspalte und von allem, was an ihr
+     ausgerichtet ist (Blätter, Wiedergabeleisten, Hinweis auf neue Version). Auf dem Handy sind beide gleich. */
   --column-width: 560px;
   --gutter: 16px;
+  --column-gutter: var(--gutter);
   /* Höhe der Reiterleiste ohne Sicherheitsabstand. Der Sicherheitsabstand unten kommt
      bei --tabbar-offset dazu; Elemente "über der Leiste" nutzen --tabbar-offset. */
   --tabbar-height: 68px;
@@ -154,6 +156,15 @@
   --miniplayer-gap: 8px;
 
   color-scheme: dark;
+}
+
+/* Tablet: Ab 600 px Breite füllt die Inhaltsspalte den Bildschirm, bis 880 px, mit breiterem Rand. Abläufe, Player und
+   Dialoge behalten ihr schmales Maß und `--gutter`. */
+@media (min-width: 600px) {
+  :root {
+    --column-width: 880px;
+    --column-gutter: 32px;
+  }
 }
 
 /* Morgen: warmes Licht über den Bergen, blasse Sterne */
@@ -258,11 +269,11 @@ button {
   outline-offset: 3px;
 }
 
-/* Inhaltsspalte: schmal, mittig, mit Platz für die Reiterleiste */
+/* Inhaltsspalte: mittig, auf dem Handy schmal, auf dem Tablet über die Breite, mit Platz für die Reiterleiste */
 main {
   max-width: var(--column-width);
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top, 0px) + 40px) var(--gutter) calc(var(--tabbar-offset) + 40px);
+  padding: calc(env(safe-area-inset-top, 0px) + 40px) var(--column-gutter) calc(var(--tabbar-offset) + 40px);
 }
 
 main.with-player-bar {

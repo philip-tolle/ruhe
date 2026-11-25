@@ -12,7 +12,7 @@ Die App wird automatisch veröffentlicht, sobald etwas auf `main` landet (GitHub
 2. Menü **⋮** antippen.
 3. **„Zum Startbildschirm hinzufügen“** bzw. **„App installieren“** wählen.
 
-Danach startet Ruhe wie eine App, ohne Browserleiste.
+Danach startet Ruhe wie eine App, ohne Browserleiste. Auf einem Android-Tablet geht es genauso; dort nutzt Ruhe die ganze Breite des Bildschirms.
 
 ## Handy-Checkliste Meilenstein 1
 
@@ -66,6 +66,14 @@ Danach startet Ruhe wie eine App, ohne Browserleiste.
 3. „Nicht offline verfügbar“ fällt auf (Flugmodus, nicht gespeicherte Meditation).
 4. Draußen bei Tageslicht: Alle Texte sind in allen drei Stimmungen gut lesbar; die Waschungen sitzen in den Ecken, nie hinter Schrift.
 5. Scrollen bleibt flüssig.
+
+## Tablet-Checkliste
+
+1. **Breite:** Auf dem Tablet im Hochformat reichen die Karten aller Reiter bis kurz vor den Rand, mit gleichem Abstand links und rechts. Die Reiter unten verteilen sich über die ganze Breite.
+2. **Fenster:** „Check-in“, „Meditations-Timer“ und „Deine Sammlung“ öffnen über die ganze Breite; ihr Inhalt steht bündig mit den Karten dahinter.
+3. **Wiedergabe:** Unter „Klänge“ einen Klang starten: Die Leiste mit „Pause“ und „Stoppen“ ist so breit wie die Karten, ebenso der Mini-Player auf den anderen Reitern.
+4. **Abläufe und Player:** Morgen-Start, Abend-Logbuch und die Player bleiben schmal und mittig.
+5. **Handy:** Auf dem Handy sieht alles aus wie vorher.
 
 ## Handy-Checkliste Meilenstein 12
 
