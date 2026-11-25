@@ -47,6 +47,18 @@ test.describe('tablet at 800px', () => {
     expect(await paddingLeft(checkInSheet(page))).toBe('32px')
   })
 
+  // Neben dem Blatt ist kein Platz mehr; darüber bleibt die Abdunklung, ein Tipp dort schließt es wie auf dem Handy.
+  test('a tap above the full-width sheet closes it', async ({ page }) => {
+    await page.clock.setFixedTime(at('14:00'))
+    await page.goto('./')
+    await page.getByRole('button', { name: 'Check-in', exact: true }).click()
+    await expect(checkInSheet(page)).toBeVisible()
+    await page.waitForTimeout(600) // Danebentippen ist kurz nach dem Öffnen gesperrt (400 ms)
+    expect((await checkInSheet(page).boundingBox())!.y).toBeGreaterThan(100)
+    await page.touchscreen.tap(400, 40)
+    await expect(checkInSheet(page)).toHaveCount(0)
+  })
+
   test('the playback bars under "Klänge" and on the other tabs line up with the cards', async ({ page }) => {
     await page.goto('./')
     await nav(page).getByRole('button', { name: 'Klänge' }).click()

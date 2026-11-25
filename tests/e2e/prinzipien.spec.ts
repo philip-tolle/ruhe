@@ -253,8 +253,9 @@ test('2 Ebenen, Fokus und Doppeltipps', async ({ page }) => {
   await expect(editor(page)).toBeVisible()
   expect((await stored(page)).collection).toEqual(renamed)
 
-  // 6. Breiter Bildschirm: Ein Tipp neben das Blatt (über der Reiterleiste) schließt nur die oberste Ebene.
-  await page.setViewportSize({ width: 800, height: 839 })
+  // 6. Breiter Bildschirm: Ein Tipp neben das Blatt (über der Reiterleiste) schließt nur die oberste Ebene. Breiter als die
+  // Spalte von 880 px, denn bis dahin reicht das Blatt über die ganze Breite (Tablet).
+  await page.setViewportSize({ width: 1200, height: 839 })
   await settle(page)
   await page.touchscreen.tap(8, 831)
   await expect(editor(page)).toHaveCount(0)
