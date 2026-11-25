@@ -77,9 +77,12 @@ export function importMessage(added: number, addedEnergy = 0): string {
   return `${sessions} Dazu ${addedEnergy === 1 ? '1 neuer Energie-Eintrag' : `${addedEnergy} neue Energie-Einträge`}.`
 }
 
-/** Megabyte (1 MB = 1 000 000 Byte) mit einer Nachkommastelle und Komma: „7,7 MB“; ohne Bytes „0 MB“. */
+/**
+ * Megabyte (1 MB = 1 000 000 Byte) mit einer Nachkommastelle und Komma: „7,7 MB“; ohne Bytes „0 MB“. Zwischen Zahl und
+ * Einheit steht ein geschütztes Leerzeichen, damit „MB“ nie allein in die nächste Zeile rutscht.
+ */
 export function megabytes(bytes: number): string {
-  return bytes > 0 ? `${(bytes / 1_000_000).toFixed(1).replace('.', ',')} MB` : '0 MB'
+  return bytes > 0 ? `${(bytes / 1_000_000).toFixed(1).replace('.', ',')}\u00a0MB` : '0\u00a0MB'
 }
 
 /**

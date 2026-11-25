@@ -119,20 +119,21 @@ test('import message names new energy entries only when there are some', () => {
   expect(importMessage(2, 2)).toBe('2 neue Sitzungen importiert. Dazu 2 neue Energie-Einträge.')
 })
 
-test('megabytes are decimal, with one decimal place and a comma', () => {
-  expect(megabytes(0)).toBe('0 MB')
-  expect(megabytes(600_339)).toBe('0,6 MB')
-  expect(megabytes(1_200_320)).toBe('1,2 MB')
-  expect(megabytes(7_723_456)).toBe('7,7 MB')
-  expect(megabytes(12_000_000)).toBe('12,0 MB')
+// Zwischen Zahl und Einheit steht ein geschütztes Leerzeichen: „100,7 MB“ bricht nie um, „MB)“ steht nie allein.
+test('megabytes are decimal, with one decimal place and a comma, and keep number and unit together', () => {
+  expect(megabytes(0)).toBe('0\u00a0MB')
+  expect(megabytes(600_339)).toBe('0,6\u00a0MB')
+  expect(megabytes(1_200_320)).toBe('1,2\u00a0MB')
+  expect(megabytes(7_723_456)).toBe('7,7\u00a0MB')
+  expect(megabytes(12_000_000)).toBe('12,0\u00a0MB')
 })
 
 test('offline summary names the saved meditations and music pieces and both sizes', () => {
   expect(offlineSummary({ saved: 3, total: 9 }, { saved: 2, total: 7 }, 12_400_000, 49_200_000)).toBe(
-    '3 von 9 Meditationen und 2 von 7 Musikstücken offline gespeichert (12,4 MB von 49,2 MB)',
+    '3 von 9 Meditationen und 2 von 7 Musikstücken offline gespeichert (12,4\u00a0MB von 49,2\u00a0MB)',
   )
   expect(offlineSummary({ saved: 0, total: 9 }, { saved: 0, total: 7 }, 0, 49_200_000)).toBe(
-    '0 von 9 Meditationen und 0 von 7 Musikstücken offline gespeichert (0 MB von 49,2 MB)',
+    '0 von 9 Meditationen und 0 von 7 Musikstücken offline gespeichert (0\u00a0MB von 49,2\u00a0MB)',
   )
 })
 

@@ -207,6 +207,18 @@
       0 0 90px 30px rgb(242 201 138 / 0.12);
   }
 
+  /* Tablet: Auf einem hohen Bildschirm reichte der Anteil an der Höhe bis unter die Begrüßung, und die breite Spalte
+     läuft dort unter Sonne und Mond durch. Beide stehen darum höchstens so tief wie auf einem großen Handy. */
+  @media (min-width: 600px) {
+    .sun-tag {
+      top: min(6%, 55px);
+    }
+
+    .moon {
+      top: min(7%, 64px);
+    }
+  }
+
   .land {
     position: absolute;
     left: 0;

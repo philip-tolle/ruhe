@@ -34,11 +34,12 @@
     pointer-events: none;
   }
 
+  /* So breit wie die Karten: die Inhaltsspalte ohne ihren Rand. */
   .bar {
     display: flex;
     align-items: center;
     gap: 10px;
-    max-width: var(--column-width);
+    max-width: calc(var(--column-width) - 2 * var(--column-gutter));
     height: var(--miniplayer-height);
     margin: 0 auto;
     padding: 0 8px 0 18px;

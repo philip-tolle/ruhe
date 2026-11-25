@@ -83,6 +83,49 @@ test.describe('tablet at 800px', () => {
     expect(await edges(flow.locator('.top .bar'))).toEqual({ left: 176, right: 624 })
     expect(await paddingLeft(flow.locator('.step .content').first())).toBe('16px')
   })
+
+  // Die Waschung füllt die Ecke neben dem Motiv; in der breiten Kachel bleibt sie so klein wie im Kalender, statt
+  // dreifach vergrößert über die Kachel zu laufen.
+  test('the breathing tiles keep a small watercolor wash in their corner', async ({ page }) => {
+    await page.goto('./')
+    await nav(page).getByRole('button', { name: 'Atmen' }).click()
+    const wash = page.locator('main .tile .waschung').first()
+    await expect(wash).toBeVisible()
+    expect((await wash.boundingBox())!.width).toBeLessThanOrEqual(120)
+  })
+
+  // Sonne und Mond stehen in Höhe der Begrüßung, auch auf einem hohen Bildschirm, wo 6 % der Höhe tiefer reichen: Die
+  // Karten laufen jetzt bis unter sie.
+  test('the sun and the moon stay above the first card on a tall screen', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' }) // Karten ohne Einblenden, der Mond ohne Schweben
+    await page.setViewportSize({ width: 800, height: 1333 })
+    for (const [time, body] of [['14:00', '.sun-tag'], ['21:00', '.moon']] as const) {
+      await page.clock.setFixedTime(at(time))
+      await page.goto('./')
+      await nav(page).getByRole('button', { name: 'Meditieren' }).click()
+      const disc = (await page.locator(body).boundingBox())!
+      const card = (await page.locator('main .card').first().boundingBox())!
+      expect(disc.y + disc.height, `${body} über der ersten Karte`).toBeLessThanOrEqual(card.y)
+    }
+  })
+})
+
+test.describe('wider than the column at 1200px', () => {
+  test.use({ viewport: { width: 1200, height: 1280 } })
+
+  test('the playback bars stay as wide as the cards', async ({ page }) => {
+    await page.goto('./')
+    await nav(page).getByRole('button', { name: 'Klänge' }).click()
+    await page.getByRole('button', { name: 'Regen', exact: true }).click()
+    const dock = page.locator('.dock .bar')
+    await expect(dock).toBeVisible()
+    expect(await edges(dock)).toEqual({ left: 192, right: 1008 })
+
+    await nav(page).getByRole('button', { name: 'Heute' }).click()
+    const mini = page.getByRole('region', { name: 'Wiedergabe' }).locator('.bar')
+    await expect(mini).toBeVisible()
+    expect(await edges(mini)).toEqual(await edges(page.locator('main .card').first()))
+  })
 })
 
 test.describe('phone at 412px', () => {

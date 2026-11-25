@@ -73,7 +73,8 @@ Danach startet Ruhe wie eine App, ohne Browserleiste. Auf einem Android-Tablet g
 2. **Fenster:** „Check-in“, „Meditations-Timer“ und „Deine Sammlung“ öffnen über die ganze Breite; ihr Inhalt steht bündig mit den Karten dahinter.
 3. **Wiedergabe:** Unter „Klänge“ einen Klang starten: Die Leiste mit „Pause“ und „Stoppen“ ist so breit wie die Karten, ebenso der Mini-Player auf den anderen Reitern.
 4. **Abläufe und Player:** Morgen-Start, Abend-Logbuch und die Player bleiben schmal und mittig.
-5. **Handy:** Auf dem Handy sieht alles aus wie vorher.
+5. **Feinheiten:** Unter „Atmen“ bleiben die Aquarell-Wolken klein in der Ecke der Kacheln. Sonne und Mond stehen neben der Überschrift, nicht auf der ersten Karte. Unter „Ich“ › „Offline“ steht „MB“ nie allein in einer Zeile.
+6. **Handy:** Auf dem Handy sieht alles aus wie vorher.
 
 ## Handy-Checkliste Meilenstein 12
 

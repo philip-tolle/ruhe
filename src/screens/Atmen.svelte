@@ -162,9 +162,11 @@
 
   /* Die Kachel im Aussehen der Karte (`.card`), kompakter. Das Motiv steht oben am Anfang im Fluss und
      nicht in der Ecke: So stößt es nie an einen langen Titel. Die Waschung füllt die Ecke rechts daneben, bis zur
-     Unterkante des Motivs (Innenabstand 16 + Motiv 80 = 96 px); der Titel beginnt darunter, bei jeder Schriftgröße. */
+     Unterkante des Motivs (Innenabstand 16 + Motiv 80 = 96 px); der Titel beginnt darunter, bei jeder Schriftgröße.
+     Höchstens 120 px breit wie im Kalender: In der breiten Kachel auf dem Tablet liefe sie sonst vergrößert über die
+     halbe Kachel. */
   .tile {
-    --wash-w: calc(100% - 96px);
+    --wash-w: min(calc(100% - 96px), 120px);
     --wash-h: 96px;
     position: relative;
     overflow: hidden;

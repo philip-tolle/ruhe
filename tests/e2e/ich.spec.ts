@@ -72,9 +72,10 @@ const summary = (page: Page) => card(page, 'Offline').getByText(/Musikstücken o
 const MEDITATION_BYTES: number[] = JSON.parse(readFileSync('src/content/meditations.json', 'utf8')).meditations.map((m: { bytes: number }) => m.bytes)
 const MUSIC_BYTES: number[] = JSON.parse(readFileSync('content/sounds.json', 'utf8')).music.map((m: { bytes: number }) => m.bytes)
 const TOTAL_BYTES = [...MEDITATION_BYTES, ...MUSIC_BYTES].reduce((sum, b) => sum + b, 0)
-const TOTAL_MB = `${(TOTAL_BYTES / 1_000_000).toFixed(1).replace('.', ',')} MB`
+// Zahl und Einheit hält ein geschütztes Leerzeichen zusammen (src/lib/ui/ich-view.ts, `megabytes`).
+const TOTAL_MB = `${(TOTAL_BYTES / 1_000_000).toFixed(1).replace('.', ',')}\u00a0MB`
 const SUMMARY = (meditations: number, music: number) =>
-  new RegExp(`^${meditations} von 18 Meditationen und ${music} von 11 Musikstücken offline gespeichert \\((0|\\d+,\\d) MB von ${TOTAL_MB}\\)$`)
+  new RegExp(`^${meditations} von 18 Meditationen und ${music} von 11 Musikstücken offline gespeichert \\((0|\\d+,\\d)\u00a0MB von ${TOTAL_MB}\\)$`)
 const DONE = 'Alle Meditationen und die Musik sind offline verfügbar.'
 const balanceSlider = (page: Page) => page.getByRole('slider', { name: 'Balance Stimme ↔ Hintergrund' })
 const nav = (page: Page, name: string) =>
@@ -344,7 +345,7 @@ test('the offline card sits above the backup and starts empty', async ({ page })
   const backupBox = (await page.getByRole('heading', { level: 2, name: 'Backup' }).boundingBox())!
   expect(offlineBox.y).toBeLessThan(backupBox.y)
 
-  await expect(summary(page)).toHaveText(`0 von 18 Meditationen und 0 von 11 Musikstücken offline gespeichert (0 MB von ${TOTAL_MB})`)
+  await expect(summary(page)).toHaveText(`0 von 18 Meditationen und 0 von 11 Musikstücken offline gespeichert (0\u00a0MB von ${TOTAL_MB})`)
   await expect(saveAll(page)).toBeEnabled()
   await expect(progress(page)).toHaveCount(0)
   await expect(offlineStatus(page)).toHaveText('')

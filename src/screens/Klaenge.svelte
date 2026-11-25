@@ -126,12 +126,12 @@
   }
 
   /* Maße so knapp, dass „Noch 1:30:00“ auch bei 360 px Breite in eine Zeile passt. Farben wie beim
-     Mini-Player: Himmel und Akzent der Stimmung. */
+     Mini-Player: Himmel und Akzent der Stimmung. So breit wie die Karten: die Inhaltsspalte ohne ihren Rand. */
   .bar {
     display: flex;
     align-items: center;
     gap: 8px;
-    max-width: var(--column-width);
+    max-width: calc(var(--column-width) - 2 * var(--column-gutter));
     height: var(--miniplayer-height);
     margin: 0 auto;
     padding: 0 8px 0 16px;
